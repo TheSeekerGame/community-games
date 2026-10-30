@@ -57,7 +57,13 @@ export class Afoot {
       const model = buildArtifact(d, ctx);
       model.group.rotation.y = Math.random() * Math.PI * 2;
       g.scene.add(model.group);
-      this.curios.push({ d, model, x: at.x, z: at.z, y: at.h, scanned: false, heard: false, dist: Infinity, bearing: 0, move: {}, pulse: 1, reveal: 1 });
+      const c = { d, model, x: at.x, z: at.z, y: at.h, scanned: false, heard: false, dist: Infinity, bearing: 0, move: {}, pulse: 1, reveal: 1 };
+      this.curios.push(c);
+      // (placed first: the marks find it where it stands)
+      model.group.position.set(c.x - w.origin.x, c.y, c.z - w.origin.z);
+      model.group.updateMatrixWorld(true);
+      // the anomalies running lay their marks here too, and where they meet, theirs
+      for (const m of g.anomalies.mark()) g.markFx(c, m);
     }
   }
 
@@ -150,7 +156,8 @@ export class Afoot {
       c.bearing = angleDelta(p.yaw, Math.atan2(dx, dz));
       c.pulse = g.field.pulseAt(c, g.beat);
       for (const m of c.model.mats) if (m.uniforms) { if (m.uniforms.uPulse) m.uniforms.uPulse.value = c.pulse; if (m.uniforms.uReveal) m.uniforms.uReveal.value = 1; }
-      c.model.update(g.time, g.beat, { pulse: c.pulse, reveal: 1, near: clamp(1 - c.dist / 60, 0, 1) });
+      c.model.update(g.wtime, g.beat, { pulse: c.pulse, reveal: 1, near: clamp(1 - c.dist / 60, 0, 1) });
+      if (c.fx) c.fx.update(dt, g.slow);
       if (c.model.halo) c.model.halo.material.uniforms.uOpacity.value = (0.3 + c.pulse * 0.35) * c.d.strength * (c.scanned ? 0.4 : 1);
       // heard first from a little way off
       if (!c.heard && c.dist < 34) { c.heard = true; g.audio.play('signal', { pan: clamp(-Math.sin(c.bearing), -1, 1) }); }

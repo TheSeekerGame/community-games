@@ -42,7 +42,7 @@ export class Tips {
     if (g.mode === 'fly' || g.mode === 'seat') {
       const f = g.field;
       // an emitter bought and never fired: once, while something is in reach for it
-      const fx = g.progress.fx.length && !L.fx && g.fxTarget ? g.progress.fx[0] : null;
+      const fx = !L.fx && g.fxTarget ? (EFFECTS.find((e) => g.progress.usesOf(e.id) > 0) || {}).id : null;
       if (fx) {
         const e = EFFECTS.find((x) => x.id === fx);
         return { id: 'fx', caps: touch ? [[e.name]] : [[e.key]], text: `fire ${e.name} at it before you scan: it is worth more`, on: 10, off: 40 };

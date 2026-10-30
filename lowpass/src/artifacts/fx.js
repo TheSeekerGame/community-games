@@ -3,8 +3,8 @@ import { clamp } from '../core/math.js';
 import { glowMaterial, worldMaterial } from '../render/materials.js';
 import { LAYER_FX } from '../render/pipeline.js';
 
-// What the ship's emitters do to an artifact. Bought once in the SHOP, each is fired at
-// whatever the scanner holds (1 to 4, or its button), for some of the boost's plasma: the
+// What the ship's emitters do to an artifact. Bought in the SHOP a few uses at a time (and
+// bought again), each is fired at whatever the scanner holds (1 to 4, or its button): the
 // artifact changes where it stands, and the scan records it as it is then, worth more for
 // every one it took. Any number of them on one artifact, in any order, on anything the
 // forest grows at any depth (a witnessed seeker is the network's, and never touched):
@@ -20,28 +20,38 @@ import { LAYER_FX } from '../render/pipeline.js';
 //   glow     its own light many times over, as the long night asks
 //   freeze   a burst stopped in time: the shatter, held still
 //   invert   its own negative, drawn out and slowly turning
+// And where anomalies meet (two or more at once), what rises wears the way they meet:
+//   combo    waves rolling through it, bands or rings or a spiral of the anomalies'
+//            colors sweeping over it; their kind, colors and pace drawn from which
+//            anomalies they are, so every combination wears a mark of its own
 //
 // Each is a few lines added to every shader the artifact is drawn with (its own copies:
 // an artifact's materials are its own), working on where each point of it stands about
 // the artifact's heart, so a form of any family takes them all, and all at once.
 
+// (price: of a pack of PACK uses at the surface; a deeper scanner pays more for them, as
+// what they are fired at is worth more)
 export const EFFECTS = [
-  { id: 'glitch', name: 'GLITCH', key: '1', price: 120, color: 0xff5ec4, line: 'Tears it into bands of broken signal.' },
-  { id: 'chaos', name: 'CHAOS', key: '2', price: 260, color: 0x6dffb0, line: 'Sets it running like water.' },
-  { id: 'voxel', name: 'VOXEL', key: '3', price: 450, color: 0x8fd8ff, line: 'Sets it in blocks, as the seekers are drawn.' },
-  { id: 'shatter', name: 'SHATTER', key: '4', price: 700, color: 0xfff1c9, line: 'Breaks it into its faces, hanging in the air.' },
+  { id: 'glitch', name: 'GLITCH', key: '1', price: 9, color: 0xff5ec4, line: 'Tears it into bands of broken signal.' },
+  { id: 'chaos', name: 'CHAOS', key: '2', price: 15, color: 0x6dffb0, line: 'Sets it running like water.' },
+  { id: 'voxel', name: 'VOXEL', key: '3', price: 21, color: 0x8fd8ff, line: 'Sets it in blocks, as the seekers are drawn.' },
+  { id: 'shatter', name: 'SHATTER', key: '4', price: 30, color: 0xfff1c9, line: 'Breaks it into its faces, hanging in the air.' },
 ];
 export const FX_VALUE = 1.5;       // what a scan is worth, times this for every one it took
-export const FX_COST = 2.2;        // seconds of a full boost's plasma, each
+export const PACK = 3;             // uses bought at once
+export const fxPrice = (e, depth) => e.price * (1 + depth);
 export const effectById = (id) => EFFECTS.find((e) => e.id === id);
 // the past tense, for the Codex
-export const DONE = { glitch: 'glitched', chaos: 'set running', voxel: 'set in blocks', shatter: 'shattered', charge: 'charged', glow: 'lit', freeze: 'stopped', invert: 'inverted' };
+export const DONE = { glitch: 'glitched', chaos: 'set running', voxel: 'set in blocks', shatter: 'shattered', charge: 'charged', glow: 'lit', freeze: 'stopped', invert: 'inverted', combo: 'where anomalies met' };
 
 const FX_HEAD = /* glsl */ `
 uniform vec3 uFxC;
 uniform vec4 uFxA;          // glitch, chaos, voxel, shatter (0..1, and a little over)
 uniform vec4 uFxB;          // charge, glow, freeze, invert
 uniform vec3 uFxTint;
+uniform vec4 uFxD;          // where anomalies meet: how much, how many waves, how fast, twist
+uniform vec4 uFxE;          // and which pattern (0 bands, 1 rings, 2 a spiral)
+uniform vec3 uFxCol1, uFxCol2;
 uniform float uFxSpan, uFxT;
 float fxH(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
 float fxH1(float x) { return fract(sin(x * 91.3458 + 0.17) * 47453.5453); }
@@ -98,6 +108,13 @@ vec3 fxWarp(vec3 w, vec3 cw, float has) {
     p += right * big * (fxH1(ts * 5.3) - 0.5) * S * 0.3 * k;
     p.y += big * (fxH1(ts * 2.9) - 0.5) * S * 0.08 * k;
   }
+  if (uFxD.x > 0.0) {
+    // where anomalies meet: waves rolling up through it, and a slow twist
+    float k = uFxD.x, ph = p.y / S * uFxD.y * 6.2832 - t * uFxD.z;
+    p.xz *= 1.0 + k * 0.16 * sin(ph);
+    float a = k * uFxD.w * sin(t * 0.27 + p.y / S * 2.5);
+    p.xz = mat2(cos(a), -sin(a), sin(a), cos(a)) * p.xz;
+  }
   if (uFxB.w > 0.0) {
     // inverted: drawn out along its height, and turning slowly about it
     float a = uFxB.w * sin(t * 0.21) * 0.6 * (p.y / S);
@@ -140,6 +157,14 @@ vec3 fxColor(vec3 col, vec3 world) {
     col += uFxTint * uFxB.x * (0.12 + 0.9 * smoothstep(0.82, 0.97, abs(s)));
   }
   if (uFxB.y > 0.0) col *= 1.0 + uFxB.y * 1.4;
+  if (uFxD.x > 0.0) {
+    // where anomalies meet: bands, rings or a spiral of their two colors sweeping over it
+    vec2 q = p.xz / S;
+    float u = uFxE.x < 0.5 ? p.y / S : uFxE.x < 1.5 ? length(vec3(q, p.y / S)) : atan(q.y, q.x) / 6.2832 + p.y / S * 0.6;
+    float b = 0.5 + 0.5 * sin(u * uFxD.y * 6.2832 * 1.5 - t * uFxD.z * 1.4);
+    vec3 band = mix(uFxCol1, uFxCol2, b);
+    col = mix(col, col * 0.45 + band * (0.55 + 1.1 * pow(b, 8.0)), uFxD.x * 0.65);
+  }
   if (uFxB.w > 0.0) {
     // inverted: its own negative, its light turned to the far side of the wheel
     vec3 neg = max(vec3(0.92, 0.9, 1.0) - col * 0.85, 0.0) + max(fxHue(col, 3.1416), 0.0) * 0.3;
@@ -286,8 +311,9 @@ const ARRIVE = {
   glow: (s) => 1 - Math.exp(-s * 1.2),
   freeze: (s) => (1 - Math.exp(-s * 5)) * 0.85,
   invert: (s) => clamp(s / 2, 0, 1),
+  combo: (s) => clamp(s / 2.5, 0, 1),
 };
-const SLOT = { glitch: ['uFxA', 'x'], chaos: ['uFxA', 'y'], voxel: ['uFxA', 'z'], shatter: ['uFxA', 'w'], charge: ['uFxB', 'x'], glow: ['uFxB', 'y'], freeze: ['uFxB', 'z'], invert: ['uFxB', 'w'] };
+const SLOT = { glitch: ['uFxA', 'x'], chaos: ['uFxA', 'y'], voxel: ['uFxA', 'z'], shatter: ['uFxA', 'w'], charge: ['uFxB', 'x'], glow: ['uFxB', 'y'], freeze: ['uFxB', 'z'], invert: ['uFxB', 'w'], combo: ['uFxD', 'x'] };
 
 // An artifact's effects: which it has taken (in order), how far each has come over it,
 // and the uniforms all its materials share.
@@ -301,6 +327,8 @@ export class ArtifactFx {
     this.U = {
       uFxC: { value: new THREE.Vector3() }, uFxA: { value: new THREE.Vector4(0, 0, 0, 0) }, uFxB: { value: new THREE.Vector4(0, 0, 0, 0) },
       uFxTint: { value: new THREE.Color(0xa58cff) }, uFxSpan: { value: Math.max(8, a.model.span || 10) }, uFxT: { value: 0 },
+      uFxD: { value: new THREE.Vector4(0, 0, 0, 0) }, uFxE: { value: new THREE.Vector4(0, 0, 0, 0) },
+      uFxCol1: { value: new THREE.Color() }, uFxCol2: { value: new THREE.Color() },
     };
     this.ready = false;
   }
@@ -357,6 +385,22 @@ export class ArtifactFx {
     this._prepare();
     this.marks.push(id);
     this.since[id] = 0;
+  }
+
+  // where anomalies meet (key: which, as one word; colors: theirs): its own waves and
+  // colors, from the key, so the same meeting always wears the same mark
+  combo(key, colors) {
+    this._prepare();
+    let h = 2166136261;
+    for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    const r = (k) => ((Math.imul(h ^ (k * 0x9e3779b9), 2654435761) >>> 0) % 10007) / 10007;
+    this.U.uFxD.value.set(0, 1.2 + r(1) * 2.6, 0.5 + r(2) * 1.6, 0.25 + r(3) * 1.1);
+    this.U.uFxE.value.set(Math.floor(r(4) * 3), 0, 0, 0);
+    this.U.uFxCol1.value.setHex(colors[0]);
+    this.U.uFxCol2.value.setHex(colors[1] ?? colors[0]).lerp(new THREE.Color(colors[2] ?? colors[1] ?? colors[0]), 0.35);
+    this.comboKey = key;
+    if (!this.marks.includes('combo')) this.marks.push('combo');
+    this.since.combo = 0;
   }
 
   get any() { return this.list.length + this.marks.length > 0; }

@@ -171,14 +171,20 @@ built as layers that all go together, instead of as more kinds of thing:
   form, depth, creature and animal there is, and any number of them on one artifact go
   together (a voxel sculpture shattering, a glitch running like water). Voxel is the one
   exception to the shader rule: the artifact is sampled into real blocks, colored from
-  what they hold, the way the seekers are drawn. Each costs some of the boost's plasma,
-  so the tank (and the ship) decides how many go on one artifact, and each makes the
-  scan worth half as much again: an investment the player chooses, never a chore.
+  what they hold, the way the seekers are drawn. They are bought a few uses at a time
+  (priced by the scanner's depth, as what they are fired at is worth more), so they are
+  spent and bought again, and each makes the scan worth half as much again: an
+  investment the player chooses, never a chore. They work on foot too.
 - **Anomalies** (anomaly.js) are what the world does, for four minutes: inversion, slow
   time, long night, discharge. Each changes the whole world (the view, time, the hour,
   the weather) and lays its own mark on what rises (its negative, a stopped burst, its
-  light many times over, charge), with the same machinery as the effects. Two at once
-  combine. Some are opened by holding a seeker of a kind (a trait of its art, or
+  light many times over, charge), with the same machinery as the effects. Any number at
+  once combine: everything wears every mark, and where two or more meet, a mark of the
+  meeting whose pattern, colors and pace come from which anomalies they are, so every
+  combination has artifacts of its own, in flight and on foot alike. The music answers
+  the same way: each anomaly is one transformation of the score (inverted, slowed,
+  darkened, trembling), and they compose, with each combination turning the chord to a
+  mode of its own. Some are opened by holding a seeker of a kind (a trait of its art, or
   something it has done on the chain): the collection becomes keys to the world. They
   are a sink for DATA that grows with depth, as the depth costs do.
 - **Places** have their own sets: the mountains, the turned stands and the rivers each

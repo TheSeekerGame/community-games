@@ -474,7 +474,9 @@ export class Ship {
     const target = -clamp(steer + this.drift, -1, 1) * this.maxYaw;
     this.yawRate = damp(this.yawRate, target, 2.0, dt);
     this.heading += this.yawRate * dt;
-    this.bank = damp(this.bank, clamp(-this.yawRate * 1.05, -0.55, 0.55), 2.6, dt);
+    // (rolled over, the turns are mirrored on the screen: it leans the other way to lean
+    // into them)
+    this.bank = damp(this.bank, clamp(-this.yawRate * 1.05, -0.55, 0.55) * Math.cos(Math.PI * this.flip), 2.6, dt);
     const [fx, fz] = this.forward();
     this.x += fx * this.speed * dt;
     this.z += fz * this.speed * dt;

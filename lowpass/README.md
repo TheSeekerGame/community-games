@@ -169,27 +169,34 @@ to it and press E.
   apart, a whale of the under-sky swimming circles over the trees; on a mountain, the
   mountains' own, crowned and courted). A marked scan is worth ten times its depth's.
   Witnessed seekers are never touched by any of it.
-- **Effects.** Bought once each in the SHOP, fired at whatever the scanner holds, for
-  some of the boost's plasma (so a larger tank fires more of them): **GLITCH** tears it
+- **Effects.** Bought in the SHOP three uses at a time (and bought again), fired at
+  whatever the scanner holds, in flight or on foot: **GLITCH** tears it
   into bands of broken signal, **CHAOS** sets it running like water, **VOXEL** sets it in
   blocks the way the seekers themselves are drawn, **SHATTER** breaks it into its faces,
   hanging in the air. Any number on one artifact, in any order, on anything wild at any
   depth (never a witnessed seeker); the scan records it as it is then, and is worth half
   as much again for every effect it took.
-- **Anomalies.** The world itself changed for four minutes, from the SHOP: signals come
-  twice as often, each wears the anomaly's mark, and every scan made in one is worth
-  half as much again. **INVERSION** rolls the ship over into a stranger world (a pale
+- **Anomalies.** The world itself changed for four minutes, from the SHOP: what rises
+  wears the anomaly's mark, and every scan made in one is worth half as much again. **INVERSION** rolls the ship over into a stranger world (a pale
   forest hanging overhead, drawn out and twisting, the ground a negative of itself
   ringed with lines of light, an abyss of violet below), and what rises is its own
   negative; **SLOW TIME** slows everything but the ship, and what rises is a burst
   stopped in time; **LONG NIGHT** holds midnight with the aurora at its full, and what
   rises burns with its own light; **DISCHARGE** sends lightning walking through the
-  forest and fills the core faster, and what rises crackles with charge. Two at once, and
-  then everything wears both. LONG NIGHT and DISCHARGE answer only to a pilot whose
+  forest and fills the core faster, and what rises crackles with charge. Any of them at
+  once: then what rises wears every mark, and the mark of where they meet besides (waves
+  rolling through it, bands, rings or a spiral of their colors, the same for the same
+  combination and its own for each), and the music changes with each of them together
+  (an inversion turns the chord upside down and makes its notes swell in backward, slow
+  time lowers and draws it out, the long night darkens it and hangs bells of the aurora
+  over it, a discharge makes it tremble and crackle; two or more turn the chord to
+  another mode). Landed, they go on: the things found on foot wear them all the same,
+  and the world stays as strange (only the ship rights itself). LONG NIGHT and
+  DISCHARGE answer only to a pilot whose
   wallet holds a seeker of the right kind: one with the Nightfall background, one that
   has discharged (read from Robinhood Chain, nothing written).
-- **Life in the forest.** Every half minute or so, something living, suited to the
-  place and the hour: a flock turning over the canopy that lifts and streams away when
+- **Life in the forest.** Now and then, in place of a wild artifact, something living,
+  suited to the place and the hour: a flock turning over the canopy that lifts and streams away when
   the ship comes near (slower than the ship: it can be followed and held in the
   sights), a herd grazing at a lake's shore that bolts for the trees, an owl at night on
   a dead spruce turning its head to keep the ship in sight, a shoal leaping on a lake.
@@ -326,7 +333,9 @@ minute as a WAV file.
     tank is large.
   - **SIGNAL GAIN**, five levels (80, 150, 250, 380, 550): how soon the next wild
     artifact comes once the last is behind, from 100 to 170 seconds down to 52 to 92.
-  The effects: GLITCH 120, CHAOS 260, VOXEL 450, SHATTER 700, once each. The anomalies:
+  The effects: three uses of GLITCH for 9 DATA, CHAOS 15, VOXEL 21, SHATTER 30, times
+  one more than the depth the scanner reaches (bought again when they run out). The
+  anomalies:
   60 DATA for every depth the scanner reaches and one more, each time one is started;
   a keyed one says which seeker opens it, and CONNECT TO CHECK asks the wallet for its
   address only.

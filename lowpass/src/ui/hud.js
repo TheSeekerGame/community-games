@@ -124,7 +124,7 @@ export class Hud {
 
   // list: [{ id, name, key, color, done, low }] or null; keys: whether to show key caps
   setFx(list, keys) {
-    const k = list ? list.map((e) => `${e.id}${e.done ? 1 : 0}${e.low ? 1 : 0}`).join() + keys : '';
+    const k = list ? list.map((e) => `${e.id}${e.done ? 1 : 0}${e.n}`).join() + keys : '';
     this.fxRow.classList.toggle('on', !!list);
     if (k === this._fxKey) return;
     // (the buttons stay as they were while the row fades out)
@@ -137,6 +137,7 @@ export class Hud {
       if (keys) key(b, e.key);
       el('i', 'fxdot', b);
       el('span', '', b, e.name);
+      el('span', 'fxn', b, String(e.n));
       const go = (ev) => { ev.preventDefault(); ev.stopPropagation(); if (this.onFire) this.onFire(e.id); };
       b.addEventListener('touchstart', go, { passive: false });
       b.addEventListener('mousedown', go);

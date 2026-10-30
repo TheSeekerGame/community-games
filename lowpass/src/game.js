@@ -15,7 +15,7 @@ import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
 import { load, save, codexAll, codexPut } from './core/store.js';
 import { clamp, damp } from './core/math.js';
-import { Progress, rollDepth, REFILL, PLUS, CREATURE, LANDING, LANDING_DEPTH } from './core/progress.js';
+import { Progress, rollDepth, REFILL, PLUS, CREATURE, LANDING, LANDING_DEPTH, LIFE_SHARE } from './core/progress.js';
 import { SPECIES } from './artifacts/species.js';
 import { stratum } from './artifacts/strata.js';
 import { Chain } from './chain/chain.js';
@@ -25,7 +25,7 @@ import * as art from './chain/art.js';
 import { Field } from './artifacts/field.js';
 import { takePhoto } from './artifacts/photo.js';
 import { GENERATOR_VERSION, shapeOf } from './artifacts/generate.js';
-import { ArtifactFx, EFFECTS, FX_COST, Shot, effectById } from './artifacts/fx.js';
+import { ArtifactFx, EFFECTS, Shot, effectById } from './artifacts/fx.js';
 import { Anomalies, anomalyById } from './world/anomaly.js';
 import { connected } from './net/wallet.js';
 import { Hud } from './ui/hud.js';
@@ -106,7 +106,7 @@ export class Game {
     this.boot.step(0.05, '');
     this.hud = new Hud(this.uiRoot);
     this.hud.onAlarm = () => this.goOutside();
-    this.hud.onFire = (id) => { if (!this.terminal.open && !this.menu.open && !this.reader.open && (this.mode === 'fly' || this.mode === 'seat')) this.fire(id); };
+    this.hud.onFire = (id) => { if (!this.terminal.open && !this.menu.open && !this.reader.open && (this.mode === 'fly' || this.mode === 'seat' || this.mode === 'ground')) this.fire(id); };
     this.tips = new Tips(this);
     this.terminal = new Terminal(this);
     this.reader = new Reader(this);
@@ -496,29 +496,31 @@ export class Game {
   // What the emitters can be fired at now: the one the scanner holds, near enough to
   // scan, seen, not yet recorded; never a witnessed seeker (the network's) nor a clearing.
   get fxTarget() {
+    // (on foot, whatever the visor holds)
+    if (this.mode === 'ground') { const a = this.afoot, t = a.target; return t && !t.scanned && (a.state === 'lock' || a.state === 'near') ? t : null; }
+    if (this.mode !== 'fly' && this.mode !== 'seat') return null;
     const f = this.field, t = f.target;
     return t && t.model && !t.scanned && t.revealed && !t.special && t.d.family !== 'landing' && (f.state === 'lock' || f.state === 'near') ? t : null;
   }
 
-  // an anomaly's mark laid on an artifact
+  // an anomaly's mark laid on an artifact (or the mark of anomalies meeting: 'combo:' and
+  // which, colored in theirs)
   markFx(a, id) {
     if (!a.fx) a.fx = new ArtifactFx(a);
-    a.fx.mark(id);
+    if (id.startsWith('combo:')) { const ids = id.slice(6).split('+'); a.fx.combo(id, ids.map((x) => anomalyById(x).color)); }
+    else a.fx.mark(id);
   }
 
-  // An emitter fired at it: the artifact changes where it stands, for some of the boost's
-  // plasma (none to spare: nothing happens, and the meter says why).
+  // An emitter fired at it: the artifact changes where it stands, and one use is spent
+  // (none left: nothing happens, and a word says where more are).
   fire(id) {
     const t = this.fxTarget, e = effectById(id);
-    if (!e || !this.progress.hasFx(id) || !t) return false;
+    if (!e || !this.progress.bought(id) || !t) return false;
     if (t.fx && t.fx.has(id)) return false;
-    const need = FX_COST / this.tankSecs;
-    if (this.plasmaLeft < need) { this.audio.play('error'); this._fxLow = this.time; return false; }
-    this.plasmaLeft -= need;
+    if (!this.progress.useFx(id)) { this.audio.play('error'); this.hud.say(`NO ${e.name} LEFT`, 'more in the SHOP, on the Codex computer', 3); return false; }
     if (!t.fx) t.fx = new ArtifactFx(t);
     t.fx.add(id);
-    this.shot.fire(e.color);
-    this._shotAt = this.field.lightPos(t).clone();
+    if (this.mode !== 'ground') { this.shot.fire(e.color); this._shotAt = this.field.lightPos(t).clone(); }
     this.audio.play('fx', { id, pan: clamp(-(t.bearing || 0), -1, 1) });
     this.buzz(18);
     this.tips.learn('fx');
@@ -565,18 +567,12 @@ export class Game {
     }
   }
 
-  // Life in the forest (life.js), every half minute or so while flying: whatever suits the
-  // place and the hour ahead (an owl at night, a shoal where a lake lies ahead, a herd
-  // where a shore does, else a flock), never while an artifact is near, one at a time;
-  // now and then, once the scanner reaches below, their kin from a depth.
-  _life(dt, down) {
-    if (this.mode === 'title' || down) return;
-    this._lifeT = (this._lifeT ?? 25) - dt;
-    if (this._lifeT > 0 || this._lifeBusy) return;
-    this._lifeT = 22 + Math.random() * 22;
-    const f = this.field, near = f.active.some((a) => !a.scanned && !a.passed && (a.d.family === 'life' || a.dist < 520));
-    if (near) { this._lifeT = 8; return; }
-    const ship = this.ship, [fx, fz] = ship.forward(), vis = f.visibility(), w = this.world;
+  // Life in the forest (life.js), in place of a wild artifact now and then: whatever suits
+  // the place and the hour ahead (an owl at night, a shoal where a lake lies ahead, a herd
+  // where a shore does, else a flock); now and then, once the scanner reaches below,
+  // their kin from a depth.
+  _life() {
+    const f = this.field, ship = this.ship, [fx, fz] = ship.forward(), vis = f.visibility(), w = this.world;
     const ahead = clamp(vis * 0.92, 170, 480);
     const at = (d) => [ship.x + fx * d, ship.z + fz * d];
     const water = [ahead, ahead + 90, ahead + 180].some((d) => { const [x, z] = at(d); return w.groundAt(x, z) < WATER - 2; });
@@ -586,15 +582,14 @@ export class Game {
     else if (water && r < 0.7) sp = 'fish';
     else if (r < 0.4 && !mountain(...at(ahead))) sp = 'deer';
     const depth = this.progress.depth >= 1 && Math.random() < 0.3 ? 1 + Math.floor(Math.random() * this.progress.depth) : 0;
-    this._lifeBusy = true;
-    f.spawnWild({ life: sp, depth, ahead, lateral: (Math.random() - 0.5) * 120, quiet: true })
+    return f.spawnWild({ life: sp, depth, ahead, lateral: (Math.random() - 0.5) * 120, quiet: true })
       .then((a) => {
         for (const m of this.anomalies.mark(a)) this.markFx(a, m);
         // the first few times, a word: they can be scanned too
         this._lifeSaid = (this._lifeSaid || 0) + 1;
         if (this._lifeSaid <= 2 && (this.mode === 'fly' || this.mode === 'seat')) this.hud.say(`${a.d.cls.toUpperCase()} AHEAD`, 'life in the forest: it can be scanned too', 4);
-      })
-      .finally(() => { this._lifeBusy = false; });
+        return a;
+      });
   }
 
   // the wallet that has shared its address with this browser, if any
@@ -780,9 +775,12 @@ export class Game {
       const plus = !creature && depth >= 1 && Math.random() < PLUS;
       // and once the scanner reaches deep enough, very rarely, a clearing to land in
       const landing = !creature && !plus && !onMountain && !wave.length && this.progress.depth >= LANDING_DEPTH && Math.random() < LANDING;
+      // and now and then, in its place, life in the forest (life.js): the same pace either way
+      const life = !wave.length && !landing && !creature && !plus && Math.random() < LIFE_SHARE;
       const recent = this.progress.seen;
       (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 })
         : landing ? this.field.spawnWild({ landing: true })
+          : life ? this._life()
           : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, autumn: inAutumn, river: onRiver, plus, creature, recent }).then((a) => {
             this.progress.see(shapeOf(a.d));
             // the anomalies running lay their marks on it
@@ -791,10 +789,8 @@ export class Game {
           }))
         .finally(() => { this._spawning = false; });
       const [g0, g1] = this.progress.gap;
-      // (twice as often while an anomaly lasts; never sooner than the leaderboard counts)
-      this.field.next = this.moves.waiting ? 6 : Math.max(this.anomalies.any ? 40 : 0, (g0 + Math.random() * (g1 - g0)) * (this.anomalies.any ? 0.5 : 1));
+      this.field.next = this.moves.waiting ? 6 : g0 + Math.random() * (g1 - g0);
     }
-    this._life(dt, down);
     const canScan = !overlay && (this.mode === 'fly' || this.mode === 'seat');
     const prevState = this.field.state;
     this.field.update(dt, canScan && input.scanHeld());
@@ -804,8 +800,9 @@ export class Game {
       this.audio.play('scan', { progress: this.field.scan });
     }
     // the emitters: 1 to 4 (the pad's cross, the HUD's buttons) at what the scanner holds
-    if (canScan) EFFECTS.forEach((e, i) => { if (input.hit(`Digit${i + 1}`, `Numpad${i + 1}`, FIRE_PAD[i])) this.fire(e.id); });
-    const ft = this.fxTarget;
+    // (on foot too)
+    if (canScan || (this.mode === 'ground' && !overlay)) EFFECTS.forEach((e, i) => { if (input.hit(`Digit${i + 1}`, `Numpad${i + 1}`, FIRE_PAD[i])) this.fire(e.id); });
+    const ft = this.mode === 'ground' ? null : this.fxTarget;
     this.shot.update(dt, this.ship.lensPos ? this.ship.lensPos() : this.ship.root.position, ft ? this.field.lightPos(ft) : this._shotAt);
 
     // the camera, by mode
@@ -849,6 +846,8 @@ export class Game {
     m.fog = clamp((U.uFogDensity.value - 0.003) / 0.008, 0, 1);
     m.drowsy = clamp(1 - this.alertness / 0.35, 0, 1);
     m.inside = inside ? 1 : 0;
+    // and the anomalies running
+    for (const k of Object.keys(this.audio.anom)) this.audio.anom[k] = this.anomalies.amount(k);
     m.turn = this.ship.yawRate;
     m.warm = this.mode === 'coffee' ? 1 : Math.max(0, this.warm / 90);
     const t = this.field.target;
@@ -1015,11 +1014,11 @@ export class Game {
     else if (this.mode === 'seat') keys = [['A D', 'steer'], ['W', 'boost'], ['SPACE', 'scan'], ['E', 'stand up'], ['V', 'outside']];
     h.setKeys(keys);
     h.setAnomalies(this.anomalies.list.filter((x) => x.left > 0).map((x) => { const a = anomalyById(x.id); return { name: a.name, color: a.color, left: x.left }; }));
-    // the emitters bought, while something they can be fired at is in reach
-    const ft = !overlay && (this.mode === 'fly' || this.mode === 'seat') ? this.fxTarget : null;
-    const owned = ft ? EFFECTS.filter((e) => this.progress.hasFx(e.id)) : [];
-    const low = this.plasmaLeft < FX_COST / this.tankSecs;
-    h.setFx(owned.length ? owned.map((e) => ({ id: e.id, name: e.name, key: e.key, color: e.color, done: !!(ft.fx && ft.fx.has(e.id)), low })) : null, !this.input.touchMode);
+    // the emitters bought, with their uses left, while something they can be fired at is in
+    // reach
+    const ft = !overlay ? this.fxTarget : null;
+    const owned = ft ? EFFECTS.filter((e) => this.progress.bought(e.id)) : [];
+    h.setFx(owned.length ? owned.map((e) => { const n = this.progress.usesOf(e.id); return { id: e.id, name: e.name, key: e.key, color: e.color, n, done: !!(ft.fx && ft.fx.has(e.id)), low: !n }; }) : null, !this.input.touchMode);
     // the teaching line and the marks; the keys stay a while after each change of place
     // (the tips reset the clock), and come back when an idle key is pressed
     this.tips.update(dt, overlay);

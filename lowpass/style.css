@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "f3b8914a"; }
+:root { --build: "71e21c89"; }
 
 :root {
   --u: 3px;
@@ -168,6 +168,8 @@ html.touchmode .hud .anoms { left: calc(var(--u) * 8 + var(--sl)); right: auto; 
 #ui .hud .fx.done { border-color: var(--fx); color: var(--fx); background: rgba(4, 6, 10, 0.75); }
 #ui .hud .fx.done .fxdot { animation: beat 0.667s steps(2) infinite; }
 #ui .hud .fx.low { opacity: 0.4; }
+#ui .hud .fx .fxn { color: var(--muted); }
+#ui .hud .fx.done .fxn { color: inherit; }
 html.touchmode #ui .hud .fx { padding: calc(var(--u) * 4) calc(var(--u) * 6); }
 .hud .tip { max-width: 100%; display: flex; flex-wrap: wrap; justify-content: center; text-align: center; align-items: center; gap: calc(var(--u) * 3); padding: calc(var(--u) * 2) calc(var(--u) * 5); background: rgba(4, 6, 10, 0.5); clip-path: var(--cut1); color: var(--text); opacity: 0; transition: opacity 0.8s; }
 .hud .tip.on { opacity: 1; }

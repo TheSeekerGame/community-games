@@ -8,7 +8,7 @@ import { discover, connect, connected, disconnect } from '../net/wallet.js';
 import * as art from '../chain/art.js';
 import { formatInt, formatNum, clamp } from '../core/math.js';
 import { SHIPS, pips } from '../ship/designs.js';
-import { EFFECTS, DONE } from '../artifacts/fx.js';
+import { EFFECTS, DONE, PACK } from '../artifacts/fx.js';
 import { ANOMALIES, ANOMALY_SECS, AT_ONCE, anomalyCost, readKeys } from '../world/anomaly.js';
 
 // the SHOP's shelves, left to right
@@ -378,22 +378,22 @@ export class Terminal {
   // they are used
   _effects(wrap, sel) {
     const g = this.game, pr = g.progress;
-    el('div', 'fine shopnote', wrap, `Fired at an artifact before it is scanned (${g.input.touchMode ? 'its button' : 'keys 1 to 4'}), for some plasma. Every one it takes makes its scan worth half as much again, and they all go together.`);
+    el('div', 'fine shopnote', wrap, `Fired at an artifact before it is scanned (${g.input.touchMode ? 'its button' : 'keys 1 to 4'}), in flight or on foot. Every one it takes makes its scan worth half as much again, and they all go together. ${PACK} uses at a time.`);
     for (const e of EFFECTS) {
-      const own = pr.hasFx(e.id);
+      const n = pr.usesOf(e.id), cost = pr.fxCost(e.id);
       const c = el('div', 'upg fxc' + (sel === e.id ? ' sel' : ''), wrap);
       c.style.setProperty('--fx', hexCss(e.color));
       const head = el('div', 'uhead', c);
       const nm = el('div', 'uname', head);
       el('i', 'fxdot', nm);
       el('span', '', nm, e.name);
-      el('div', 'ucur', head, own ? `KEY ${e.key}` : '');
+      el('div', 'ucur', head, pr.bought(e.id) ? `${n} LEFT · KEY ${e.key}` : '');
       el('div', 'sline', c, e.line);
       const row = el('div', 'ubuy', c);
       const bar = el('div', 'ubar', row);
-      el('i', '', bar).style.width = own ? '100%' : `${Math.min(100, (pr.data / e.price) * 100)}%`;
-      const b = el('button', 'btn', row, own ? 'OWNED' : `BUY · ${formatInt(e.price)}`);
-      b.disabled = own || !pr.canFx(e.id);
+      el('i', '', bar).style.width = `${Math.min(100, (pr.data / cost) * 100)}%`;
+      const b = el('button', 'btn', row, `BUY ${PACK} · ${formatInt(cost)}`);
+      b.disabled = !pr.canFx(e.id);
       b.onclick = () => this._buyFx(e.id);
       if (this._shopMsg && this._shopMsg.kind === e.id) { el('div', 'msg', c, this._shopMsg.text).style.color = hexCss(e.color); this._shopMsg = null; }
       if (sel === e.id && this._scrollTo) { const cc = c; requestAnimationFrame(() => cc.scrollIntoView({ block: 'nearest' })); }
@@ -407,7 +407,7 @@ export class Terminal {
   _anomalies(wrap, sel) {
     const g = this.game, pr = g.progress, A = g.anomalies, owner = A.owner();
     const cost = anomalyCost(pr.depth);
-    el('div', 'fine shopnote', wrap, `For ${ANOMALY_SECS / 60} minutes the world is changed. Signals come twice as often, each one wears its mark, and every scan made in it is worth half as much again. ${AT_ONCE} at once, at most.`);
+    el('div', 'fine shopnote', wrap, `For ${ANOMALY_SECS / 60} minutes the world is changed: what rises wears its mark, and every scan made in it is worth half as much again. Run them together and they combine, in flight and on foot, and so does the music.`);
     // (the seekers of the wallet that shared its address, read once in a while)
     const k = A.keys;
     if (owner && !this._keysBusy && (!k || k.address !== owner || Date.now() - k.at > 15 * 60000)) {
@@ -464,7 +464,7 @@ export class Terminal {
     const g = this.game, pr = g.progress, e = EFFECTS.find((x) => x.id === id);
     if (!pr.buyFx(id)) { g.audio.play('error'); return; }
     g.audio.play('buy', {});
-    this._shopMsg = { kind: id, text: `${e.name} is fitted. Key ${e.key}, at whatever the scanner holds.` };
+    this._shopMsg = { kind: id, text: `${pr.usesOf(id)} ${e.name} ready. Key ${e.key}, at whatever the scanner holds.` };
     this.render();
   }
 

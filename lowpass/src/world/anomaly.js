@@ -6,10 +6,11 @@ import { clamp, damp, TAU } from '../core/math.js';
 import { load, save } from '../core/store.js';
 import * as art from '../chain/art.js';
 
-// Anomalies: the world itself changed for a while, bought in the SHOP. While one lasts the
-// signals come twice as often, whatever rises wild wears its mark (fx.js), and every scan
-// is worth ANOMALY_VALUE times more for each anomaly it was made in. Two may run at once,
-// and then everything wears both.
+// Anomalies: the world itself changed for a while, bought in the SHOP. While one lasts
+// whatever rises wild wears its mark (fx.js), and every scan is worth ANOMALY_VALUE times
+// more for each anomaly it was made in. Any of them may run at once, and then everything
+// wears all their marks, and the way they meet besides: a mark of its own for every
+// combination (combo, below), and the music changes with each of them, together.
 //   inversion  the ship rolls over into a stranger world: the forest hangs overhead, pale
 //              and drawn out and twisting, the ground a negative of itself ringed with
 //              lines of light, the sky below an abyss of violet
@@ -31,7 +32,7 @@ export const ANOMALIES = [
 ];
 export const ANOMALY_SECS = 240;
 export const ANOMALY_VALUE = 1.5;
-export const AT_ONCE = 2;
+export const AT_ONCE = 4;
 export const anomalyCost = (depth) => 60 * (1 + depth);
 export const anomalyById = (id) => ANOMALIES.find((a) => a.id === id);
 
@@ -186,17 +187,20 @@ export class Anomalies {
     this.list = this.list.filter((x) => x.id !== id);
     this.list.push({ id, left: ANOMALY_SECS, k: 0 });
     this._save();
-    // what is out there already wears its mark too
-    const m = anomalyById(id).mark;
-    if (m) for (const a of this.game.field.active) if (a.model && !a.special && !a.scanned && a.d.family !== 'landing') this.game.markFx(a, m);
+    // what is out there already wears its mark too (and on foot, what stands about)
+    const g = this.game, things = [...g.field.active.filter((a) => a.model && !a.special && !a.scanned && a.d.family !== 'landing'), ...g.afoot.curios.filter((c) => !c.scanned)];
+    for (const a of things) for (const m of this.mark()) g.markFx(a, m);
     return true;
   }
 
   _save() { save('anomalies', this.list.filter((x) => x.left > 0).map((x) => ({ id: x.id, left: Math.round(x.left) }))); }
 
-  // whatever rises wild now wears the marks of the anomalies running
-  mark(a) {
-    const marks = this.list.filter((x) => x.left > 0).map((x) => anomalyById(x.id).mark).filter(Boolean);
+  // whatever rises wild now (in flight or found on foot) wears the marks of the anomalies
+  // running, and where two or more meet, the mark of their meeting ('combo:' and which)
+  mark() {
+    const on = this.list.filter((x) => x.left > 0).map((x) => x.id).sort();
+    const marks = on.map((id) => anomalyById(id).mark).filter(Boolean);
+    if (on.length > 1) marks.push(`combo:${on.join('+')}`);
     return marks;
   }
 
@@ -206,7 +210,7 @@ export class Anomalies {
     const down = !!g.landed || !!g.landing.active || g.mode === 'ground' || g.mode === 'landing' || g.mode === 'takeoff';
     for (const x of this.list) {
       x.left -= dt;
-      const want = x.left > 0 && !(x.id === 'inversion' && down) ? 1 : 0;
+      const want = x.left > 0 ? 1 : 0;
       x.k = damp(x.k, want, want ? 0.9 : 1.3, dt);
       if (want && x.k > 0.995) x.k = 1;
     }
@@ -216,9 +220,11 @@ export class Anomalies {
     if (this._saveT <= 0) { this._saveT = 5; this._save(); }
 
     // inversion: the ship rolls over (and flies a little higher, its camera above it)
+    // (the ship rights itself to land and while it stands; the world stays as strange)
     const inv = this.amount('inversion');
-    ship.flip = inv;
-    ship.lift = 26 * inv;
+    ship.flip = damp(ship.flip, down ? 0 : inv, 1.2, dt);
+    if (Math.abs(ship.flip - inv) < 0.002) ship.flip = inv;
+    ship.lift = 26 * ship.flip;
     // (the world turns strange a little behind the roll, and rights itself a little ahead)
     STRANGE.uStrange.value = Math.min(1, inv * inv * 1.2);
     g.atmo.strange = STRANGE.uStrange.value;

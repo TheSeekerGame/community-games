@@ -13,6 +13,13 @@
 // it gently: the hour, the fog, how awake the pilot is, the cabin's walls, and the
 // artifacts, each of which hums its own chord when near.
 //
+// The anomalies (world/anomaly.js) change it, each in its own way, and together all at
+// once: an inversion turns the chord upside down and makes every note swell in backward
+// and stop short; slow time lowers it all a fourth and draws it out; the long night darkens
+// it and hangs bells of the aurora over it; a discharge makes it tremble and crackle. Two
+// or more at once turn the chord to another mode of the palette, its own for every
+// combination.
+//
 // M keeps the music playing (the section comes back); R saves the last minute as WAV.
 
 import { F0, R, PALETTE, N, BPM, BEAT, pitch, harmonic } from './tuning.js';
@@ -61,6 +68,8 @@ export class Audio {
     this.muted = false;
     // what the world says, 0..1
     this.mood = { night: 0, fog: 0.5, drowsy: 0, inside: 0, near: 0, speed: 1, turn: 0, scan: 0, warm: 0, title: 1 };
+    // the anomalies running, 0..1 each (the game sets them)
+    this.anom = { inversion: 0, slow: 0, night: 0, discharge: 0 };
     this.artifacts = [];        // [{ key, d, dist, bearing, reveal }] set by the game
     this._t0 = 0;
     this.history = [];          // the sections played, newest last
@@ -98,7 +107,13 @@ export class Audio {
     this.tone.connect(this.out);
     // the music (and the hall) pass through a duck the effects carve (below)
     this.musicDuck = ctx.createGain(); this.musicDuck.connect(this.tone);
-    this.music = ctx.createGain(); this.music.connect(this.musicDuck);
+    this.music = ctx.createGain();
+    // (a tremble, for a discharge: the music's gain swung by a slow pulse, as deep as the
+    // discharge is strong)
+    this.trem = ctx.createGain(); this.music.connect(this.trem); this.trem.connect(this.musicDuck);
+    this.tremLfo = ctx.createOscillator(); this.tremLfo.frequency.value = (BPM / 60) * 4;
+    this.tremDepth = ctx.createGain(); this.tremDepth.gain.value = 0;
+    this.tremLfo.connect(this.tremDepth); this.tremDepth.connect(this.trem.gain); this.tremLfo.start();
     this.amb = ctx.createGain(); this.amb.connect(this.tone);
     this.sfx = ctx.createGain(); this.sfx.connect(this.out);
     // the artifacts' voices: under the effects' volume, through the cabin's walls
@@ -524,9 +539,19 @@ export class Audio {
     return Math.max(slot.lo, Math.min(slot.hi, d));
   }
 
+  // what the anomalies running do to the score now: which are on, and the mode the chord
+  // is turned to where two or more meet (the same for the same meeting)
+  _anomaly() {
+    const a = this.anom, on = Object.keys(a).filter((k) => a[k] > 0.5).sort();
+    let shift = 0;
+    if (on.length > 1) { let h = 7; for (const c of on.join('+')) h = (h * 31 + c.charCodeAt(0)) >>> 0; shift = 1 + (h % 4); }
+    return { inversion: a.inversion > 0.5, slow: a.slow > 0.5, night: a.night > 0.5, discharge: a.discharge > 0.5, shift, n: on.length };
+  }
+
   _schedule() {
     if (!this.ready) return;
     const ctx = this.ctx, t = ctx.currentTime, s = this._score, m = this.mood;
+    const X = this._anomaly();
     if (t >= s.sectionEnd) this._newSection();
     // each voice on its own clock, and each note its own fate: most sound and slowly sink
     // into darkness; some dissolve into breath at their pitch; some are only heard as the
@@ -534,10 +559,15 @@ export class Audio {
     s.slots.forEach((slot, i) => {
       if (t < slot.next - 0.2) return;
       slot.deg = this._nextDegree(slot, i);
-      const f = pitch(slot.deg);
-      const attack = 5 + rnd() * 4, hold = 9 + rnd() * 10, release = 12 + rnd() * 6;
+      // (turned upside down in its range by an inversion, to another mode where anomalies
+      // meet, a fourth lower and drawn out in slow time, swelling in backward inverted)
+      const deg = (X.inversion ? slot.lo + slot.hi - slot.deg : slot.deg) + X.shift;
+      const f = pitch(deg) * (X.slow ? 0.75 : 1);
+      let attack = 5 + rnd() * 4, hold = 9 + rnd() * 10, release = 12 + rnd() * 6;
+      if (X.slow) { attack *= 1.8; hold *= 1.6; release *= 1.8; }
+      if (X.inversion) { const a0 = attack; attack = release * 0.9; release = a0 * 0.45; }
       const g = 0.05 * slot.gain * s.level * (1 - m.drowsy * 0.35) * (m.title > 0.5 ? 0.8 : 1) * (1 + m.warm * 0.25);
-      const cut = s.bright * (1 - m.night * 0.25) * (1 + m.warm * 0.3);
+      const cut = s.bright * (1 - m.night * 0.25) * (1 + m.warm * 0.3) * (X.night ? 0.5 : 1);
       const fate = rnd();
       if (i > 0 && fate < 0.24 && m.warm < 0.5) {
         // a rest: this voice sits out a turn
@@ -571,15 +601,28 @@ export class Audio {
     // now and then a single soft tone higher up, like a light far off
     if (t >= s.swellAt) {
       if (m.title < 0.5 && m.drowsy < 0.6 && !this.resting) {
-        const d = pick(SWELL);
-        this.note(pitch(d), { wave: 'soft', when: s.swellAt, attack: 3.5, hold: 1.5, release: 11, gain: 0.014 * (1 - m.night * 0.3), linear: true, cutoff: 1300, pan: (rnd() - 0.5) * 1.4, verb: 1.0, echo: 0.25 });
+        const d0 = pick(SWELL), d = (X.inversion ? SWELL[0] + SWELL[SWELL.length - 1] - d0 : d0) + X.shift;
+        this.note(pitch(d) * (X.slow ? 0.75 : 1), { wave: 'soft', when: s.swellAt, attack: X.inversion ? 9 : 3.5, hold: 1.5, release: X.inversion ? 2.5 : 11, gain: 0.014 * (1 - m.night * 0.3), linear: true, cutoff: 1300, pan: (rnd() - 0.5) * 1.4, verb: 1.0, echo: 0.25 });
       }
-      s.swellAt = t + 22 + rnd() * 26;
+      s.swellAt = t + (22 + rnd() * 26) * (X.slow ? 1.6 : 1);
     }
-    // very rarely, a few plucked notes, like a guitar somewhere in the hall
+    // very rarely, a few plucked notes, like a guitar somewhere in the hall (more often
+    // where anomalies meet)
     if (t >= s.pluckAt) {
-      if (m.title < 0.5 && m.drowsy < 0.6 && !this.resting) this._phrase(s.pluckAt + 0.1);
-      s.pluckAt = t + 150 + rnd() * 170;
+      if (m.title < 0.5 && m.drowsy < 0.6 && !this.resting) this._phrase(s.pluckAt + 0.1, X);
+      s.pluckAt = t + (150 + rnd() * 170) / (1 + X.n * 0.8);
+    }
+    // the long night: bells of the aurora, high and far apart, falling where it is inverted
+    if (X.night && t >= (s.bellAt || 0) && m.title < 0.5) {
+      const d0 = 18 + Math.floor(rnd() * 6), d = (X.inversion ? 41 - d0 : d0) + X.shift, f = pitch(d) * (X.slow ? 0.75 : 1);
+      this.note(f, { type: 'sine', when: t + 0.05, attack: 0.006, release: 4.5, gain: 0.007, pan: (rnd() - 0.5) * 1.6, dest: this.melody, verb: 1.5, echo: 0.45 });
+      this.note(f * 2, { type: 'sine', when: t + 0.05, attack: 0.004, release: 2.2, gain: 0.0025, pan: (rnd() - 0.5) * 1.6, dest: this.melody, verb: 1.5 });
+      s.bellAt = t + (2.5 + rnd() * 5) * (X.slow ? 1.8 : 1);
+    }
+    // a discharge: static in the hall, now and then
+    if (X.discharge && t >= (s.crackAt || 0) && m.title < 0.5) {
+      this.hiss({ type: 'highpass', freq: 2600 + rnd() * 2400, when: t + 0.02, attack: 0.001, release: 0.05 + rnd() * 0.12, gain: 0.012 + rnd() * 0.012, dest: this.music, verb: 0.4 });
+      s.crackAt = t + 0.3 + rnd() * 1.8;
     }
     this._hum();
     this._updateBeds();
@@ -643,18 +686,19 @@ export class Audio {
     src.stop(when + 6);
   }
 
-  // a few notes, a phrase: up or down the palette by steps, loosely timed
-  _phrase(t) {
+  // a few notes, a phrase: up or down the palette by steps, loosely timed (X: what the
+  // anomalies do to it)
+  _phrase(t, X = { inversion: false, slow: false, shift: 0 }) {
     const count = 3 + Math.floor(rnd() * 4);
     let d = 10 + Math.floor(rnd() * 5);
-    const dir = rnd() < 0.6 ? 1 : -1;
+    const dir = (rnd() < 0.6 ? 1 : -1) * (X.inversion ? -1 : 1);
     const pan = (rnd() - 0.5) * 0.9;
     let when = t;
     for (let i = 0; i < count; i++) {
-      this.pluck(pitch(d), when, 0.055 * (i === 0 ? 1 : 0.8 + rnd() * 0.25), pan + (rnd() - 0.5) * 0.2);
+      this.pluck(pitch(d + X.shift) * (X.slow ? 0.75 : 1), when, 0.055 * (i === 0 ? 1 : 0.8 + rnd() * 0.25), pan + (rnd() - 0.5) * 0.2);
       d += dir * (rnd() < 0.7 ? 1 : 2);
       if (rnd() < 0.2) d -= dir * 3;          // a turn back
-      when += BEAT * (rnd() < 0.7 ? 0.5 : rnd() < 0.5 ? 2 / 3 : 1) + (rnd() - 0.5) * 0.06;
+      when += (BEAT * (rnd() < 0.7 ? 0.5 : rnd() < 0.5 ? 2 / 3 : 1) + (rnd() - 0.5) * 0.06) * (X.slow ? 1.8 : 1);
     }
   }
 
@@ -713,7 +757,11 @@ export class Audio {
     // the walls, sleep: everything but the effects goes dull
     const cut = 18000 * Math.pow(1 - m.inside * 0.5, 2) * Math.pow(1 - m.drowsy * 0.75, 2) + 300;
     this.tone.frequency.setTargetAtTime(Math.min(18000, cut), t, 0.3);
+    // (the anomalies: a tremble for a discharge; the drone a fourth lower in slow time)
+    this.tremDepth.gain.setTargetAtTime(0.32 * (this.anom.discharge || 0), t, 0.8);
+    this.tremLfo.frequency.setTargetAtTime((BPM / 60) * 4 * (this.anom.slow > 0.5 ? 0.5 : 1), t, 0.8);
     for (const d of this.drone) {
+      d.osc.frequency.setTargetAtTime(R * d.k * (this.anom.slow > 0.5 ? 0.75 : 1), t, 3);
       // the drone breathes very slowly
       const breath = 0.85 + 0.15 * Math.sin(t * 0.045 * d.k + d.k);
       d.env.gain.setTargetAtTime(d.g * breath * (this._droneTide ?? 1) * (m.title > 0.5 ? 0.8 : 1), t, 5);

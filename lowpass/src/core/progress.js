@@ -1,6 +1,6 @@
 import { load, save } from './store.js';
 import { SHIPS } from '../ship/designs.js';
-import { EFFECTS, FX_VALUE } from '../artifacts/fx.js';
+import { EFFECTS, FX_VALUE, PACK, fxPrice } from '../artifacts/fx.js';
 import { ANOMALY_VALUE } from '../world/anomaly.js';
 import { LIFE_VALUE } from '../artifacts/life.js';
 import { RIVER_VALUE, THREADED_VALUE } from '../artifacts/river.js';
@@ -28,8 +28,8 @@ import { RIVER_VALUE, THREADED_VALUE } from '../artifacts/river.js';
 // Ships (designs.js): bought once with DATA, then boarded whenever one likes; the Seed is
 // everyone's from the start.
 //
-// Effects (fx.js): the ship's emitters, bought once each, fired at an artifact for some of
-// the boost's plasma; a scan is worth FX_VALUE times more for every one it took.
+// Effects (fx.js): the ship's emitters, bought PACK uses at a time (and bought again), fired
+// at an artifact; a scan is worth FX_VALUE times more for every one it took.
 //
 // The plasma tank: seconds of a full boost (TANK, by level); the core gathers it back at
 // REFILL seconds' worth a second, so a small tank fills sooner. Signal gain: the seconds
@@ -46,6 +46,7 @@ export const CREATURE = 0.08;      // a wild one is a creature that flees (speci
 export const CREATURE_VALUE = 4;   // and worth this many times its depth's
 export const LANDING = 0.035;      // a wild one is a clearing to land in (clearing.js)
 export const RECENT = 5;          // no shape comes again within this many wild ones
+export const LIFE_SHARE = 0.25;    // a wild one is, in its place, life in the forest (life.js)
 export const LANDING_DEPTH = 3;    // once the scanner reaches this deep (and nothing says so)
 export const CURIO_VALUE = 2;      // a thing found on foot about a clearing (curios.js)
 
@@ -79,7 +80,9 @@ export class Progress {
     this.gain = s.gain || 0;          // the signal gain's level
     this.ships = s.ships || ['seed'];  // the ships bought
     this.seen = s.seen || [];         // the shapes of the last wild ones met, oldest first
-    this.fx = s.fx || [];             // the effects bought
+    // the effects: uses left of each ever bought ({ id: n }; once, the effects were bought
+    // for good: those keep a pack)
+    this.fx = Array.isArray(s.fx) ? Object.fromEntries(s.fx.map((id) => [id, PACK])) : s.fx || {};
     this.ship = this.ships.includes(s.ship) ? s.ship : 'seed';   // the one boarded
   }
   save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, ships: this.ships, ship: this.ship, seen: this.seen, fx: this.fx }); }
@@ -98,13 +101,21 @@ export class Progress {
   // what the next step of an upgrade costs (null: at its last level)
   cost(kind) { return kind === 'depth' ? costOf(this.depth + 1) : COSTS[kind][this[kind]] ?? null; }
   can(kind) { const c = this.cost(kind); return c !== null && this.data >= c; }
-  get anyCan() { return ['depth', 'tank', 'gain'].some((k) => this.can(k)) || SHIPS.some((d) => this.canShip(d.id)) || EFFECTS.some((e) => this.canFx(e.id)); }
-  hasFx(id) { return this.fx.includes(id); }
-  canFx(id) { const e = EFFECTS.find((x) => x.id === id); return !!e && !this.hasFx(id) && this.data >= e.price; }
+  get anyCan() { return ['depth', 'tank', 'gain'].some((k) => this.can(k)) || SHIPS.some((d) => this.canShip(d.id)); }
+  bought(id) { return id in this.fx; }
+  usesOf(id) { return this.fx[id] || 0; }
+  fxCost(id) { return fxPrice(EFFECTS.find((x) => x.id === id), this.depth); }
+  canFx(id) { return !!EFFECTS.find((x) => x.id === id) && this.data >= this.fxCost(id); }
   buyFx(id) {
     if (!this.canFx(id)) return false;
-    this.data -= EFFECTS.find((x) => x.id === id).price;
-    this.fx.push(id);
+    this.data -= this.fxCost(id);
+    this.fx[id] = this.usesOf(id) + PACK;
+    this.save();
+    return true;
+  }
+  useFx(id) {
+    if (!this.usesOf(id)) return false;
+    this.fx[id]--;
     this.save();
     return true;
   }

@@ -1,5 +1,8 @@
 import { load, save } from './store.js';
 import { SHIPS } from '../ship/designs.js';
+import { EFFECTS, FX_VALUE } from '../artifacts/fx.js';
+import { ANOMALY_VALUE } from '../world/anomaly.js';
+import { LIFE_VALUE } from '../artifacts/life.js';
 
 // Progress: DATA, and what it buys: how deep the scanner reaches (without end), how much
 // plasma the tank holds and how often signals are picked up out of the fog (five levels
@@ -24,6 +27,9 @@ import { SHIPS } from '../ship/designs.js';
 // Ships (designs.js): bought once with DATA, then boarded whenever one likes; the Seed is
 // everyone's from the start.
 //
+// Effects (fx.js): the ship's emitters, bought once each, fired at an artifact for some of
+// the boost's plasma; a scan is worth FX_VALUE times more for every one it took.
+//
 // The plasma tank: seconds of a full boost (TANK, by level); the core gathers it back at
 // REFILL seconds' worth a second, so a small tank fills sooner. Signal gain: the seconds
 // between wild artifacts, once the last is behind (GAIN, by level).
@@ -38,6 +44,7 @@ export const PLUS_VALUE = 10;      // and worth this many times its depth's
 export const CREATURE = 0.08;      // a wild one is a creature that flees (species.js)
 export const CREATURE_VALUE = 4;   // and worth this many times its depth's
 export const LANDING = 0.035;      // a wild one is a clearing to land in (clearing.js)
+export const RECENT = 5;          // no shape comes again within this many wild ones
 export const LANDING_DEPTH = 3;    // once the scanner reaches this deep (and nothing says so)
 export const CURIO_VALUE = 2;      // a thing found on foot about a clearing (curios.js)
 
@@ -49,7 +56,9 @@ const COSTS = { tank: [40, 80, 130, 200, 300], gain: [80, 150, 250, 380, 550] };
 export const MAX = { tank: COSTS.tank.length, gain: COSTS.gain.length };
 
 export const costOf = (depth) => FIRST * Math.pow(2, depth - 1);     // to reach this depth
-export const valueOf = (e) => (e.kind === 'wild' ? BASE * (1 + (e.depth || 0)) * (e.plus ? PLUS_VALUE : 1) * (e.creature ? CREATURE_VALUE : e.ground ? CURIO_VALUE : 1) : e.special ? WITNESSED : BASE);
+export const valueOf = (e) => (e.kind === 'wild'
+  ? Math.round(BASE * (1 + (e.depth || 0)) * (e.plus ? PLUS_VALUE : 1) * (e.creature ? CREATURE_VALUE : e.ground ? CURIO_VALUE : e.life ? LIFE_VALUE : 1) * Math.pow(FX_VALUE, (e.fx || []).length) * Math.pow(ANOMALY_VALUE, (e.anomalies || []).length))
+  : e.special ? WITNESSED : BASE);
 
 export function rollDepth(reach, rand = Math.random) {
   if (rand() < GLIMPSE) return reach + (rand() < 0.15 ? 2 : 1);
@@ -68,9 +77,11 @@ export class Progress {
     this.tank = s.tank || 0;          // the plasma tank's level
     this.gain = s.gain || 0;          // the signal gain's level
     this.ships = s.ships || ['seed'];  // the ships bought
+    this.seen = s.seen || [];         // the shapes of the last wild ones met, oldest first
+    this.fx = s.fx || [];             // the effects bought
     this.ship = this.ships.includes(s.ship) ? s.ship : 'seed';   // the one boarded
   }
-  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, ships: this.ships, ship: this.ship }); }
+  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, ships: this.ships, ship: this.ship, seen: this.seen, fx: this.fx }); }
   owns(id) { return this.ships.includes(id); }
   canShip(id) { const d = SHIPS.find((x) => x.id === id); return !!d && !this.owns(id) && this.data >= d.price; }
   buyShip(id) {
@@ -86,7 +97,16 @@ export class Progress {
   // what the next step of an upgrade costs (null: at its last level)
   cost(kind) { return kind === 'depth' ? costOf(this.depth + 1) : COSTS[kind][this[kind]] ?? null; }
   can(kind) { const c = this.cost(kind); return c !== null && this.data >= c; }
-  get anyCan() { return ['depth', 'tank', 'gain'].some((k) => this.can(k)) || SHIPS.some((d) => this.canShip(d.id)); }
+  get anyCan() { return ['depth', 'tank', 'gain'].some((k) => this.can(k)) || SHIPS.some((d) => this.canShip(d.id)) || EFFECTS.some((e) => this.canFx(e.id)); }
+  hasFx(id) { return this.fx.includes(id); }
+  canFx(id) { const e = EFFECTS.find((x) => x.id === id); return !!e && !this.hasFx(id) && this.data >= e.price; }
+  buyFx(id) {
+    if (!this.canFx(id)) return false;
+    this.data -= EFFECTS.find((x) => x.id === id).price;
+    this.fx.push(id);
+    this.save();
+    return true;
+  }
   // the scans not yet transmitted, and what they are worth together
   unsent(codex) {
     const list = codex.filter((e) => !e.sent);
@@ -101,4 +121,6 @@ export class Progress {
     return true;
   }
   met(depth) { if (depth > this.deepest) { this.deepest = depth; this.save(); } }
+  // a wild one of this shape was met: none of the last RECENT comes again before it must
+  see(shape) { this.seen = [...this.seen.filter((k) => k !== shape), shape].slice(-RECENT); this.save(); }
 }

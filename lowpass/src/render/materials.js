@@ -33,6 +33,10 @@ export const U = {
   uPxScale: { value: 300 },       // render pixels per meter at one meter away
 };
 
+// The world made strange (an inversion's, anomaly.js): the ground, the trees, the lakes,
+// 0..1, shared by their materials.
+export const STRANGE = { uStrange: { value: 0 } };
+
 export const COMMON = /* glsl */ `
 uniform float uTime, uAnim, uBeat, uFrost, uWind;
 uniform vec3 uSunDir, uSunColor, uSkyColor, uGroundColor, uRimColor, uCamPos, uFrostColor, uFogColor;
@@ -136,6 +140,9 @@ varying vec3 vWorld;
 varying float vEmis;
 uniform vec3 uTint;
 uniform float uFogMask, uAmbient, uEmisBoost, uPulse, uReveal;
+#ifdef STRANGE
+uniform float uStrange;
+#endif
 #ifdef SMOOTH
 varying vec3 vN;
 varying float vSm;
@@ -156,6 +163,17 @@ void main() {
   vec3 base = vColor * uTint;
   float e = vEmis * uEmisBoost * (vEmis > 1.5 ? uPulse : 1.0);
   vec3 col = base * lightAt(vWorld, n, v, uAmbient) + base * e * 1.6;
+#ifdef STRANGE
+  if (uStrange > 0.0) {
+    // the ground made strange: a pale negative of itself, ringed with glowing lines at
+    // every few meters of its height, as on a survey's map
+    vec3 neg = vec3(0.82, 0.8, 0.88) - base * 0.75;
+    vec3 sc = neg * (0.45 + 0.55 * lightAt(vWorld, n, v, uAmbient));
+    float c = abs(fract(vWorld.y / 6.0 + uTime * 0.02) - 0.5);
+    sc += vec3(0.35, 0.85, 1.0) * smoothstep(0.44, 0.5, c) * 0.9;
+    col = mix(col, sc, uStrange);
+  }
+#endif
   gl_FragColor = vec4(col, uFogMask);
 }
 `;
@@ -169,6 +187,7 @@ export function worldMaterial(opts = {}) {
   const key = JSON.stringify(opts);
   if (!opts.unique && _cache.has(key)) return _cache.get(key);
   const defines = {};
+  if (opts.strange) defines.STRANGE = '';
   if (opts.sway) defines.SWAY = '';
   if (opts.smooth) defines.SMOOTH = '';
   const m = new THREE.ShaderMaterial({
@@ -181,6 +200,7 @@ export function worldMaterial(opts = {}) {
       uPulse: { value: 1 },
       uReveal: { value: 1 },
       uFlutter: { value: 0 },
+      ...(opts.strange ? STRANGE : {}),
     },
     defines,
     vertexShader: WORLD_VERT,
@@ -296,13 +316,14 @@ export function deepMaterial(opts = {}) {
 // trees standing in them the same way, without rebuilding anything.
 export const MAX_CLEARINGS = 8;
 export const TREES = {
+  ...STRANGE,
   uLod: { value: new THREE.Vector4(250, 560, 60, 16) },
   uClear: { value: Array.from({ length: MAX_CLEARINGS }, () => new THREE.Vector4()) },
   uClearN: { value: 0 },
 };
 
 const TREE_VERT = /* glsl */ `
-uniform float uAnim, uWind;
+uniform float uAnim, uWind, uStrange;
 uniform vec3 uCamPos;
 uniform vec4 uLod;
 uniform vec4 uClear[${MAX_CLEARINGS}];
@@ -339,6 +360,12 @@ void main() {
   }
   if (vHi <= vLo) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); return; }
   vec4 p = vec4(position, 1.0);
+  // made strange: drawn out long and thin, and twisting as it goes
+  if (uStrange > 0.0) {
+    float k = uStrange, a = k * p.y * (2.2 + hsh * 2.0) * (hsh > 0.5 ? 1.0 : -1.0);
+    p.xz = mat2(cos(a), -sin(a), sin(a), cos(a)) * p.xz * (1.0 - 0.4 * k * smoothstep(0.1, 1.0, p.y));
+    p.y *= 1.0 + k * (0.7 + hsh * 0.9);
+  }
   vec4 w = modelMatrix * instanceMatrix * p;
   float h = position.y;
   float ph = instanceMatrix[3].x * 0.043 + instanceMatrix[3].z * 0.061;
@@ -363,7 +390,7 @@ varying vec3 vColor;
 varying vec3 vWorld;
 varying float vH;
 varying float vLo, vHi;
-uniform float uReveal;
+uniform float uReveal, uStrange;
 void main() {
   float b = bayer4(gl_FragCoord.xy);
   if (b < vLo || b >= vHi || b >= uReveal) discard;
@@ -373,6 +400,12 @@ void main() {
   float up = smoothstep(0.55, 0.95, n.y);
   base = mix(base, uFrostColor, clamp(uFrost * up * vH * vH, 0.0, 0.7));
   vec3 col = base * lightAt(vWorld, n, v, 1.0);
+  if (uStrange > 0.0) {
+    // pale as bone, their tips lit
+    vec3 sc = (vec3(0.86, 0.84, 0.92) - vColor * 0.6) * (0.4 + 0.6 * lightAt(vWorld, n, v, 1.0));
+    sc += vec3(0.55, 0.8, 1.0) * smoothstep(0.62, 1.0, vH) * 0.8;
+    col = mix(col, sc, uStrange);
+  }
   gl_FragColor = vec4(col, 1.0);
 }
 `;

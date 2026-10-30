@@ -1,6 +1,7 @@
 import { el, clear, key } from './dom.js';
 import { stratum } from '../artifacts/strata.js';
 import { TANK } from '../core/progress.js';
+import { DONE } from '../artifacts/fx.js';
 
 const hexCss = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
 
@@ -34,6 +35,9 @@ export class Hud {
     this.fuelFill = el('i', '', this.fuelBar);
     this.fuelText = el('div', 'atext', this.fuel);
     this.status = el('div', 'status', this.root);
+    // the anomalies running, each with its time left
+    this.anoms = el('div', 'anoms', this.root);
+    this._anomKey = '';
     this.notice = el('div', 'notice', this.root);
     this.card = el('div', 'card', this.root);
     // along the bottom: the next thing to learn above the keys that work now
@@ -43,6 +47,12 @@ export class Hud {
     this.speechText = el('div', 'said', this.speech);
     this.tip = el('div', 'tip', this.bottom);
     this.keys = el('div', 'keys', this.bottom);
+    // the emitters, while something they can be fired at is in reach: a button each (its
+    // key on a keyboard), lit once fired, faint while the plasma is short
+    this.fxRow = el('div', 'fxrow', null);
+    this.bottom.prepend(this.fxRow);
+    this.onFire = null;
+    this._fxKey = '';
     this.prompt = el('div', 'prompt', this.root);
     this.cross = el('div', 'cross', this.root);
     this.marks = [];
@@ -106,9 +116,31 @@ export class Hud {
       const dl = el('div', 'c deep', this.card, `DEPTH ${st.numeral}${entry.plus ? '+ · MARKED' : ''} · ${st.title}`);
       dl.style.color = hexCss(st.light);
     }
+    if (entry.fx && entry.fx.length) el('div', 'c fxl', this.card, entry.fx.map((id) => (DONE[id] || id).toUpperCase()).join(' · '));
     el('div', 'c muted', this.card, 'Logged on the Codex computer, in the cabin');
     this.card.classList.add('on');
     this._cardT = 6;
+  }
+
+  // list: [{ id, name, key, color, done, low }] or null; keys: whether to show key caps
+  setFx(list, keys) {
+    const k = list ? list.map((e) => `${e.id}${e.done ? 1 : 0}${e.low ? 1 : 0}`).join() + keys : '';
+    this.fxRow.classList.toggle('on', !!list);
+    if (k === this._fxKey) return;
+    // (the buttons stay as they were while the row fades out)
+    if (!list) { this._fxKey = ''; return; }
+    this._fxKey = k;
+    clear(this.fxRow);
+    for (const e of list) {
+      const b = el('button', 'fx' + (e.done ? ' done' : '') + (e.low && !e.done ? ' low' : ''), this.fxRow);
+      b.style.setProperty('--fx', hexCss(e.color));
+      if (keys) key(b, e.key);
+      el('i', 'fxdot', b);
+      el('span', '', b, e.name);
+      const go = (ev) => { ev.preventDefault(); ev.stopPropagation(); if (this.onFire) this.onFire(e.id); };
+      b.addEventListener('touchstart', go, { passive: false });
+      b.addEventListener('mousedown', go);
+    }
   }
 
   setKeys(list) {
@@ -207,6 +239,21 @@ export class Hud {
   hideToast() { this._toastT = 0; this.toastEl.classList.remove('on'); }
   get toastOn() { return this._toastT > 0; }
 
+  // list: [{ name, color, left (s) }]
+  setAnomalies(list) {
+    const k = list.map((a) => `${a.name}${Math.ceil(a.left)}`).join();
+    if (k === this._anomKey) return;
+    this._anomKey = k;
+    clear(this.anoms);
+    for (const a of list) {
+      const r = el('div', 'an', this.anoms);
+      r.style.setProperty('--a', hexCss(a.color));
+      el('i', '', r);
+      const s = Math.max(0, Math.ceil(a.left));
+      el('span', '', r, `${a.name} ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
+    }
+  }
+
   setStatus(text, cls) {
     if (this._status === text + cls) return;
     this._status = text + cls;
@@ -243,7 +290,9 @@ export class Hud {
     // the bearing strip: to the one the scanner looks at, and a smaller mark for each
     // other one still out there (a sweep's)
     const open = flying ? f.open : [];
-    const at = (b) => `${(1 - (0.5 + Math.max(-1, Math.min(1, b / 1.2)) * 0.5)) * 100}%`;
+    // (rolled over by an inversion, the view is mirrored, and so is the strip)
+    const mir = !ground && g.ship.flip > 0.5 ? -1 : 1;
+    const at = (b) => `${(1 - (0.5 + Math.max(-1, Math.min(1, (b * mir) / 1.2)) * 0.5)) * 100}%`;
     if (ground) {
       // on foot: the ship's way, once it is a little way off
       const sh = g.afoot.ship();
@@ -287,7 +336,7 @@ export class Hud {
         // low in the view (a short screen held sideways), the words go above it
         this.bracket.classList.toggle('up', y + s + u * 32 > innerHeight);
         const land = t.d.family === 'landing';
-        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : dp ? `DEPTH ${dp.numeral}${t.d.plus ? '+' : ''} · ` : '') + (f.state === 'lock'
+        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : dp ? `DEPTH ${dp.numeral}${t.d.plus ? '+' : ''} · ` : t.d.family === 'life' ? `${t.d.cls.toUpperCase()} · ` : '') + (f.state === 'lock'
           ? (f.scan > 0 ? (land ? 'LANDING' : 'SCANNING') : g.input.touchMode ? (land ? 'HOLD SCAN · LAND' : 'HOLD SCAN') : (land ? 'HOLD SPACE · LAND' : 'HOLD SPACE · SCAN'))
           : ground ? 'CLOSER' : 'STEER TO IT');
         this.brFill.style.width = `${f.scan * 100}%`;

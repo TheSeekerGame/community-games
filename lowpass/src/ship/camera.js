@@ -48,18 +48,21 @@ export class Cameras {
     let want, look, lag = 3.2, roll = ship.bank * 0.35, fov = 56;
     // a longer ship (or a wider one), a camera farther back
     const ex = ship.H ? Math.max(0, ship.H.extra) + Math.max(0, ship.span - 8) * 0.9 : 0;
+    // (rolled over by an inversion, what was above the ship is below it: the camera keeps
+    // to its back)
+    const u = Math.cos(Math.PI * (ship.flip || 0));
     if (mode === 'chase') {
       const side = -ship.yawRate * 9, back = 34 + ex * 0.9 + ship.boost * 9;
-      want = this._tmp.set(p.x - fx * back + rx * side, p.y + 10 + ex * 0.15 + ship.boost * 2, p.z - fz * back + rz * side);
-      look = new THREE.Vector3(p.x + fx * 70, p.y + 1, p.z + fz * 70);
+      want = this._tmp.set(p.x - fx * back + rx * side, p.y + (10 + ex * 0.15 + ship.boost * 2) * u, p.z - fz * back + rz * side);
+      look = new THREE.Vector3(p.x + fx * 70, p.y + u, p.z + fz * 70);
     } else if (mode === 'far') {
-      want = this._tmp.set(p.x - fx * (62 + ex) - rx * 18, p.y + 22, p.z - fz * (62 + ex) - rz * 18);
-      look = new THREE.Vector3(p.x + fx * 40, p.y - 6, p.z + fz * 40);
+      want = this._tmp.set(p.x - fx * (62 + ex) - rx * 18, p.y + 22 * u, p.z - fz * (62 + ex) - rz * 18);
+      look = new THREE.Vector3(p.x + fx * 40, p.y - 6 * u, p.z + fz * 40);
       lag = 2.2;
       fov = 50;
     } else if (mode === 'low') {
-      want = this._tmp.set(p.x - fx * (20 + ex * 0.6) + rx * 14, p.y - 5, p.z - fz * (20 + ex * 0.6) + rz * 14);
-      look = new THREE.Vector3(p.x + fx * 8, p.y + 1.5, p.z + fz * 8);
+      want = this._tmp.set(p.x - fx * (20 + ex * 0.6) + rx * 14, p.y - 5 * u, p.z - fz * (20 + ex * 0.6) + rz * 14);
+      look = new THREE.Vector3(p.x + fx * 8, p.y + 1.5 * u, p.z + fz * 8);
       lag = 4;
       roll = ship.bank * 0.6;
       fov = 60;
@@ -99,6 +102,9 @@ export class Cameras {
       fov = 46;
       roll = 0;
     }
+    // never in the ground or the trees, nor with a ridge between it and the ship: raised
+    // until the line to the ship clears what is under it
+    if (this.floor) this._clear(want, p);
     if (this._cut) {
       this.pos.copy(want);
       this.target.copy(look);
@@ -107,10 +113,14 @@ export class Cameras {
     this.pos.x = damp(this.pos.x, want.x, lag, dt);
     this.pos.y = damp(this.pos.y, want.y, lag, dt);
     this.pos.z = damp(this.pos.z, want.z, lag, dt);
+    // (and where its lag has left it, too)
+    if (this.floor) this.pos.y = Math.max(this.pos.y, this.floor(this.pos.x, this.pos.z));
     this.target.lerp(look, 1 - Math.exp(-lag * 1.6 * dt));
     this.roll = damp(this.roll, roll, 3, dt);
     cam.position.copy(this.pos);
-    cam.up.set(-Math.cos(h) * Math.sin(this.roll), Math.cos(this.roll), Math.sin(h) * Math.sin(this.roll));
+    // (rolled over with the ship, by an inversion)
+    const R = this.roll + Math.PI * (ship.flip || 0);
+    cam.up.set(-Math.cos(h) * Math.sin(R), Math.cos(R), Math.sin(h) * Math.sin(R));
     cam.lookAt(this.target);
     // the boost widens the view: speed
     fov += ship.boost * 9;
@@ -119,6 +129,17 @@ export class Cameras {
       cam.updateProjectionMatrix();
     }
     if (cam.near !== 0.5) { cam.near = 0.5; cam.updateProjectionMatrix(); }
+  }
+
+  // q (render space) raised as little as it takes for it, and the line from p to it, to
+  // stay over the floor (the canopy, or bare ground; this.floor(x, z) -> least height)
+  _clear(q, p) {
+    let need = this.floor(q.x, q.z) - q.y;
+    for (const f of [0.3, 0.55, 0.8]) {
+      const y = p.y + (q.y - p.y) * f;
+      need = Math.max(need, (this.floor(p.x + (q.x - p.x) * f, p.z + (q.z - p.z) * f) - y) / f);
+    }
+    if (need > 0) q.y += need;
   }
 
   // Keep fixed cinematic points in place when the world shifts its origin.

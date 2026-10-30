@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { describe, wildSeed } from './generate.js';
+import { describe, wildSeed, shapeOf } from './generate.js';
 import { buildArtifact } from './models.js';
 import { SeekerModel } from '../companion/bot.js';
 import { lookOf } from '../companion/companion.js';
@@ -65,8 +65,9 @@ export class Field {
     this._v = new THREE.Vector3();
   }
 
+  // (life in the forest comes and goes on its own: it holds nothing back)
   get pending() {
-    return this.active.find((a) => !a.scanned && !a.passed) || null;
+    return this.active.find((a) => !a.scanned && !a.passed && a.d.family !== 'life') || null;
   }
 
   // those still to scan: built, not scanned, not left behind
@@ -90,9 +91,22 @@ export class Field {
 
   // A wild artifact, from a seed nobody else will draw; from below the surface if
   // opts.depth (opts.glimpse: deeper than the scanner reaches; opts.plus: one of the marked;
-  // opts.creature: one that flies, and flees).
+  // opts.creature: one that flies, and flees). opts.recent: the shapes seen last (oldest
+  // first): seeds are drawn until one is of none of them (or else of the one seen
+  // longest ago), so the same shape never comes back too soon.
   spawnWild(opts = {}) {
-    return this.spawn({ tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain, plus: !!opts.plus, creature: !!opts.creature, species: opts.species, landing: !!opts.landing }, opts);
+    const move = { tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain, autumn: !!opts.autumn, plus: !!opts.plus, creature: !!opts.creature, species: opts.species, landing: !!opts.landing, life: opts.life || null };
+    const recent = opts.recent || [];
+    if (recent.length && !move.landing) {
+      let best = null, age = -1;
+      for (let i = 0; i < 60 && age < Infinity; i++) {
+        const tx = i ? wildSeed() : move.tx, k = shapeOf(describe({ ...move, tx }, null, opts.family || null));
+        const at = recent.lastIndexOf(k), a = at < 0 ? Infinity : recent.length - 1 - at;
+        if (a > age) { age = a; best = tx; }
+      }
+      move.tx = best;
+    }
+    return this.spawn(move, opts);
   }
 
   // The highest ground near (x, z): where a mountain's artifact stands (a summit, a ridge).
@@ -107,6 +121,25 @@ export class Field {
       }
     }
     return best;
+  }
+
+  // A lake's shore near (x, z), for a herd to graze at (ground just over the water), else
+  // where it stands; and open water near it, for a shoal.
+  _shore(x, z) {
+    const w = this.game.world;
+    for (let r = 0; r <= 240; r += 30) for (let i = 0; i < (r ? 12 : 1); i++) {
+      const a = (i / 12) * TAU, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r, h = w.groundAt(px, pz);
+      if (h > WATER + 0.4 && h < WATER + 3) return [px, pz];
+    }
+    return [x, z];
+  }
+  _water(x, z) {
+    const w = this.game.world;
+    for (let r = 0; r <= 300; r += 30) for (let i = 0; i < (r ? 12 : 1); i++) {
+      const a = (i / 12) * TAU, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+      if (w.groundAt(px, pz) < WATER - 2 && w.groundAt(px + 18, pz) < WATER - 1 && w.groundAt(px - 18, pz) < WATER - 1 && w.groundAt(px, pz + 18) < WATER - 1 && w.groundAt(px, pz - 18) < WATER - 1) return [px, pz];
+    }
+    return null;
   }
 
   // The flattest dry ground near (x, z), for a clearing to land in.
@@ -198,15 +231,18 @@ export class Field {
     const g = this.game, ship = g.ship, d = a.d;
     a.building = true;
     if (a.model) this._dispose(a);
+    a.fx = null;                // (its effects were its materials')
     const [fx, fz] = ship.forward();
     const dist = a.spawnDist, lat = a.latK * dist;
     let x = a.at ? a.at.x : ship.x + fx * dist + fz * lat, z = a.at ? a.at.z : ship.z + fz * dist - fx * lat;
     // on the mountains: on the highest ground near there; a clearing: on the flattest
     if (d.mountain && !a.at) [x, z] = this._summit(x, z);
     if (d.family === 'landing' && !a.at) [x, z] = this._flat(x, z);
+    if (d.family === 'life' && d.species === 'deer' && !a.at) [x, z] = this._shore(x, z);
+    if (d.family === 'life' && d.species === 'fish' && !a.at) [x, z] = this._water(x, z) || [x, z];
     const ground = Math.max(g.world.groundAt(x, z), WATER);
     // (a gate lies across the way; a door faces the ship; a creature, away from it)
-    const yaw = d.family === 'gate' || d.family === 'creature' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : (d.seed[2] / 4294967296) * TAU;
+    const yaw = d.family === 'gate' || d.family === 'creature' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : d.family === 'life' ? 0 : (d.seed[2] / 4294967296) * TAU;
     const c = Math.cos(yaw), s = Math.sin(yaw);
     // a witnessed one: its seeker, giant, built from its art as it is now
     let seeker = null;
@@ -221,7 +257,8 @@ export class Field {
       seeker,
     };
     const model = buildArtifact(d, ctx);
-    Object.assign(a, { model, x, z, y: d.family === 'creature' ? canopyTop(x, z) + FLY_Y : ground, yaw, prevLocal: null });
+    const y = d.family === 'creature' ? canopyTop(x, z) + FLY_Y : d.family === 'life' && d.species === 'flock' ? canopyTop(x, z) + 4 : ground;
+    Object.assign(a, { model, x, z, y, yaw, prevLocal: null });
     if (d.family === 'creature' && !a.fly) a.fly = { h: yaw, v: 0, stamina: 1, fled: false, jink: 0, jinkT: 2, dart: 0, dartT: 4, pulse: 0, sprint: 0, speed: 0, turn: 0, off: 0 };
     model.group.rotation.y = yaw;
     a.clearings = [];
@@ -278,7 +315,8 @@ export class Field {
     const vis = this.visibility();
     for (const a of [...this.active]) {
       if (a.building) continue;
-      if (a.fly) this._fly(a, dt);
+      if (a.fly) this._fly(a, dt * g.slow);
+      if (a.model.drift) a.model.drift(a, dt * g.slow, g);
       this.place(a);
       const dx = a.x - ship.x, dz = a.z - ship.z;
       a.dist = Math.hypot(dx, dz);
@@ -317,7 +355,8 @@ export class Field {
         if (m.uniforms.uReveal) m.uniforms.uReveal.value = a.reveal;
       }
       const local = a.model.group.worldToLocal(shipR.clone());
-      a.model.update(g.time, beat, { pulse, near: a.near, shipLocal: local, reveal: a.reveal, fly: a.fly });
+      a.model.update(g.wtime, beat, { pulse, near: a.near, shipLocal: local, reveal: a.reveal, fly: a.fly });
+      if (a.fx) a.fx.update(dt, g.slow);
       if (a.model.onShip) {
         if (a.prevLocal) {
           const n = a.model.onShip(local, a.prevLocal);

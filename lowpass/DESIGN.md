@@ -144,8 +144,9 @@ What grows below is built to be worth the climb. A depth is a stratum: three col
 dark, and a sheen that runs over every shell by angle and place (and, deeper, in time),
 with veins of light wandering through it; drawn by hand for the first eight, made from
 the depth's number after (hues turned by the golden angle) without end. Each stratum
-opens forms (fourteen: corolla, spine, nested solids, armillary, choir, geode, coral,
-knot, nautilus, archipelago, attractor, medusa, star engine, watcher) and ornaments, and
+opens forms (seventeen: corolla, spine, nested solids, armillary, choir, geode, coral,
+chandelier, helicon, prism, knot, nautilus, archipelago, attractor, medusa, star engine,
+watcher) and ornaments, and
 keeps those above it, so the deep gets more varied as it goes, not just bigger: past the
 fifth, a second form crowns the first; past the seventh, a court of small ones stands
 about it; its double hangs inverted in the sky, its echoes trail it. Size grows with the
@@ -158,6 +159,40 @@ The sound follows the same ladder. The palette is harmonics 16, 18, 19, 24 and 2
 root; each depth adds one more (20, 22, 26, 17, 21, 23, 27, 29, 31, then every odd one),
 and a deep voice's chord always holds its own depth's. The intervals stay just and stay
 in The Seeker's rule, and grow stranger the deeper you go.
+
+### Permutations: what the ship does, what the world does
+
+Strangeness is the reward, and it should multiply rather than add. So the new things are
+built as layers that all go together, instead of as more kinds of thing:
+
+- **Effects** (fx.js) are what the ship does to an artifact: glitch, chaos, voxel,
+  shatter. Each is a few lines added to every shader an artifact is drawn with, working
+  on where each point of it stands about its heart, so one effect works on every family,
+  form, depth, creature and animal there is, and any number of them on one artifact go
+  together (a voxel sculpture shattering, a glitch running like water). Voxel is the one
+  exception to the shader rule: the artifact is sampled into real blocks, colored from
+  what they hold, the way the seekers are drawn. Each costs some of the boost's plasma,
+  so the tank (and the ship) decides how many go on one artifact, and each makes the
+  scan worth half as much again: an investment the player chooses, never a chore.
+- **Anomalies** (anomaly.js) are what the world does, for four minutes: inversion, slow
+  time, long night, discharge. Each changes the whole world (the view, time, the hour,
+  the weather) and lays its own mark on what rises (its negative, a stopped burst, its
+  light many times over, charge), with the same machinery as the effects. Two at once
+  combine. Some are opened by holding a seeker of a kind (a trait of its art, or
+  something it has done on the chain): the collection becomes keys to the world. They
+  are a sink for DATA that grows with depth, as the depth costs do.
+- **Places** have their own sets: the mountains and the turned stands each draw from
+  their own families and forms at every depth, so the same depth looks different by
+  where it is found.
+- **Life** fills the time between artifacts with small, frequent things that move and
+  must be followed (a flock fleeing slower than the ship), worth less, but taking
+  effects and marks like anything else.
+
+An artifact is then its family or form, times its depth's stratum, times where it rose,
+times the anomalies running, times the effects the pilot chose: the Codex fills with
+things no other ship has, and no two alike. And no shape comes back within five wild
+finds of the last time it was met (seeds are drawn until one is new, so a seed still
+makes the same artifact every time).
 
 A lone artifact appears just past what the fog lets you see, nearly dead ahead, and keeps
 ahead of you until you have seen it: you can turn as you like and still meet it. It

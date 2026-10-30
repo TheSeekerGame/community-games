@@ -12,6 +12,9 @@ import { MOUNTAIN, mountainMats } from './mountain.js';
 import { buildCreature } from './creatures.js';
 import { buildLanding } from './clearing.js';
 import { buildCurio } from './curios.js';
+import { buildLife } from './life.js';
+import { AUTUMN } from './autumn.js';
+import { INSTRUMENTS } from './instruments.js';
 
 // An artifact as geometry: dark masses in the codex's stone and shell ramps, selective
 // pale rims, and one light of the moved seeker's colorway that pulses to its rhythm.
@@ -706,7 +709,7 @@ function echo(d, A, mats, ctx) {
   return out;
 }
 
-const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, ...MOUNTAIN, deep: buildDeep, creature: buildCreature, landing: buildLanding, curio: buildCurio };
+const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, ...MOUNTAIN, ...AUTUMN, ...INSTRUMENTS, deep: buildDeep, creature: buildCreature, landing: buildLanding, curio: buildCurio, life: buildLife };
 
 // ctx: { ground(lx, lz) -> local y, ringY, seeker (a witnessed one's SeekerModel, built) }
 export function buildArtifact(d, ctx) {
@@ -715,14 +718,14 @@ export function buildArtifact(d, ctx) {
   const out = BUILD[d.family](d, A, mats, ctx);
   out.mats = [mats.body, mats.glow, ...(mats.cloth ? [mats.cloth] : []), ...(out.mats || [])];
   // motes of its light, for every artifact but those that already have them
-  if (!['fungi', 'solids', 'deep', 'creature'].includes(d.family)) {
+  if (!['fungi', 'solids', 'deep', 'creature', 'life'].includes(d.family)) {
     const m = motes(mixHex(A, 0xffffff, 0.35), 26, Math.max(10, out.span * 0.8), Math.max(10, out.height), d.seed[7], 0.4);
     out.group.add(m);
     const up = out.update;
     out.update = (t, beat, c) => { up(t, beat, c); driftMotes(m, t); };
   }
   // (a creature's softer: it is near, and it is a body, not a lamp)
-  const h = out.creature ? halo(A, Math.max(5, out.span * 0.35), 0.28 * d.strength) : out.curio ? halo(A, Math.max(2.5, out.span * 0.9), 0.35 * d.strength) : halo(A, Math.max(8, out.span * 0.5) * (d.special ? 1.5 : d.grand ? 1.3 : 1), 0.55 * d.strength);
+  const h = out.life ? halo(A, 4, 0.25 * d.strength) : out.creature ? halo(A, Math.max(5, out.span * 0.35), 0.28 * d.strength) : out.curio ? halo(A, Math.max(2.5, out.span * 0.9), 0.35 * d.strength) : halo(A, Math.max(8, out.span * 0.5) * (d.special ? 1.5 : d.grand ? 1.3 : 1), 0.55 * d.strength);
   h.position.copy(out.light);
   h.layers.set(LAYER_FX);
   out.group.add(h);
@@ -757,6 +760,7 @@ function aura(out, d, gold) {
   fade(colGeo, (x, y) => Math.pow(1 - y / H, 1.5) * (0.35 + 0.65 * Math.min(1, y / 12)));
   const colMat = glowMaterial({ opacity: 0.36, fog: 0.5, fresnel: 0.85, side: THREE.DoubleSide });
   const column = new THREE.Mesh(colGeo, colMat);
+  column.userData.noFx = true;      // (the emitters change the artifact, not its column)
   column.position.set(ax.x, 0, ax.z);
   column.layers.set(LAYER_FX);
   column.frustumCulled = false;
@@ -768,6 +772,7 @@ function aura(out, d, gold) {
   fade(ringGeo, () => 1);
   const ringMat = glowMaterial({ opacity: 0.5, fog: 0.8, side: THREE.DoubleSide });
   const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+  ringMesh.userData.noFx = true;
   ringMesh.position.set(ax.x, 0.6, ax.z);
   ringMesh.layers.set(LAYER_FX);
   ringMesh.frustumCulled = false;

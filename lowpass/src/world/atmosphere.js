@@ -38,6 +38,8 @@ function sample(e, out) {
 }
 
 const _warm = new THREE.Color();
+// the sky of an inversion: a violet abyss under a pale forest
+const STRANGE_SKY = { fog: C(0x3a2f52), low: C(0x1a1226), top: C(0x07050f), hor: C(0x6a2f63), glow: C(0xb05a8a), cloud: C(0x241a36), rim: C(0x4a3a80) };
 
 export class Atmosphere {
   constructor() {
@@ -54,6 +56,9 @@ export class Atmosphere {
     this.sunElev = 0;
     this.night = 0;
     this.autumn = 0;            // how turned the stand about the eye is (the game sets it)
+    this.hold = null;           // { t, k }: an anomaly holding the hour at t (k: how much)
+    this.auroraBoost = 0;       // and the aurora at its full
+    this.strange = 0;           // an inversion's: the sky an abyss of violet
   }
 
   // the sun's height: a biased sine, so days are longer than nights
@@ -85,6 +90,10 @@ export class Atmosphere {
     } else {
       this.time = (this.time + (dt * this.speed) / DAY_SECONDS) % 1;
       this.weather += dt;
+    }
+    if (this.hold && this.hold.k > 0.001) {
+      const d = ((((this.hold.t - this.time) % 1) + 1.5) % 1) - 0.5;
+      this.time = (this.time + d * this.hold.k + 1) % 1;
     }
     const e = this.elevation();
     this.sunElev = e;
@@ -134,7 +143,7 @@ export class Atmosphere {
     FOG.uNight.value = this.night;
     FOG.uSunVis.value = smoothstep(-0.12, 0.05, e);
     this.pulse = Math.max(0, this.pulse - dt * 0.35);
-    FOG.uAurora.value = this.night * (0.25 + this.network * 0.75);
+    FOG.uAurora.value = this.night * Math.max(0.25 + this.network * 0.75, this.auroraBoost * 1.3);
     FOG.uAuroraPulse.value = this.night * this.pulse * 1.2;
     U.uSunColor.value.copy(c.sun).multiplyScalar(smoothstep(-0.12, 0.05, e) * 0.85 + 0.15);
     U.uSkyColor.value.copy(c.sky);
@@ -143,6 +152,16 @@ export class Atmosphere {
     U.uFrost.value = 0.42 + slower * 0.25;
     U.uWind.value = 0.6 + slow * 0.9;
     POST.uExposure.value = c.exp;
+    if (this.strange > 0.001) {
+      const k = this.strange;
+      U.uFogColor.value.lerp(STRANGE_SKY.fog, k);
+      FOG.uFogLow.value.lerp(STRANGE_SKY.low, k);
+      FOG.uSkyTop.value.lerp(STRANGE_SKY.top, k);
+      FOG.uSkyHorizon.value.lerp(STRANGE_SKY.hor, k);
+      FOG.uSkyGlow.value.lerp(STRANGE_SKY.glow, k);
+      FOG.uCloudColor.value.lerp(STRANGE_SKY.cloud, k);
+      U.uRimColor.value.lerp(STRANGE_SKY.rim, k);
+    }
     if (origin) {
       FOG.uNoiseOff.value.set(origin.x, 0, origin.z);
       FOG.uCanopyOff.value.set(((origin.x % 2048) + 2048) % 2048, ((origin.z % 2048) + 2048) % 2048);

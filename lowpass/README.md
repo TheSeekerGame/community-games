@@ -41,6 +41,7 @@ Safari). Keyboard and mouse, gamepad, or touch.
 | A D, or the arrows | steer (outside, and at the controls) |
 | W, or ↑ (hold) | boost: the core burns plasma and the ship flies faster (outside, and at the controls) |
 | SPACE (hold) | scan what is in your sights |
+| 1 2 3 4 | fire the effects bought in the SHOP at what is in your sights: GLITCH, CHAOS, VOXEL, SHATTER |
 | V | go inside the ship, or back out (and, when an alert is up, out from the Codex or the coffee) |
 | C | camera: chase, far, low, cinematic (it goes cinematic by itself after a minute idle) |
 | W A S D, mouse | walk and look inside (click to capture the mouse); SHIFT runs |
@@ -53,7 +54,8 @@ Safari). Keyboard and mouse, gamepad, or touch.
 
 Gamepad: left stick steers and walks, right stick looks, the right trigger boosts, A scans
 and uses, B stands up (and closes the Codex), X goes in and out, Y changes the camera,
-Start pauses.
+the cross fires the effects (up, right, down, left), Start pauses. On a touch screen the
+effects are buttons over SCAN, there only while something is in reach of them.
 
 On a phone or tablet: hold the left or right side of the screen to steer (a mark at that
 edge shows which way), and hold SCAN while something is in your sights; it lights up when
@@ -94,17 +96,24 @@ to it and press E.
   pale blue-violet trail, and the ship climbs to about 58 m/s while the view widens. The
   **PLASMA** meter, over the alertness, runs out after five seconds of burning at first
   (up to fifteen, with a larger tank from the SHOP) and gathers back slowly; spent, the
-  boost waits until some has gathered again.
+  boost waits until some has gathered again. However fast it flies, it looks as many
+  seconds ahead, foresees the curve of a turn, starts a climb sooner at speed, and never
+  goes into the ground; the camera keeps over the trees and never has a ridge between it
+  and the ship.
 - **Artifacts.** Every two minutes or so (sooner, with SIGNAL GAIN from the SHOP), a
   **wild** one: grown from a seed your own browser draws, so no one else will ever meet
-  the same one. Twenty-five families: standing stones, monoliths, ringed orbs,
+  the same one. Twenty-nine families: standing stones, monoliths, ringed orbs,
   cellular-automaton arrays, shells, crystal blooms, tethers, luminous groves, gates to
   fly through, nested polyhedra, geoglyphs, harmonic chimes, lighthouses whose beams
   turn through the fog, orreries that keep Kepler's law, helices whose lit rungs spell a
   number, the shadows of four-dimensional solids, derelict hulls, stairs to a door that
   opens on fog, pale elder trees, level pools under a hanging stone, cloaked sentinels
   whose eyes follow the ship, swarms on a torus knot, cradles of bone round a cracked
-  egg, lanterns hung on nothing, and listening dishes, most of which turn to track you.
+  egg, lanterns hung on nothing, listening dishes, a pendulum drawing a flower of light
+  on the floor under it as its plane turns, an hourglass of light that turns itself over,
+  a mobile of balanced arms, and a lens burning a point of light into the ground; most
+  of them turn to track you. No shape comes again within five wild finds of the last
+  time it was met.
   About one in seven is **grand**: larger, with a column of its own light over it. A
   lone artifact appears just past what the fog lets you see, nearly dead ahead, and
   keeps ahead of you until you have seen it. Once you have come near one and lost it
@@ -113,7 +122,11 @@ to it and press E.
   found nowhere else and set on the summit: cairns marching up the slope, wind lines of
   banners, an old relay mast whose light blinks and waits, a door cut into the rock,
   a stone arch hung with threads of light, an observatory following a star, a harp
-  strung with light that shivers on the rhythm, a frozen fall of ice.
+  strung with light that shivers on the rhythm, a frozen fall of ice. In a turned stand,
+  among the gold birches, one of the stands' own: a column of leaves held turning in
+  the air, a bare birch hung with swaying lanterns, a great drop of amber with something
+  dark in it, a ring of white birches with leaves falling only inside it, a cold fire of
+  pale gold, a leaf of gold as tall as the trees.
 - **The deep.** A wild artifact may come from below the surface, from a **depth**: the
   deeper the scanner is tuned (in the Codex's SHOP), the more of them do. Each starts at
   the surface and goes one depth deeper three times in four, as far as the scanner
@@ -123,15 +136,19 @@ to it and press E.
   its own colors (Gilt, Nacre, Ember, Aurora, Ultraviolet, Solar, Abyssal, Prism, then
   others without end), and what grows there is larger the deeper it is (a depth-six
   spire stands two hundred meters and more; the ship climbs over what is in its way and
-  flies under what floats high), drawn from fourteen forms the strata open one by one:
+  flies under what floats high), drawn from seventeen forms the strata open one by one:
   corollas that open as the ship nears, spines of turning crowns, nested solids,
   armillaries, choirs of monoliths, geodes, corals that flower at their tips, knots and
   linked rings, nautilus shells, horns and galaxies, floating archipelagos with falls of
   light, strange attractors traced by thousands of motes, medusae trailing arms of light,
-  star engines with plates on their orbits, eyes that follow the ship. The mountains
+  star engines with plates on their orbits, eyes that follow the ship, chandeliers of
+  turning rings, stairs winding about a column of light with a wave of light climbing
+  them, prisms fanning a white beam into the stratum's colors. The mountains
   have seven of their own, for every depth: crystal spires, sky temples with stairs of
   light, stone halos hung with shards, aurora looms, storm crowns throwing lightning,
-  wind serpents, ice cathedrals. Deeper, one form
+  wind serpents, ice cathedrals; the turned stands four: a tree whose crown is a sphere
+  of leaves of light, a pyre of stilled flames, a seed opening and closing under an arch
+  of boughs, a disc pouring a fall of leaves of light into a pool. Deeper, one form
   crowns another, a court of small ones stands about it, and ornaments gather: rings,
   figures of light on the ground, beams, pillars, rain of light, aurora veils, its double hanging
   upside down in the sky, its echoes a moment behind it. Each sings (below). Rarest of
@@ -142,6 +159,34 @@ to it and press E.
   apart, a whale of the under-sky swimming circles over the trees; on a mountain, the
   mountains' own, crowned and courted). A marked scan is worth ten times its depth's.
   Witnessed seekers are never touched by any of it.
+- **Effects.** Bought once each in the SHOP, fired at whatever the scanner holds, for
+  some of the boost's plasma (so a larger tank fires more of them): **GLITCH** tears it
+  into bands of broken signal, **CHAOS** sets it running like water, **VOXEL** sets it in
+  blocks the way the seekers themselves are drawn, **SHATTER** breaks it into its faces,
+  hanging in the air. Any number on one artifact, in any order, on anything wild at any
+  depth (never a witnessed seeker); the scan records it as it is then, and is worth half
+  as much again for every effect it took.
+- **Anomalies.** The world itself changed for four minutes, from the SHOP: signals come
+  twice as often, each wears the anomaly's mark, and every scan made in one is worth
+  half as much again. **INVERSION** rolls the ship over into a stranger world (a pale
+  forest hanging overhead, drawn out and twisting, the ground a negative of itself
+  ringed with lines of light, an abyss of violet below), and what rises is its own
+  negative; **SLOW TIME** slows everything but the ship, and what rises is a burst
+  stopped in time; **LONG NIGHT** holds midnight with the aurora at its full, and what
+  rises burns with its own light; **DISCHARGE** sends lightning walking through the
+  forest and fills the core faster, and what rises crackles with charge. Two at once, and
+  then everything wears both. LONG NIGHT and DISCHARGE answer only to a pilot whose
+  wallet holds a seeker of the right kind: one with the Nightfall background, one that
+  has discharged (read from Robinhood Chain, nothing written).
+- **Life in the forest.** Every half minute or so, something living, suited to the
+  place and the hour: a flock turning over the canopy that lifts and streams away when
+  the ship comes near (slower than the ship: it can be followed and held in the
+  sights), a herd grazing at a lake's shore that bolts for the trees, an owl at night on
+  a dead spruce turning its head to keep the ship in sight, a shoal leaping on a lake.
+  Each can be scanned (for half of what a wild artifact is worth), and takes effects and
+  marks like anything else; once the scanner reaches below, now and then their kin from
+  a depth: birds of glass, stags with antlers of light, owls with lantern eyes, fish of
+  light.
 - **Witnessed seekers.** When a SEEKER NET seeker moves on Robinhood Chain while you
   fly, that seeker itself rises out of the fog, giant: its voxel model built from its own
   collection art as it is on the chain now (dormant ones dark by their stage, their
@@ -260,7 +305,8 @@ minute as a WAV file.
 - **SHOP**: **DATA**, and what it buys. TRANSMIT sends every scan not yet sent for DATA
   (they stay in the LOG and on the leaderboard; each counts once): a wild scan is worth
   10, and 10 more for every depth it came from (ten times that, if marked +); a
-  witnessed one 40. Two shelves, UPGRADES and SHIPS (left and right). Three upgrades:
+  witnessed one 40; an effect or an anomaly makes a scan worth half as much again, each.
+  Four shelves, UPGRADES, EFFECTS, ANOMALIES and SHIPS (left and right). Three upgrades:
   - **SCANNER DEPTH**, without end: the first depth costs 120 (twelve plain scans), each
     next one twice the last; what a scan is worth grows only by its depth, so every
     depth is harder to reach than the last.
@@ -270,6 +316,10 @@ minute as a WAV file.
     tank is large.
   - **SIGNAL GAIN**, five levels (80, 150, 250, 380, 550): how soon the next wild
     artifact comes once the last is behind, from 100 to 170 seconds down to 52 to 92.
+  The effects: GLITCH 120, CHAOS 260, VOXEL 450, SHATTER 700, once each. The anomalies:
+  60 DATA for every depth the scanner reaches and one more, each time one is started;
+  a keyed one says which seeker opens it, and CONNECT TO CHECK asks the wallet for its
+  address only.
   And the hangar: five ships, each with its portrait, its pips (speed, turn, plasma,
   scan, room) and what is inside it. BUY takes you aboard at once; a ship bought is
   boarded again with BOARD, whenever you like, from the Codex computer (it is the same
@@ -414,7 +464,7 @@ src/main.js, src/game.js  start-up (and the stylesheet check, src/build.js), the
 src/render/               the pipeline (opaque, fog and sky, glows, grade and dither),
                           materials, the geometry builder
 src/world/                terrain, trees, chunks with a floating origin, the canopy map
-                          for light shafts, day, night and fog
+                          for light shafts, day, night and fog, the anomalies
 src/ground/               what happens off the ship
 src/ship/                 the ships (their designs and hulls) and their flight, cameras,
                           the cabins and their books, the Seeker, the coffee scene, the
@@ -422,8 +472,9 @@ src/ship/                 the ships (their designs and hulls) and their flight, 
 src/artifacts/            from a seed or a move to an artifact: generation, models (the
                           first families, the witnessed seeker, the auras), the newer
                           families, their shared parts, the field, the photograph; the
-                          mountains' own; a few more (the field flies them); the deep:
-                          its strata, its descriptions, its forms
+                          mountains' own, the turned stands' own, the instruments; life in
+                          the forest; a few more (the field flies them); the effects
+                          (fx.js); the deep: its strata, its descriptions, its forms
 src/companion/            a seeker aboard: its voxel model (after Soundings, also the
                           witnessed giants'), its lines, its hovering and talking
 src/chain/                Robinhood Chain reads, the move watcher, the block clock, the

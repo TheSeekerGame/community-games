@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Pipeline, FOG, POST } from './render/pipeline.js';
 import { U } from './render/materials.js';
 import { World } from './world/chunks.js';
-import { autumn, mountain, mountainEnv } from './world/terrain.js';
+import { autumn, mountain, mountainEnv, canopyTop, WATER } from './world/terrain.js';
 import { Atmosphere } from './world/atmosphere.js';
 import { Ship } from './ship/ship.js';
 import { shipById } from './ship/designs.js';
@@ -24,7 +24,10 @@ import { ChainClock } from './chain/clock.js';
 import * as art from './chain/art.js';
 import { Field } from './artifacts/field.js';
 import { takePhoto } from './artifacts/photo.js';
-import { GENERATOR_VERSION } from './artifacts/generate.js';
+import { GENERATOR_VERSION, shapeOf } from './artifacts/generate.js';
+import { ArtifactFx, EFFECTS, FX_COST, Shot, effectById } from './artifacts/fx.js';
+import { Anomalies, anomalyById } from './world/anomaly.js';
+import { connected } from './net/wallet.js';
 import { Hud } from './ui/hud.js';
 import { Terminal } from './ui/terminal.js';
 import { Menu, Title } from './ui/menu.js';
@@ -51,6 +54,7 @@ const RELIGHT = 0.15;            // once spent, the boost lights again at this m
 const WAVE = 12;                 // a sweep's artifacts at once, at most (the rest come next)
 const VOICES = 4;                // artifacts heard at once, the nearest
 const WALK = 2.0, RUN = 3.3;
+const FIRE_PAD = ['Pad12', 'Pad15', 'Pad13', 'Pad14'];   // the pad's cross: up, right, down, left
 const EYE = 1.58;
 
 export class Game {
@@ -70,8 +74,12 @@ export class Game {
     this.interior = new Interior(this.ship);
     this.seeker = new Seeker(this.interior.group);
     this.cams = new Cameras(this.px.width / this.px.height);
+    // the outside cameras keep over the trees (render space in, render space out)
+    this.cams.floor = (x, z) => canopyTop(x + this.world.origin.x, z + this.world.origin.z) + 3;
     this.input = new Input(canvas);
     this.audio = new Audio();
+    // (?mute: no sound at all, ever: for testing)
+    if (q.has('mute')) this.audio.unlock = () => {};
     this.plasma = new Plasma(this.scene);
     this.plasma.setColors(...this.ship.design.look.plasma);
     this._back = new THREE.Vector3();
@@ -98,6 +106,7 @@ export class Game {
     this.boot.step(0.05, '');
     this.hud = new Hud(this.uiRoot);
     this.hud.onAlarm = () => this.goOutside();
+    this.hud.onFire = (id) => { if (!this.terminal.open && !this.menu.open && !this.reader.open && (this.mode === 'fly' || this.mode === 'seat')) this.fire(id); };
     this.tips = new Tips(this);
     this.terminal = new Terminal(this);
     this.reader = new Reader(this);
@@ -126,6 +135,13 @@ export class Game {
     else this.moves.status = 'offline';
     art.loadMeta().then(() => { this.artReady = true; }).catch(() => {});
     this.field = new Field(this);
+    this.shot = new Shot(this.scene);
+    // anomalies bought in the SHOP (anomaly.js): how fast the world's time runs, how fast
+    // the core gathers plasma back, while they last
+    this.slow = 1;
+    this.wtime = 0;
+    this.refillBoost = 1;
+    this.anomalies = new Anomalies(this);
     this.field.onAppear = (a) => this._appear(a);
     this.field.onWave = (list) => this._appear(list[0], list);
     this.field.onScanned = (a) => this._scanned(a);
@@ -434,7 +450,7 @@ export class Game {
       // something from below the surface: its own call, and always a word
       const d = a.d, st = stratum(d.depth);
       const title = `DEPTH ${st.numeral}${d.plus ? '+' : ''} · ${d.plus ? 'MARKED' : d.glimpse ? 'FROM BEYOND YOUR REACH' : st.name.toUpperCase()}`;
-      const where = d.mountain ? 'on the mountain ahead' : 'rising out of the fog';
+      const where = d.mountain ? 'on the mountain ahead' : d.autumn ? 'among the gold birches' : 'rising out of the fog';
       // (a creature is announced as anything else from its depth, and not named)
       const what = d.family === 'creature' ? `, ${where}` : `: ${d.cls.toLowerCase()}, ${where}`;
       const sub = d.plus ? `The rarest of ${st.title}${what}` : d.glimpse ? `Deeper than your scanner reaches${what}` : `From ${st.title}${what}`;
@@ -457,18 +473,53 @@ export class Game {
       // that goes by itself
       if (this._aboard()) {
         this.audio.play('chime');
-        const where = a.d.mountain ? 'On the mountain ahead of the ship' : 'Rising out of the fog ahead of the ship';
+        const where = a.d.mountain ? 'On the mountain ahead of the ship' : a.d.autumn ? 'Among the gold birches ahead of the ship' : 'Rising out of the fog ahead of the ship';
         if (this.mode === 'seat' && !this.menu.open) this.hud.say('WILD ARTIFACT AHEAD', where, 4);
         else this.hud.toast('WILD ARTIFACT NEARBY', `${where}. Only this ship will ever find it.`);
       } else if (a.d.mountain) {
         // the mountains' own are always named
         this.hud.say('SIGNAL ON THE MOUNTAIN', `${a.d.cls} · only this ship can find it`, 4.5);
+      } else if (a.d.autumn) {
+        // and the turned stands'
+        this.hud.say('SIGNAL AMONG THE BIRCHES', `${a.d.cls} · only this ship can find it`, 4.5);
       } else {
         // said the first times only; after that the low swell is enough
         this._wilds = (this._wilds || 0) + 1;
         if (this._wilds <= 2) this.hud.say('SIGNAL IN THE FOG', 'Unrecorded · only this ship can find it', 4.5);
       }
     }
+  }
+
+  // What the emitters can be fired at now: the one the scanner holds, near enough to
+  // scan, seen, not yet recorded; never a witnessed seeker (the network's) nor a clearing.
+  get fxTarget() {
+    const f = this.field, t = f.target;
+    return t && t.model && !t.scanned && t.revealed && !t.special && t.d.family !== 'landing' && (f.state === 'lock' || f.state === 'near') ? t : null;
+  }
+
+  // an anomaly's mark laid on an artifact
+  markFx(a, id) {
+    if (!a.fx) a.fx = new ArtifactFx(a);
+    a.fx.mark(id);
+  }
+
+  // An emitter fired at it: the artifact changes where it stands, for some of the boost's
+  // plasma (none to spare: nothing happens, and the meter says why).
+  fire(id) {
+    const t = this.fxTarget, e = effectById(id);
+    if (!e || !this.progress.hasFx(id) || !t) return false;
+    if (t.fx && t.fx.has(id)) return false;
+    const need = FX_COST / this.tankSecs;
+    if (this.plasmaLeft < need) { this.audio.play('error'); this._fxLow = this.time; return false; }
+    this.plasmaLeft -= need;
+    if (!t.fx) t.fx = new ArtifactFx(t);
+    t.fx.add(id);
+    this.shot.fire(e.color);
+    this._shotAt = this.field.lightPos(t).clone();
+    this.audio.play('fx', { id, pan: clamp(-(t.bearing || 0), -1, 1) });
+    this.buzz(18);
+    this.tips.learn('fx');
+    return true;
   }
 
   // A turned stand: the air about it warms a little; flying into one the first time in
@@ -499,6 +550,41 @@ export class Game {
     }
   }
 
+  // Life in the forest (life.js), every half minute or so while flying: whatever suits the
+  // place and the hour ahead (an owl at night, a shoal where a lake lies ahead, a herd
+  // where a shore does, else a flock), never while an artifact is near, one at a time;
+  // now and then, once the scanner reaches below, their kin from a depth.
+  _life(dt, down) {
+    if (this.mode === 'title' || down) return;
+    this._lifeT = (this._lifeT ?? 25) - dt;
+    if (this._lifeT > 0 || this._lifeBusy) return;
+    this._lifeT = 22 + Math.random() * 22;
+    const f = this.field, near = f.active.some((a) => !a.scanned && !a.passed && (a.d.family === 'life' || a.dist < 520));
+    if (near) { this._lifeT = 8; return; }
+    const ship = this.ship, [fx, fz] = ship.forward(), vis = f.visibility(), w = this.world;
+    const ahead = clamp(vis * 0.92, 170, 480);
+    const at = (d) => [ship.x + fx * d, ship.z + fz * d];
+    const water = [ahead, ahead + 90, ahead + 180].some((d) => { const [x, z] = at(d); return w.groundAt(x, z) < WATER - 2; });
+    const r = Math.random();
+    let sp = 'flock';
+    if (this.atmo.night > 0.6 && r < 0.45) sp = 'owl';
+    else if (water && r < 0.7) sp = 'fish';
+    else if (r < 0.4 && !mountain(...at(ahead))) sp = 'deer';
+    const depth = this.progress.depth >= 1 && Math.random() < 0.3 ? 1 + Math.floor(Math.random() * this.progress.depth) : 0;
+    this._lifeBusy = true;
+    f.spawnWild({ life: sp, depth, ahead, lateral: (Math.random() - 0.5) * 120, quiet: true })
+      .then((a) => {
+        for (const m of this.anomalies.mark(a)) this.markFx(a, m);
+        // the first few times, a word: they can be scanned too
+        this._lifeSaid = (this._lifeSaid || 0) + 1;
+        if (this._lifeSaid <= 2 && (this.mode === 'fly' || this.mode === 'seat')) this.hud.say(`${a.d.cls.toUpperCase()} AHEAD`, 'life in the forest: it can be scanned too', 4);
+      })
+      .finally(() => { this._lifeBusy = false; });
+  }
+
+  // the wallet that has shared its address with this browser, if any
+  walletAddress() { return connected(); }
+
   // inside the ship: on foot (at the Codex too), at the controls, over coffee
   _aboard() {
     return this.mode === 'walk' || this.mode === 'seat' || this.mode === 'coffee';
@@ -524,8 +610,12 @@ export class Game {
       ...(d.depth ? { depth: d.depth, form: d.form, glimpse: !!d.glimpse } : {}),
       ...(d.plus ? { plus: true } : {}),
       ...(d.family === 'creature' ? { creature: d.species } : {}),
+      ...(d.family === 'life' ? { life: d.species } : {}),
       ...(d.family === 'curio' ? { ground: true, curio: d.curio } : {}),
       ...(d.mountain ? { mountain: true } : {}),
+      ...(d.autumn ? { autumn: true } : {}),
+      ...(a.fx && a.fx.list.length ? { fx: [...a.fx.list] } : {}),
+      ...(this.anomalies.now.length && d.kind === 'wild' ? { anomalies: this.anomalies.now } : {}),
     };
     if (d.depth) this.progress.met(d.depth);
     entry.img = new Image();
@@ -579,8 +669,10 @@ export class Game {
     // the beat follows the score's clock when there is one
     const ab = this.audio.beatNow();
     this.beat = ab !== null ? ab : this.beat + (dt * BPM) / 60;
-    U.uTime.value = this.time;
-    U.uAnim.value = Math.floor(this.time * 12) / 12;
+    // (the world's own time: an anomaly may slow it, never the ship's)
+    this.wtime += dt * this.slow;
+    U.uTime.value = this.wtime;
+    U.uAnim.value = Math.floor(this.wtime * 12) / 12;
     U.uBeat.value = this.beat;
 
     // seekers moved (or a wild one rose) while away from the ship's view: V goes out to
@@ -616,6 +708,8 @@ export class Game {
     // the ship flies on whatever happens inside; outside or at the controls, W boosts
     let steer = 0;
     if (!overlay && (this.mode === 'fly' || this.mode === 'seat')) steer = input.steer();
+    // (rolled over, left is still left on the screen)
+    if (this.ship.flip > 0.5) steer = -steer;
     if (this.mode === 'title') steer = Math.sin(this.time * 0.05) * 0.25;
     // the boost burns plasma; spent, it waits until the core has gathered some back
     if (this.plasmaLeft <= 0) this._spent = true;
@@ -628,10 +722,11 @@ export class Game {
     }
     if (boosting) { this._boosted = (this._boosted || 0) + dt; if (this._boosted > 1) this.tips.learn('boost'); }
     this._alertness(dt);
+    this.anomalies.update(dt);
     this.ship.update(dt, steer, boosting);
     const tank = this.tankSecs;
     if (boosting) this.plasmaLeft = Math.max(0, this.plasmaLeft - (dt * this.ship.boost) / tank);
-    else if (this.mode !== 'title') this.plasmaLeft = Math.min(1, this.plasmaLeft + (dt * REFILL) / tank);
+    else if (this.mode !== 'title') this.plasmaLeft = Math.min(1, this.plasmaLeft + (dt * REFILL * this.refillBoost) / tank);
     const [fx, fz] = this.ship.forward();
     const cp = this.cams.cam.position;
     this.world.update(this.ship.x, this.ship.z, fx, fz, 2, cp.x + this.world.origin.x, cp.z + this.world.origin.z, dt);
@@ -658,16 +753,29 @@ export class Game {
       // where it would rise is on a mountain: it is one of the mountains' own
       const [fx0, fz0] = this.ship.forward(), sd = this.field.spawnDistance();
       const onMountain = mountainEnv(this.ship.x + fx0 * sd, this.ship.z + fz0 * sd) > 0.45;
+      // and in a turned stand, one of the stands' own
+      const inAutumn = !onMountain && autumn(this.ship.x + fx0 * sd, this.ship.z + fz0 * sd) > 0.45;
       // now and then, a creature (never on a mountain: what rises there is the mountains'
       // own), and now and then one of the marked: the rarest a depth holds
       const creature = !onMountain && Math.random() < CREATURE;
       const plus = !creature && depth >= 1 && Math.random() < PLUS;
       // and once the scanner reaches deep enough, very rarely, a clearing to land in
       const landing = !creature && !plus && !onMountain && !wave.length && this.progress.depth >= LANDING_DEPTH && Math.random() < LANDING;
-      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 }) : (landing ? this.field.spawnWild({ landing: true }) : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, plus, creature }))).finally(() => { this._spawning = false; });
+      const recent = this.progress.seen;
+      (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 })
+        : landing ? this.field.spawnWild({ landing: true })
+          : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, autumn: inAutumn, plus, creature, recent }).then((a) => {
+            this.progress.see(shapeOf(a.d));
+            // the anomalies running lay their marks on it
+            for (const m of this.anomalies.mark(a)) this.markFx(a, m);
+            return a;
+          }))
+        .finally(() => { this._spawning = false; });
       const [g0, g1] = this.progress.gap;
-      this.field.next = this.moves.waiting ? 6 : g0 + Math.random() * (g1 - g0);
+      // (twice as often while an anomaly lasts; never sooner than the leaderboard counts)
+      this.field.next = this.moves.waiting ? 6 : Math.max(this.anomalies.any ? 40 : 0, (g0 + Math.random() * (g1 - g0)) * (this.anomalies.any ? 0.5 : 1));
     }
+    this._life(dt, down);
     const canScan = !overlay && (this.mode === 'fly' || this.mode === 'seat');
     const prevState = this.field.state;
     this.field.update(dt, canScan && input.scanHeld());
@@ -676,6 +784,10 @@ export class Game {
       this._scanTick = Math.floor(this.time * 6);
       this.audio.play('scan', { progress: this.field.scan });
     }
+    // the emitters: 1 to 4 (the pad's cross, the HUD's buttons) at what the scanner holds
+    if (canScan) EFFECTS.forEach((e, i) => { if (input.hit(`Digit${i + 1}`, `Numpad${i + 1}`, FIRE_PAD[i])) this.fire(e.id); });
+    const ft = this.fxTarget;
+    this.shot.update(dt, this.ship.lensPos ? this.ship.lensPos() : this.ship.root.position, ft ? this.field.lightPos(ft) : this._shotAt);
 
     // the camera, by mode
     const inside = this.mode === 'walk' || this.mode === 'seat' || this.mode === 'coffee';
@@ -883,6 +995,12 @@ export class Game {
     else if (this.mode === 'ground') keys = [['W A S D', 'walk'], ['SHIFT', 'run'], ['SPACE', 'scan'], ['E', 'use'], ['ESC', 'menu']];
     else if (this.mode === 'seat') keys = [['A D', 'steer'], ['W', 'boost'], ['SPACE', 'scan'], ['E', 'stand up'], ['V', 'outside']];
     h.setKeys(keys);
+    h.setAnomalies(this.anomalies.list.filter((x) => x.left > 0).map((x) => { const a = anomalyById(x.id); return { name: a.name, color: a.color, left: x.left }; }));
+    // the emitters bought, while something they can be fired at is in reach
+    const ft = !overlay && (this.mode === 'fly' || this.mode === 'seat') ? this.fxTarget : null;
+    const owned = ft ? EFFECTS.filter((e) => this.progress.hasFx(e.id)) : [];
+    const low = this.plasmaLeft < FX_COST / this.tankSecs;
+    h.setFx(owned.length ? owned.map((e) => ({ id: e.id, name: e.name, key: e.key, color: e.color, done: !!(ft.fx && ft.fx.has(e.id)), low })) : null, !this.input.touchMode);
     // the teaching line and the marks; the keys stay a while after each change of place
     // (the tips reset the clock), and come back when an idle key is pressed
     this.tips.update(dt, overlay);
@@ -955,6 +1073,14 @@ export class Game {
         return tx;
       },
       clear: () => { for (const a of [...this.field.active]) this.field.remove(a); },
+      // effects on the newest artifact, as if fired (marks: as an anomaly lays them)
+      fx: (...ids) => {
+        const a = this.field.active[this.field.active.length - 1];
+        if (!a) return null;
+        if (!a.fx) a.fx = new ArtifactFx(a);
+        for (const id of ids) { if (['charge', 'glow', 'freeze', 'invert'].includes(id)) a.fx.mark(id); else a.fx.add(id); }
+        return [...a.fx.list, ...a.fx.marks];
+      },
       // aboard a ship of the hangar, as if bought
       ship: (id) => { if (!this.progress.owns(id)) this.progress.ships.push(id); this.board(id); return this.ship.design.name; },
       inspect: (a, dist = null, height = null, ang = null) => { this._inspect = a ? { a, dist, height, ang } : null; },
@@ -965,6 +1091,13 @@ export class Game {
         const a = depth > 0 ? await this.field.spawnWild({ depth, form, ahead, lateral: 0, mountain, plus }) : await this.field.spawnWild({ ahead, lateral: 0, mountain: true, family: form || undefined });
         this._inspect = { a };
         return { name: a.d.name, code: a.d.code, form: a.d.form, notes: a.d.notes, params: a.d.params };
+      },
+      // life in the forest, of a kind, at a depth, ahead (orbited)
+      life: async (sp = 'flock', depth = 0, ahead = 300) => {
+        for (const a of [...this.field.active]) this.field.remove(a);
+        const a = await this.field.spawnWild({ life: sp, depth, ahead, lateral: 0, quiet: true });
+        this._inspect = { a };
+        return { name: a.d.name, code: a.d.code, notes: a.d.notes, x: Math.round(a.x), z: Math.round(a.z) };
       },
       // a clearing to land in, ahead
       site: async (ahead = 320) => {

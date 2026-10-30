@@ -8,6 +8,11 @@ import { discover, connect, connected, disconnect } from '../net/wallet.js';
 import * as art from '../chain/art.js';
 import { formatInt, formatNum, clamp } from '../core/math.js';
 import { SHIPS, pips } from '../ship/designs.js';
+import { EFFECTS, DONE } from '../artifacts/fx.js';
+import { ANOMALIES, ANOMALY_SECS, AT_ONCE, anomalyCost, readKeys } from '../world/anomaly.js';
+
+// the SHOP's shelves, left to right
+const SHELVES = [['upgrades', 'UPGRADES'], ['fx', 'EFFECTS'], ['anomalies', 'ANOMALIES'], ['ships', 'SHIPS']];
 import { portrait } from '../ship/portrait.js';
 
 // The Codex computer. Five tabs:
@@ -177,7 +182,7 @@ export class Terminal {
     if (this.tab === 'ranks') k(this.gallery ? '←→' : '↑↓', 'choose');
     else if (this.tab !== 'board' && this.tab !== 'shop') k('←→', 'choose');
     if (this.tab === 'ranks' && !this.gallery) k('ENTER', 'their scans');
-    if (this.tab === 'shop') { k('←→', 'upgrades, ships'); k('↑↓', 'choose'); k('ENTER', 'select'); }
+    if (this.tab === 'shop') { k('←→', 'shelves'); k('↑↓', 'choose'); k('ENTER', 'select'); }
     k('ESC', this.tab === 'ranks' && this.gallery ? 'back' : 'close');
     this._dots();
   }
@@ -218,6 +223,7 @@ export class Terminal {
     if (e.kind === 'wild') {
       row('ORIGIN', e.mountain ? 'WILD · on the mountain · found by this ship alone' : 'WILD · found by this ship alone');
       if (e.depth) row('DEPTH', `${stratum(e.depth).numeral}${e.plus ? '+ · MARKED' : ''} · ${stratum(e.depth).title}`).style.color = depthColor(e.depth);
+      if (e.fx && e.fx.length) row('EFFECTS', e.fx.map((id) => DONE[id] || id).join(', '));
       row('SEED', `${e.tx.slice(0, 10)}…${e.tx.slice(-6)}`, 'muted');
     } else {
       if (e.special) row('WITNESSED', 'a seeker moved while you flew: every ship flying then met this one', 'gold');
@@ -313,7 +319,7 @@ export class Terminal {
   // hangar, each ship's portrait, its pips, what is inside it, and BUY, BOARD or ABOARD.
   _shopItems() {
     const g = this.game;
-    const shelf = this.shelf === 'ships' ? SHIPS.map((d) => d.id) : ['depth', 'tank', 'gain'];
+    const shelf = this.shelf === 'ships' ? SHIPS.map((d) => d.id) : this.shelf === 'fx' ? EFFECTS.map((e) => e.id) : this.shelf === 'anomalies' ? ANOMALIES.map((a) => a.id) : ['depth', 'tank', 'gain'];
     return [...(g.codex.some((e) => !e.sent) ? ['send'] : []), ...shelf];
   }
 
@@ -334,13 +340,15 @@ export class Terminal {
       b.onclick = () => this._transmit();
       el('span', 'fine', sendBox, 'scans stay in your log');
     }
-    // the two shelves
+    // the shelves
     const sw = el('div', 'shelves', wrap);
-    for (const [k, label] of [['upgrades', 'UPGRADES'], ['ships', 'SHIPS']]) {
+    for (const [k, label] of SHELVES) {
       const c = el('button', 'chip' + ((this.shelf || 'upgrades') === k ? ' sel' : ''), sw, label);
       c.onclick = () => this._shelf(k);
     }
     if (this.shelf === 'ships') { this._ships(wrap, sel); return; }
+    if (this.shelf === 'fx') { this._effects(wrap, sel); return; }
+    if (this.shelf === 'anomalies') { this._anomalies(wrap, sel); return; }
     const card = (kind, name, verb) => {
       const c = el('div', 'upg' + (sel === kind ? ' sel' : ''), wrap);
       const head = el('div', 'uhead', c);
@@ -364,6 +372,100 @@ export class Terminal {
     card('depth', 'SCANNER DEPTH', 'TUNE DEEPER');
     card('tank', 'PLASMA TANK', 'UPGRADE');
     card('gain', 'SIGNAL GAIN', 'UPGRADE');
+  }
+
+  // the emitters: a card each, its color, what it does, BUY or OWNED; and once, how
+  // they are used
+  _effects(wrap, sel) {
+    const g = this.game, pr = g.progress;
+    el('div', 'fine shopnote', wrap, `Fired at an artifact before it is scanned (${g.input.touchMode ? 'its button' : 'keys 1 to 4'}), for some plasma. Every one it takes makes its scan worth half as much again, and they all go together.`);
+    for (const e of EFFECTS) {
+      const own = pr.hasFx(e.id);
+      const c = el('div', 'upg fxc' + (sel === e.id ? ' sel' : ''), wrap);
+      c.style.setProperty('--fx', hexCss(e.color));
+      const head = el('div', 'uhead', c);
+      const nm = el('div', 'uname', head);
+      el('i', 'fxdot', nm);
+      el('span', '', nm, e.name);
+      el('div', 'ucur', head, own ? `KEY ${e.key}` : '');
+      el('div', 'sline', c, e.line);
+      const row = el('div', 'ubuy', c);
+      const bar = el('div', 'ubar', row);
+      el('i', '', bar).style.width = own ? '100%' : `${Math.min(100, (pr.data / e.price) * 100)}%`;
+      const b = el('button', 'btn', row, own ? 'OWNED' : `BUY · ${formatInt(e.price)}`);
+      b.disabled = own || !pr.canFx(e.id);
+      b.onclick = () => this._buyFx(e.id);
+      if (this._shopMsg && this._shopMsg.kind === e.id) { el('div', 'msg', c, this._shopMsg.text).style.color = hexCss(e.color); this._shopMsg = null; }
+      if (sel === e.id && this._scrollTo) { const cc = c; requestAnimationFrame(() => cc.scrollIntoView({ block: 'nearest' })); }
+    }
+    this._scrollTo = false;
+  }
+
+  // the anomalies: a card each, what it does, and START for what it costs at this depth;
+  // those a seeker opens say which kind, and once a wallet has shared its address, whether
+  // one of its seekers is of that kind (read from the chain when the shelf opens)
+  _anomalies(wrap, sel) {
+    const g = this.game, pr = g.progress, A = g.anomalies, owner = A.owner();
+    const cost = anomalyCost(pr.depth);
+    el('div', 'fine shopnote', wrap, `For ${ANOMALY_SECS / 60} minutes the world is changed. Signals come twice as often, each one wears its mark, and every scan made in it is worth half as much again. ${AT_ONCE} at once, at most.`);
+    // (the seekers of the wallet that shared its address, read once in a while)
+    const k = A.keys;
+    if (owner && !this._keysBusy && (!k || k.address !== owner || Date.now() - k.at > 15 * 60000)) {
+      this._keysBusy = true;
+      readKeys(g.chain, owner).then((r) => { A.keys = r; }).catch(() => { this._keysErr = true; }).finally(() => { this._keysBusy = false; if (this.open && this.tab === 'shop' && this.shelf === 'anomalies') this.render(); });
+    }
+    for (const a of ANOMALIES) {
+      const run = A.list.find((x) => x.id === a.id && x.left > 0), open = A.unlocked(a.id);
+      const c = el('div', 'upg fxc' + (sel === a.id ? ' sel' : ''), wrap);
+      c.style.setProperty('--fx', hexCss(a.color));
+      const head = el('div', 'uhead', c);
+      const nm = el('div', 'uname', head);
+      el('i', 'fxdot', nm);
+      el('span', '', nm, a.name);
+      if (run) { const s = Math.ceil(run.left); el('div', 'ucur', head, `RUNNING · ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`).style.color = hexCss(a.color); }
+      else if (a.key && open) el('div', 'ucur', head, `SEEKER #${A.keys.has[a.id]}`);
+      el('div', 'sline', c, a.line);
+      const row = el('div', 'ubuy', c);
+      if (a.key && !open && !run) {
+        el('span', 'fine', row, `Opened by ${a.key.text}.`);
+        const msg = el('div', 'msg muted', c);
+        if (!owner) {
+          const b = el('button', 'btn', row, 'CONNECT TO CHECK');
+          b.onclick = () => this._withWallet(row, msg, (w, m) => this._connectOnly(w, m));
+        } else if (this._keysBusy) msg.textContent = 'Reading your seekers from the chain…';
+        else if (A.keys && A.keys.address === owner) {
+          msg.textContent = A.keys.n ? `None of the ${A.keys.n} seekers this wallet holds is of that kind.` : 'This wallet holds no seekers.';
+          const b = el('button', 'btn ghost', row, 'CHECK AGAIN');
+          b.onclick = () => { A.keys = null; this.render(); };
+        } else if (this._keysErr) msg.textContent = 'The chain did not answer. Try again in a moment.';
+        continue;
+      }
+      const bar = el('div', 'ubar', row);
+      el('i', '', bar).style.width = run ? `${(run.left / ANOMALY_SECS) * 100}%` : `${Math.min(100, (pr.data / cost) * 100)}%`;
+      const b = el('button', 'btn', row, run ? 'RUNNING' : `START · ${formatInt(cost)}`);
+      b.disabled = !A.can(a.id);
+      b.onclick = () => this._startAnomaly(a.id);
+      if (!run && A.count >= AT_ONCE) el('span', 'fine', row, `${AT_ONCE} are running`);
+      if (this._shopMsg && this._shopMsg.kind === a.id) { el('div', 'msg', c, this._shopMsg.text).style.color = hexCss(a.color); this._shopMsg = null; }
+      if (sel === a.id && this._scrollTo) { const cc = c; requestAnimationFrame(() => cc.scrollIntoView({ block: 'nearest' })); }
+    }
+    this._scrollTo = false;
+  }
+
+  _startAnomaly(id) {
+    const g = this.game, a = ANOMALIES.find((x) => x.id === id);
+    if (!g.anomalies.start(id)) { g.audio.play('error'); return; }
+    g.audio.play('anomaly', { lift: ANOMALIES.indexOf(a) * 2 });
+    this._shopMsg = { kind: id, text: `${a.name} has begun. It is outside now.` };
+    this.render();
+  }
+
+  _buyFx(id) {
+    const g = this.game, pr = g.progress, e = EFFECTS.find((x) => x.id === id);
+    if (!pr.buyFx(id)) { g.audio.play('error'); return; }
+    g.audio.play('buy', {});
+    this._shopMsg = { kind: id, text: `${e.name} is fitted. Key ${e.key}, at whatever the scanner holds.` };
+    this.render();
   }
 
   // the hangar: a card for each ship
@@ -402,6 +504,10 @@ export class Terminal {
   }
 
   _shelf(k) {
+    if (typeof k === 'number') {
+      const i = SHELVES.findIndex(([x]) => x === (this.shelf || 'upgrades'));
+      k = SHELVES[clamp(i + k, 0, SHELVES.length - 1)][0];
+    }
     if ((this.shelf || 'upgrades') === k) return;
     this.shelf = k;
     this.shopSel = this.game.codex.some((e) => !e.sent) ? 1 : 0;
@@ -425,8 +531,8 @@ export class Terminal {
 
   // up and down choose, left and right change the shelf, ENTER does it
   _shopKeys(input) {
-    if (input.hit('ArrowLeft', 'KeyA', 'Pad14')) { this._shelf('upgrades'); return; }
-    if (input.hit('ArrowRight', 'KeyD', 'Pad15')) { this._shelf('ships'); return; }
+    if (input.hit('ArrowLeft', 'KeyA', 'Pad14')) { this._shelf(-1); return; }
+    if (input.hit('ArrowRight', 'KeyD', 'Pad15')) { this._shelf(1); return; }
     const items = this._shopItems();
     let d = 0;
     if (input.hit('ArrowDown', 'KeyS')) d = 1;
@@ -434,7 +540,7 @@ export class Terminal {
     if (d) { this.shopSel = clamp((this.shopSel || 0) + d, 0, items.length - 1); this._scrollTo = true; this.game.audio.play('ui', { h: 24 }); this.render(); }
     if (input.hit('Enter', 'Space', 'Pad0')) {
       const it = items[clamp(this.shopSel || 0, 0, items.length - 1)];
-      if (it === 'send') this._transmit(); else if (this.shelf === 'ships') this._ship(it); else this._buy(it);
+      if (it === 'send') this._transmit(); else if (this.shelf === 'ships') this._ship(it); else if (this.shelf === 'fx') this._buyFx(it); else if (this.shelf === 'anomalies') this._startAnomaly(it); else this._buy(it);
     }
   }
 

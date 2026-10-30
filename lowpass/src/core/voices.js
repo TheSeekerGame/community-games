@@ -53,6 +53,10 @@ const FAMILY = {
   cradle: ['whale', 'grains'], lanterns: ['glass', 'chirp'], dish: ['grains', 'glitch'],
   cairns: ['breath', 'grains'], banners: ['breath', 'chirp'], relay: ['fm', 'glitch'], door: ['whale', 'grains'],
   arch: ['breath', 'glass'], observatory: ['glass', 'chirp'], harp: ['glass', 'grains'], ice: ['glass', 'chirp'],
+  leafstorm: ['breath', 'grains'], lanternbirch: ['glass', 'chirp'], amber: ['whale', 'glass'], birches: ['breath', 'chirp'], hearth: ['breath', 'grains'], goldleaf: ['glass', 'whale'],
+  pendulum: ['whale', 'grains'], hourglass: ['grains', 'glass'], mobile: ['glass', 'chirp'], lens: ['fm', 'glass'],
+  // life, by kind
+  flock: ['chirp', 'breath'], deer: ['breath', 'chirp'], owl: ['whale', 'breath'], fish: ['glass', 'chirp'],
   // the creatures, by species
   darter: ['chirp', 'glitch'], manta: ['whale', 'glass'], crane: ['chirp', 'breath'], eel: ['fm', 'grains'], jelly: ['glass', 'breath'],
 };

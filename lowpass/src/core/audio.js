@@ -901,6 +901,44 @@ export class Audio {
       case 'lock':
         this.note(pitch(8), { wave: 'soft', attack: 0.04, release: 0.7, gain: 0.026, cutoff: 600, dest: S });
         break;
+      case 'thunder': {
+        // a discharge's bolt, as late as it is far: a crack when near, then the long roll
+        const w = t + (o.delay || 0), k = o.gain ?? 1;
+        if (o.near) this.hiss({ type: 'highpass', freq: 1800, when: w, attack: 0.001, release: 0.16, gain: 0.05 * k, verb: 0.5 });
+        this.hiss({ type: 'lowpass', freq: 700, to: 110, when: w + 0.03, attack: 0.02, hold: 0.3, release: 3.8, gain: 0.07 * k, pink: true, verb: 1.0 });
+        this.note(R, { wave: 'sub', when: w, attack: 0.08, release: 3.2, gain: 0.05 * k, cutoff: 110 });
+        break;
+      }
+      case 'anomaly': {
+        // the world changing: a low swell, and a slow chord opening over it, in its color
+        this.note(R, { wave: 'sub', attack: 1.5, hold: 1.5, release: 6, gain: 0.06, linear: true, cutoff: 180 });
+        [0, 7, 12, 17].forEach((d, i) => this.note(pitch(d + (o.lift || 0)), { wave: 'choir', when: t + 0.3 + i * 0.35, attack: 2, hold: 1.5, release: 8, gain: 0.022, linear: true, cutoff: 1200, pan: (i - 1.5) * 0.4, verb: 1.3 }));
+        this.hiss({ type: 'bandpass', freq: 250, q: 1, to: 1200, attack: 2.2, hold: 0.8, release: 3.5, gain: 0.04, pink: true, verb: 0.9 });
+        break;
+      }
+      case 'fx': {
+        // an emitter fired (fx.js), each its own
+        const pan = (o.pan || 0) * 0.5;
+        if (o.id === 'glitch') {
+          // broken signal: short square blips out of order, and a crackle
+          [17, 12, 19, 12, 15, 20, 10, 17].forEach((d, i) => this.note(pitch(d), { type: 'square', when: t + i * 0.045 + (i % 3 ? 0 : 0.02), attack: 0.002, release: 0.04, gain: 0.008, cutoff: 2400, pan: pan + (i % 2 ? 0.3 : -0.3), dest: S }));
+          this.hiss({ type: 'highpass', freq: 3000, attack: 0.001, release: 0.25, gain: 0.03, verb: 0.2 });
+        } else if (o.id === 'chaos') {
+          // set running: two tones bending away from each other, the air turning
+          this.glide(pitch(10), pitch(4), { wave: 'soft', dur: 1.6, gain: 0.022, release: 1.5, verb: 0.9 });
+          this.glide(pitch(10), pitch(15), { wave: 'soft', dur: 1.6, gain: 0.018, release: 1.5, verb: 0.9 });
+          this.hiss({ type: 'bandpass', freq: 400, q: 3, to: 1800, attack: 0.3, hold: 0.4, release: 1.4, gain: 0.04, pink: true, verb: 0.7 });
+        } else if (o.id === 'voxel') {
+          // set in blocks: a square arpeggio climbing, step by step
+          [10, 12, 13, 15, 17, 20].forEach((d, i) => this.note(pitch(d), { type: 'square', when: t + i * 0.07, attack: 0.003, release: 0.09, gain: 0.009, cutoff: 1800, pan, dest: S, verb: 0.3 }));
+        } else {
+          // breaking: a crack, a low thump, and glass falling all about
+          this.hiss({ type: 'highpass', freq: 1800, attack: 0.001, release: 0.18, gain: 0.07, verb: 0.6 });
+          this.note(R * 2, { wave: 'sub', attack: 0.005, release: 0.6, gain: 0.05, cutoff: 180 });
+          for (let i = 0; i < 12; i++) this.note(pitch(15 + ((i * 7) % 9), 1), { type: 'sine', when: t + 0.05 + Math.random() * 0.9, attack: 0.002, release: 0.5 + Math.random() * 0.6, gain: 0.006, pan: Math.random() * 1.6 - 0.8, dest: S, verb: 1.0 });
+        }
+        break;
+      }
       case 'flee':
         // and it is off: a rush of air, and the call again, higher
         this.hiss({ type: 'bandpass', freq: 700, q: 1.2, to: 2600, attack: 0.05, release: 0.6, gain: 0.04, pink: true, verb: 0.5 });

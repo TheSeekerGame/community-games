@@ -19,7 +19,9 @@ export function takePhoto(game, a, from = null) {
   cam.up.set(0, 1, 0);
   cam.lookAt(focus);
   const dist = nose.distanceTo(focus);
-  cam.fov = clamp((2 * Math.atan((a.model.span * 1.3) / Math.max(dist, 1)) * 180) / Math.PI, 12, 64);
+  // (broken apart, it fills more of the air)
+  const wide = a.fx && (a.fx.has('shatter') || a.fx.has('freeze')) ? 2.1 : a.fx && a.fx.any ? 1.5 : 1.3;
+  cam.fov = clamp((2 * Math.atan((a.model.span * wide) / Math.max(dist, 1)) * 180) / Math.PI, 12, 64);
   cam.updateProjectionMatrix();
   cam.updateMatrixWorld();
   const px = U.uPxScale.value;

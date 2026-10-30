@@ -5,6 +5,7 @@ import { describeDeep } from './deep.js';
 import { describeCreature } from './species.js';
 import { describeLanding } from './clearing.js';
 import { describeCurio } from './curios.js';
+import { describeLife } from './life.js';
 
 // What grows in the forest, from a 256-bit seed.
 //
@@ -30,15 +31,19 @@ import { describeCurio } from './curios.js';
 //
 // Raise GENERATOR_VERSION when the output for a seed changes.
 
-export const GENERATOR_VERSION = 5;
+export const GENERATOR_VERSION = 6;
 
 // What stands on the mountains is its own (mountain.js): a wild one that rises there is
 // drawn from these instead, and at any depth from the mountains' own forms (deep.js).
 export const MOUNTAIN_FAMILIES = ['cairns', 'banners', 'relay', 'door', 'arch', 'observatory', 'harp', 'ice'];
+// and what stands in the turned stands, among the gold birches (autumn.js), at the surface
+// and below (deep.js)
+export const AUTUMN_FAMILIES = ['leafstorm', 'lanternbirch', 'amber', 'birches', 'hearth', 'goldleaf'];
 
 // (echo, the witnessed seeker, stays last: a wild one is never drawn from it)
 export const FAMILIES = ['ring', 'obelisk', 'orb', 'lattice', 'shell', 'crystal', 'tether', 'fungi', 'gate', 'solids', 'glyph', 'chimes',
-  'beacon', 'orrery', 'helix', 'tesseract', 'wreck', 'stair', 'arbor', 'pool', 'sentinel', 'swarm', 'cradle', 'lanterns', 'dish', 'echo'];
+  'beacon', 'orrery', 'helix', 'tesseract', 'wreck', 'stair', 'arbor', 'pool', 'sentinel', 'swarm', 'cradle', 'lanterns', 'dish',
+  'pendulum', 'hourglass', 'mobile', 'lens', 'echo'];
 
 // the light a colorway gives: [color, strength]
 const BY_COLORWAY = {
@@ -52,6 +57,8 @@ const CODE = {
   ring: 'HNG', obelisk: 'OBL', orb: 'ORB', lattice: 'LTC', shell: 'SHL', crystal: 'CRY', tether: 'TTH', fungi: 'FNG', gate: 'GTE', solids: 'SLD', glyph: 'GLY', chimes: 'CHM', echo: 'ECH',
   beacon: 'BCN', orrery: 'ORR', helix: 'HLX', tesseract: 'TSR', wreck: 'DRL', stair: 'ASC', arbor: 'ARB', pool: 'MRR', sentinel: 'SNT', swarm: 'SWM', cradle: 'CRD', lanterns: 'LNT', dish: 'ANT',
   cairns: 'CRN', banners: 'WND', relay: 'RLY', door: 'DOR', arch: 'ARH', observatory: 'OBS', harp: 'HRP', ice: 'ICE',
+  leafstorm: 'LFS', lanternbirch: 'LBR', amber: 'AMB', birches: 'BRC', hearth: 'HRT', goldleaf: 'GLF',
+  pendulum: 'PND', hourglass: 'HRG', mobile: 'MBL', lens: 'LNS',
 };
 
 const CLASS = {
@@ -60,6 +67,8 @@ const CLASS = {
   beacon: 'Beacon', orrery: 'Orrery', helix: 'Helix', tesseract: 'Hypersolid', wreck: 'Derelict', stair: 'Ascent', arbor: 'Elder growth',
   pool: 'Mirror', sentinel: 'Sentinels', swarm: 'Swarm', cradle: 'Cradle', lanterns: 'Lanterns', dish: 'Listening post',
   cairns: 'Cairns', banners: 'Wind lines', relay: 'Relay', door: 'Door in the rock', arch: 'Arch', observatory: 'Observatory', harp: 'Wind harp', ice: 'Frozen fall',
+  leafstorm: 'Leaf storm', lanternbirch: 'Lantern birch', amber: 'Amber', birches: 'Birch ring', hearth: 'Cold fire', goldleaf: 'Gold leaf',
+  pendulum: 'Pendulum', hourglass: 'Hourglass', mobile: 'Mobile', lens: 'Burning lens',
 };
 
 const NOUNS = {
@@ -93,6 +102,11 @@ const NOUNS = {
   relay: ['Relay', 'Mast', 'Station', 'Repeater', 'Signal', 'Post'], door: ['Door', 'Threshold', 'Portal', 'Entrance', 'Way In', 'Gate'],
   arch: ['Arch', 'Span', 'Bridge', 'Brow', 'Window', 'Bow'], observatory: ['Observatory', 'Dome', 'Watch', 'Eye', 'Lookout', 'Star House'],
   harp: ['Harp', 'Lyre', 'Strings', 'Instrument', 'Choir', 'Loom'], ice: ['Fall', 'Cascade', 'Curtain', 'Icefall', 'Organ', 'Silence'],
+  leafstorm: ['Storm', 'Gyre', 'Whirl', 'Column', 'Turning', 'Gathering'], lanternbirch: ['Birch', 'Lantern Tree', 'Vigil', 'Bough', 'Watch', 'Keeper'],
+  amber: ['Amber', 'Drop', 'Tear', 'Keeping', 'Memory', 'Resin'], birches: ['Ring', 'Circle', 'Grove', 'Council', 'Fall', 'Gathering'],
+  hearth: ['Hearth', 'Fire', 'Embers', 'Kindling', 'Warmth', 'Vigil'], goldleaf: ['Leaf', 'Blade', 'Sail', 'Banner', 'Page', 'Flame'],
+  pendulum: ['Pendulum', 'Plumb', 'Swing', 'Measure', 'Witness', 'Rosette'], hourglass: ['Hourglass', 'Glass', 'Measure', 'Sand', 'Turning', 'Hour'],
+  mobile: ['Mobile', 'Balance', 'Scales', 'Constellation', 'Weather', 'Hang'], lens: ['Lens', 'Eye', 'Burning Glass', 'Focus', 'Gathering', 'Point'],
 };
 const ADJ = ['Hollow', 'Pale', 'Silent', 'Patient', 'Drowned', 'Sleeping', 'Unlit', 'Folded', 'Listening', 'Distant', 'Last',
   'Second', 'Inverted', 'Quiet', 'Slow', 'Cold', 'Borrowed', 'Forgotten', 'Waking', 'Nameless', 'Leaning', 'Humming',
@@ -127,6 +141,11 @@ const MOUNTAIN_ORIGIN = [
   'Above the treeline. The Codex holds no other record of it.',
   'Out of the fog, on stone. Nobody else will ever stand where it stands.',
 ];
+const AUTUMN_ORIGIN = [
+  'Among the gold birches. No other ship will find it.',
+  'In a turned stand, where the leaves are going; seen from this ship alone.',
+  'Where the forest turns gold. The Codex holds no other record of it.',
+];
 const WILD_LIGHT = [0x91cbde, 0xd6edf5, 0x8ca893, 0x7bacbc, 0x97acb0, 0xcfdde4, 0x8f7aa8, 0xaf634b];
 
 const PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43];
@@ -149,6 +168,13 @@ const SEQ = {
   'odd numbers': (n) => Array.from({ length: n }, (_, i) => 2 * i + 1),
   'squares': (n) => Array.from({ length: n }, (_, i) => (i + 1) * (i + 1)),
 };
+
+// What a wild one looks like, to tell one shape from another (game.js keeps the same
+// shape from coming back too soon): its form below the surface, its species if it flies,
+// else its family.
+export function shapeOf(d) {
+  return d.family === 'deep' ? `deep:${d.form}` : d.family === 'creature' || d.family === 'life' ? `${d.family}:${d.species}` : d.family;
+}
 
 // A fresh seed for a wild artifact: 32 random bytes from this browser.
 export function wildSeed() {
@@ -177,7 +203,7 @@ export function describe(move, seekerInfo, force = null) {
   const charge = move.charge || 0;
 
   // family: a witnessed artifact is the seeker itself
-  let family = wild ? (move.mountain ? R0.pick(MOUNTAIN_FAMILIES) : FAMILIES[Math.floor(R0() * (FAMILIES.length - 1))]) : 'echo';
+  let family = wild ? (move.mountain ? R0.pick(MOUNTAIN_FAMILIES) : move.autumn ? R0.pick(AUTUMN_FAMILIES) : FAMILIES[Math.floor(R0() * (FAMILIES.length - 1))]) : 'echo';
   if (force) family = force;
   if (family === 'echo' && !lead) family = 'obelisk';
 
@@ -190,16 +216,17 @@ export function describe(move, seekerInfo, force = null) {
   const depth = wild ? Math.max(0, Math.floor(move.depth || 0)) : 0;
   // a creature (species.js): a wild one that flies, and flees; a clearing to land in
   // (clearing.js); or one of the things about a clearing, found on foot (curios.js)
-  const creature = wild && !!move.creature, landing = wild && !!move.landing, curio = wild && !!move.curio;
-  const special = creature || landing || curio;
+  const creature = wild && !!move.creature, landing = wild && !!move.landing, curio = wild && !!move.curio, life = wild && !!move.life;
+  const special = creature || landing || curio || life;
   const d = {
     v: GENERATOR_VERSION, tx: move.tx, key: move.key || move.tx, total: move.total || tokens.length, block: wild ? null : move.block, tokens, lead, family, accent, strength, size, count,
     pool: move.pool || 'dormant', charge, recipients: move.recipients || 0, time: move.time || null,
-    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !special && !!move.mountain, plus: wild && !special && depth >= 1 && !!move.plus,
+    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !special && !!move.mountain, autumn: wild && !special && !move.mountain && !!move.autumn, plus: wild && !special && depth >= 1 && !!move.plus,
   };
   const P = d.params;
   let structure = '';
-  if (creature) describeCreature(d, move, R1, R3);
+  if (life) describeLife(d, move, R1, R3);
+  else if (creature) describeCreature(d, move, R1, R3);
   else if (landing) describeLanding(d, move, R1);
   else if (curio) describeCurio(d, move, R1, R3);
   else if (depth >= 1) describeDeep(d, move, R1, R3);
@@ -517,6 +544,66 @@ export function describe(move, seekerInfo, force = null) {
       P.columns = R1.int(9, 17);
       structure = `A fall of water stopped where it fell: ${P.columns} columns of ice down a cliff, lit from within.`;
       break;
+    case 'pendulum':
+      P.height = R1.range(34, 48) * size;
+      P.span = R1.range(26, 36) * size;
+      P.prec = R1.pick([0.05, 0.08, 0.13]);
+      structure = `A pendulum ${Math.round(P.height - 6)} meters long on a gantry of stone; its plane turns as it swings, and it draws a flower of light on the floor under it, stroke by stroke.`;
+      break;
+    case 'hourglass':
+      P.height = R1.range(28, 40) * size;
+      P.posts = R1.pick([3, 4, 5, 6]);
+      P.period = R1.pick([21, 34, 55]);
+      structure = `An hourglass ${Math.round(P.height)} meters tall in a frame of ${P.posts} posts; its sand of light runs down in ${P.period} seconds, and then it turns itself over.`;
+      break;
+    case 'mobile':
+      P.height = R1.range(40, 55) * size;
+      P.span = R1.range(22, 34) * size;
+      P.levels = R1.int(2, 3);
+      structure = `A mobile hung from nothing: arms balanced on arms, ${NUMW[P.levels + 1].toLowerCase()} deep, a disc at every free end, every arm turning on its own.`;
+      break;
+    case 'lens':
+      P.height = R1.range(22, 32) * size;
+      P.radius = R1.range(7, 10) * size;
+      structure = `A lens ${Math.round(P.radius * 2)} meters across held in a ring over the clearing; it gathers the light of the sky to one point on the ground, and the point burns.`;
+      break;
+    case 'leafstorm':
+      P.n = R1.pick([233, 377, 610]);
+      P.height = R1.range(30, 46) * size;
+      P.radius = R1.range(7, 11) * size;
+      P.turns = R1.int(2, 4);
+      P.stones = R1.pick([5, 7, 8, 13]);
+      structure = `${P.n} leaves held turning in the air, ${P.turns} turns from the ground to the top; ${NUMW[P.stones].toLowerCase()} stones keep it.`;
+      break;
+    case 'lanternbirch':
+      P.n = R1.int(13, 34);
+      P.height = R1.range(28, 40) * size;
+      structure = `A birch ${Math.round(P.height)} meters tall, bare, hung with ${P.n} lanterns that sway in no wind.`;
+      break;
+    case 'amber':
+      P.radius = R1.range(5, 8) * size;
+      P.holds = R1.pick(['tree', 'moth', 'key']);
+      structure = `A drop of amber ${Math.round(P.radius * 2)} meters across in a knot of roots; in it, dark, ${P.holds === 'tree' ? 'a small spruce' : P.holds === 'moth' ? 'a moth with its wings open' : 'a key'}.`;
+      break;
+    case 'birches':
+      P.n = R1.pick([7, 9, 11, 13]);
+      P.radius = R1.range(9, 14) * size;
+      P.height = R1.range(22, 32) * size;
+      P.lean = R1.range(0.04, 0.12);
+      P.leaves = R1.int(60, 110);
+      structure = `${NUMW[P.n]} birches in a ring, leaning in; leaves fall inside it and never outside.`;
+      break;
+    case 'hearth':
+      P.stones = R1.int(7, 13);
+      P.height = R1.range(9, 14) * size;
+      P.tongues = R1.int(5, 9);
+      structure = `A fire laid in a ring of ${P.stones} stones, burning pale gold and giving no heat; its embers go up a long way.`;
+      break;
+    case 'goldleaf':
+      P.height = R1.range(26, 38) * size;
+      P.veins = R1.pick([5, 8, 13]);
+      structure = `One leaf of gold, ${Math.round(P.height)} meters tall, standing on its stem; ${P.veins} veins, lit.`;
+      break;
     case 'echo': {
       P.scale = R1.range(0.55, 0.66) * size;     // meters per art pixel: 30 to 60 meters tall
       P.hover = R1.range(9, 14) * size;
@@ -544,6 +631,10 @@ export function describe(move, seekerInfo, force = null) {
     d.notes = [d.structure, d.hint, `Its light pulses ${k} of every ${n} steps; it calls near ${hz} Hz.`, d.origin];
     return d;
   }
+  if (life) {
+    d.notes = [d.structure, d.hint, d.origin];
+    return d;
+  }
   if (landing || curio) {
     d.notes = [d.structure, `Its light pulses ${k} of every ${n} steps; it hums near ${hz} Hz.`, R3.pick(FLAVOR), d.origin];
     return d;
@@ -567,7 +658,7 @@ export function describe(move, seekerInfo, force = null) {
   d.code = `${CODE[family]}-${seedHex.slice(2, 6).toUpperCase()}`;
   d.cls = CLASS[family];
   let origin;
-  if (wild) origin = R3.pick(d.mountain ? MOUNTAIN_ORIGIN : WILD_ORIGIN);
+  if (wild) origin = R3.pick(d.mountain ? MOUNTAIN_ORIGIN : d.autumn ? AUTUMN_ORIGIN : WILD_ORIGIN);
   else {
     const total = move.total || tokens.length;
     const who = tokens.length > 1 ? `SEEKER ${tokens.map((t) => '#' + t).join(', ')} moved together` : total > 1 ? `SEEKER #${lead} moved, one of ${total} that moved together` : `SEEKER #${lead} moved`;

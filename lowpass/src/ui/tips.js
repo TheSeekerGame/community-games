@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { load, save } from '../core/store.js';
+import { EFFECTS } from '../artifacts/fx.js';
 
 // Teaching, one thing at a time. A quiet line above the keys says what to press for the
 // next thing the player has not yet done, until it has been done once (remembered in this
@@ -40,6 +41,12 @@ export class Tips {
     const g = this.g, L = this.learned, t = this.inMode, touch = g.input.touchMode;
     if (g.mode === 'fly' || g.mode === 'seat') {
       const f = g.field;
+      // an emitter bought and never fired: once, while something is in reach for it
+      const fx = g.progress.fx.length && !L.fx && g.fxTarget ? g.progress.fx[0] : null;
+      if (fx) {
+        const e = EFFECTS.find((x) => x.id === fx);
+        return { id: 'fx', caps: touch ? [[e.name]] : [[e.key]], text: `fire ${e.name} at it before you scan: it is worth more`, on: 10, off: 40 };
+      }
       if (f.state === 'near' || f.state === 'lock') return null;   // the brackets say it
       if (!L.steer) return t > 1.5 ? (touch ? { id: 'steer', caps: [], text: 'hold the left or right side of the screen to steer' } : { id: 'steer', caps: [['A', 'D'], ['←', '→']], text: 'steer' }) : null;
       if (g.alertness < 0.3) {

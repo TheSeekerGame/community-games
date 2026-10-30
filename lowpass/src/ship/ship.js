@@ -331,6 +331,8 @@ export class Ship {
     this.distance = 0;
     this.scanGlow = 0;
     this.boost = 0;           // 0..1: how hard the core burns (W held), eased in and out
+    this.lift = 0;            // meters more over the canopy than it would fly (an anomaly's)
+    this.flip = 0;            // 0..1: rolled over (an inversion)
     this._t = 0;
   }
 
@@ -404,34 +406,59 @@ export class Ship {
     return [Math.sin(this.heading), Math.cos(this.heading)];
   }
 
+  // Where the ship will be in d meters, along the curve it is turning on now (a turn of a
+  // little over a radian at most is foreseen).
+  _ahead(d) {
+    const w = this.yawRate, v = Math.max(this.speed, 1);
+    if (Math.abs(w * d) < 1e-3 * v) return [this.x + Math.sin(this.heading) * d, this.z + Math.cos(this.heading) * d, this.heading];
+    const turn = clamp((w * d) / v, -1.2, 1.2), h1 = this.heading + turn, r = d / turn;
+    return [this.x + r * (Math.cos(this.heading) - Math.cos(h1)), this.z + r * (Math.sin(h1) - Math.sin(this.heading)), h1];
+  }
+
   _target() {
-    const [fx, fz] = this.forward();
     let top = -Infinity;
+    // how far ahead it looks goes with how fast it flies: the distances are the Seed's at
+    // cruise, and a faster ship (or the boost) sees as many seconds ahead of it
+    const far = Math.max(1, this.speed / 24), side = Math.max(14, this.span * 0.7);
+    // (faster than the Seed's cruise, it climbs a range at a shallower slope, starting
+    // sooner: it cannot rise as fast as a slope that steep would ask at its speed; and a
+    // little sooner still, for its height lags a moment behind, and a moment is far)
+    const slope = CLIMB / Math.sqrt(far), lead = Math.max(0, this.speed - 24) * 0.5;
     // in the mountains, what is ahead counts less the farther off it is, at the slope the
     // ship climbs (about 24 degrees): it rises steadily up a range to pass just over it,
     // rather than leaping up early; elsewhere, as it always has
-    for (const d of [0, 35, 70, 110, 160, 220, 290]) {
-      const x = this.x + fx * d, z = this.z + fz * d;
-      const w = 1 - d / 420;
+    for (const d0 of [0, 35, 70, 110, 160, 220, 290]) {
+      const d = d0 * far, [x, z, h] = this._ahead(d), sx = Math.cos(h) * side, sz = -Math.sin(h) * side;
+      const w = 1 - d0 / 420;
       const m = d > 0 && mountainEnv(x, z) > 0;
-      const a = m ? Math.max((1 - w) * 18, d * CLIMB) : (1 - w) * 18, b = m ? Math.max((1 - w) * 22, d * CLIMB) : (1 - w) * 22;
+      const c = Math.max(0, d - lead) * slope;
+      const a = m ? Math.max((1 - w) * 18, c) : (1 - w) * 18, b = m ? Math.max((1 - w) * 22, c) : (1 - w) * 22;
       top = Math.max(top, canopyTop(x, z) - a);
-      top = Math.max(top, canopyTop(x - fz * 14, z + fx * 14) - b, canopyTop(x + fz * 14, z - fx * 14) - b);
+      top = Math.max(top, canopyTop(x - sx, z - sz) - b, canopyTop(x + sx, z + sz) - b);
     }
     // a range ahead: look further, to start that climb in time
-    for (const d of [380, 480, 600, 750]) {
-      const x = this.x + fx * d, z = this.z + fz * d;
-      if (mountainEnv(x, z) > 0) top = Math.max(top, canopyTop(x, z) - d * CLIMB);
+    for (const d0 of [380, 480, 600, 750]) {
+      const [x, z] = this._ahead(d0 * far);
+      if (mountainEnv(x, z) > 0) top = Math.max(top, canopyTop(x, z) - Math.max(0, d0 * far - lead) * slope);
     }
     // and over anything large standing in the way (the deep's artifacts)
     if (this.obstacle) {
       const cruise = top + CLEARANCE;
-      for (const d of [0, 35, 70, 110, 160, 220, 290]) {
-        const w = 1 - d / 420;
-        top = Math.max(top, this.obstacle(this.x + fx * d, this.z + fz * d, cruise) - (1 - w) * 18);
+      for (const d0 of [0, 35, 70, 110, 160, 220, 290]) {
+        const w = 1 - d0 / 420, [x, z] = this._ahead(d0 * far);
+        top = Math.max(top, this.obstacle(x, z, cruise) - (1 - w) * 18);
       }
     }
-    return top + CLEARANCE;
+    return top + CLEARANCE + this.lift;
+  }
+
+  // The least height it may fly at, here: clear of the canopy (or the bare rock) under its
+  // nose, its tail and its wingtips, whatever the spring that eases its height is doing.
+  _floor() {
+    const [fx, fz] = this.forward(), half = Math.max(8, (this.H ? this.H.zMax - this.H.zMin : 16) * 0.5), side = Math.max(5, this.span);
+    let top = canopyTop(this.x, this.z);
+    for (const [a, s] of [[half, 0], [-half, 0], [0, side], [0, -side], [half * 2.2, 0]]) top = Math.max(top, canopyTop(this.x + fx * a + fz * s, this.z + fz * a - fx * s));
+    return top + 4;
   }
 
   // boosting: true while the boost is asked for (outside, or at the controls)
@@ -456,12 +483,19 @@ export class Ship {
     // height eased over a moment (a ridge coming into view must not jolt it), and the
     // spring's stiffness easing between climbing and sinking rather than snapping
     const raw = this._target();
-    this._ty = this._ty === undefined ? raw : damp(this._ty, raw, raw > this._ty ? 2.2 : 1.2, dt);
+    const quick = Math.sqrt(Math.max(1, this.speed / 24));
+    this._ty = this._ty === undefined ? raw : damp(this._ty, raw, raw > this._ty ? 2.2 * quick : 1.2, dt);
     const err = this._ty + Math.sin(this._t * 0.37) * 1.2 - this.y;
-    const k = 0.55 + 1.05 * smoothstep(-6, 6, err);
+    const k = (0.55 + 1.05 * smoothstep(-6, 6, err)) * (err > 0 ? quick : 1);
     this.vy += (err * k * k - 2 * k * this.vy) * dt;
-    this.vy = clamp(this.vy, -9, 14);
+    // (it climbs as fast as its speed asks: a mountain's slope, boosting, is a steep climb)
+    this.vy = clamp(this.vy, -9, Math.max(14, this.speed * 0.62));
     this.y += this.vy * dt;
+    // and never into the ground: pushed up as it nears what is under it, and stopped at it
+    const floor = this._floor();
+    const push = (floor + 8 - this.y) * 2.5;
+    if (push > this.vy) this.vy += (push - this.vy) * Math.min(1, dt * 7);
+    if (this.y < floor) { this.y = floor; this.vy = Math.max(this.vy, 0); }
     this.pitch = damp(this.pitch, clamp(-this.vy / this.speed, -0.25, 0.3), 1.6, dt);
   }
 
@@ -469,7 +503,8 @@ export class Ship {
   sync(origin, beat) {
     const r = this.root;
     r.position.set(this.x - origin.x, this.y, this.z - origin.z);
-    r.rotation.set(this.pitch, this.heading, this.bank, 'YXZ');
+    // (rolled over, by an inversion)
+    r.rotation.set(this.pitch, this.heading, this.bank + Math.PI * this.flip, 'YXZ');
     r.updateMatrixWorld(true);
     const pulse = 0.85 + 0.15 * Math.cos(beat * TAU);
     this.coreMat.uniforms.uPulse.value = pulse;

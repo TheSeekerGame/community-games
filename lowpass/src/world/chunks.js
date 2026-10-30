@@ -3,7 +3,7 @@ import { hash2, fbm2, smoothstep, clamp } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
 import { height, forestDensity, treeKind, autumn, mountainEnv, WATER } from './terrain.js';
 import { treeGeometries, BIRCH, BIRCH_SHAPES, WALK } from './trees.js';
-import { worldMaterial, treeMaterial, COMMON, U, TREES, MAX_CLEARINGS } from '../render/materials.js';
+import { worldMaterial, treeMaterial, COMMON, U, TREES, MAX_CLEARINGS, STRANGE } from '../render/materials.js';
 
 // The forest streams in around the ship in square chunks, and the world keeps a floating
 // origin: positions on the GPU stay small however far the ship has flown.
@@ -29,6 +29,7 @@ const WATER_FRAG = /* glsl */ `
 ${COMMON}
 varying vec3 vWorld;
 uniform vec2 uOff;
+uniform float uStrange;
 void main() {
   vec3 v = normalize(uCamPos - vWorld);
   float fres = pow(1.0 - clamp(v.y, 0.0, 1.0), 4.0);
@@ -47,10 +48,12 @@ void main() {
     float d = length(L.xyz - vWorld);
     col += uPointColor[i] * pow(clamp(1.0 - d / L.w, 0.0, 1.0), 2.0) * 0.5;
   }
+  // made strange: lit from below, violet, its ripples drawn in light
+  if (uStrange > 0.0) col = mix(col, vec3(0.16, 0.06, 0.24) + vec3(0.5, 0.3, 0.9) * rip * rip * 0.6 + vec3(0.6, 0.4, 1.0) * fres * 0.3, uStrange);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
-const waterUniforms = { ...U, uOff: { value: new THREE.Vector2() } };
+const waterUniforms = { ...U, ...STRANGE, uOff: { value: new THREE.Vector2() } };
 const waterMat = new THREE.ShaderMaterial({ uniforms: waterUniforms, vertexShader: WATER_VERT, fragmentShader: WATER_FRAG });
 
 // Ground colors: dark moss under the trees, glades of moss and grass, frost up high,
@@ -283,11 +286,11 @@ export class Chunk {
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     g.setAttribute('emissive', new THREE.BufferAttribute(new Float32Array(pos.length / 3), 1));
     g.computeBoundingSphere();
-    this.ground = new THREE.Mesh(g, worldMaterial({ side: THREE.DoubleSide }));
+    this.ground = new THREE.Mesh(g, worldMaterial({ side: THREE.DoubleSide, strange: true }));
     // a chunk made as the ship flies comes into view in the dither over a moment (its
     // ground and its trees), never all at once: materials of its own until it has
     if (!this.world.instant) {
-      this.ground.material = worldMaterial({ side: THREE.DoubleSide, unique: true });
+      this.ground.material = worldMaterial({ side: THREE.DoubleSide, unique: true, strange: true });
       this.ground.material.uniforms.uReveal.value = 0;
       this.fade = 0;
       this.fadeTrees = [];
@@ -416,7 +419,7 @@ export class Chunk {
   // in view now: the shared materials again
   _faded() {
     this.ground.material.dispose();
-    this.ground.material = worldMaterial({ side: THREE.DoubleSide });
+    this.ground.material = worldMaterial({ side: THREE.DoubleSide, strange: true });
     // every tree mesh of it, shown yet or not (a level's first mesh waits until needed)
     const meshes = new Set([...this.group.children, ...this.base.filter(Boolean).map((b) => b.first), ...this.sets.flat().filter(Boolean)]);
     for (const m of meshes) {

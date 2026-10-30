@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "54ff81b7"; }
+:root { --build: "f3b8914a"; }
 
 :root {
   --u: 3px;
@@ -135,6 +135,11 @@ html.touchmode .hud .alert.fuel { left: calc(var(--u) * 30 + var(--sl)); top: ca
 .hud .status .dot { width: calc(var(--u) * 3); height: calc(var(--u) * 3); background: var(--muted); display: inline-block; }
 .hud .status .dot.live { background: var(--pos); animation: beat 1.333s steps(2) infinite; }
 .hud .status .dot.off { background: var(--neg); }
+.hud .anoms { position: absolute; right: calc(var(--u) * 8 + var(--sr)); top: calc(var(--u) * 19 + var(--st)); display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--u) * 1); }
+.hud .anoms .an { display: flex; align-items: center; gap: calc(var(--u) * 3); color: var(--a); letter-spacing: calc(var(--u) * 0.5); }
+.hud .anoms .an i { width: calc(var(--u) * 3); height: calc(var(--u) * 3); background: var(--a); transform: rotate(45deg); box-shadow: 0 0 calc(var(--u) * 3) var(--a); animation: beat 1.333s steps(2) infinite; }
+html.touchmode .hud .anoms { left: calc(var(--u) * 8 + var(--sl)); right: auto; top: calc(var(--u) * 44 + var(--st)); align-items: flex-start; }
+.hud.hidden .anoms { visibility: hidden; }
 .hud .notice { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 80vw; top: calc(var(--u) * 28); text-align: center; opacity: 0; transition: opacity 0.6s; }
 .hud .notice.on { opacity: 1; }
 .hud .notice .t { letter-spacing: var(--u); }
@@ -153,6 +158,17 @@ html.touchmode .hud .alert.fuel { left: calc(var(--u) * 30 + var(--sl)); top: ca
 .hud .speech .who { color: var(--pos); letter-spacing: var(--u); }
 .hud .speech .said { color: var(--text); min-height: calc(var(--u) * 12); }
 .hud .speech:not(.done) .said::after { content: '_'; color: var(--pos); animation: beat 0.667s steps(2) infinite; }
+.hud .card .fxl { color: #e6b8ff; }
+.hud .fxrow { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(var(--u) * 3); opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+.hud .fxrow.on { opacity: 1; }
+#ui .hud .fxrow.on .fx { pointer-events: auto; }
+#ui .hud .fx { display: flex; align-items: center; gap: calc(var(--u) * 2.5); font: inherit; color: var(--text); text-shadow: inherit; letter-spacing: calc(var(--u) * 0.5); background: rgba(4, 6, 10, 0.62); border: var(--u) solid var(--line); padding: calc(var(--u) * 2) calc(var(--u) * 5) calc(var(--u) * 2) calc(var(--u) * 3); clip-path: var(--cut1); cursor: pointer; touch-action: none; }
+#ui .hud .fx .kc { margin-right: 0; }
+#ui .hud .fx .fxdot { width: calc(var(--u) * 3); height: calc(var(--u) * 3); background: var(--fx); transform: rotate(45deg); box-shadow: 0 0 calc(var(--u) * 3) var(--fx); }
+#ui .hud .fx.done { border-color: var(--fx); color: var(--fx); background: rgba(4, 6, 10, 0.75); }
+#ui .hud .fx.done .fxdot { animation: beat 0.667s steps(2) infinite; }
+#ui .hud .fx.low { opacity: 0.4; }
+html.touchmode #ui .hud .fx { padding: calc(var(--u) * 4) calc(var(--u) * 6); }
 .hud .tip { max-width: 100%; display: flex; flex-wrap: wrap; justify-content: center; text-align: center; align-items: center; gap: calc(var(--u) * 3); padding: calc(var(--u) * 2) calc(var(--u) * 5); background: rgba(4, 6, 10, 0.5); clip-path: var(--cut1); color: var(--text); opacity: 0; transition: opacity 0.8s; }
 .hud .tip.on { opacity: 1; }
 .hud .tip .kg { display: inline-flex; }
@@ -296,7 +312,13 @@ html.touchmode .term .rrow { padding: calc(var(--u) * 2.5) calc(var(--u) * 2); }
 .term .ubar { flex: 1 1 calc(var(--u) * 60); height: calc(var(--u) * 4); background: rgba(11, 13, 19, 0.75); border: var(--u) solid var(--line); position: relative; clip-path: var(--cut1); }
 .term .ubar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--acc); }
 .term .shop.wide { max-width: calc(var(--u) * 300); overflow: hidden; }
-.term .shelves { display: flex; gap: calc(var(--u) * 3); flex: none; }
+.term .shelves { display: flex; gap: calc(var(--u) * 3); flex: none; flex-wrap: wrap; }
+.term .shopnote { max-width: calc(var(--u) * 220); }
+.term .upg.fxc .uname { display: flex; align-items: center; gap: calc(var(--u) * 3); color: var(--fx); }
+.term .upg.fxc .fxdot { width: calc(var(--u) * 3); height: calc(var(--u) * 3); background: var(--fx); transform: rotate(45deg); box-shadow: 0 0 calc(var(--u) * 3) var(--fx); }
+.term .upg.fxc .sline { color: #c7cbc0; }
+.term .upg.fxc .ubar i { background: var(--fx); }
+.term .upg.fxc.sel { border-color: var(--fx); }
 .term .hangar { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 4); padding-right: calc(var(--u) * 2); }
 .term .shop.wide .shoptop { flex: none; }
 html.touchmode .term .hangar { touch-action: pan-y; }

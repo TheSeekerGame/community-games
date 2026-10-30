@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Pipeline, FOG, POST } from './render/pipeline.js';
 import { U } from './render/materials.js';
 import { World } from './world/chunks.js';
-import { autumn, mountain, mountainEnv, canopyTop, WATER } from './world/terrain.js';
+import { autumn, mountain, mountainEnv, canopyTop, riverAt, height, WATER } from './world/terrain.js';
 import { Atmosphere } from './world/atmosphere.js';
 import { Ship } from './ship/ship.js';
 import { shipById } from './ship/designs.js';
@@ -450,7 +450,7 @@ export class Game {
       // something from below the surface: its own call, and always a word
       const d = a.d, st = stratum(d.depth);
       const title = `DEPTH ${st.numeral}${d.plus ? '+' : ''} · ${d.plus ? 'MARKED' : d.glimpse ? 'FROM BEYOND YOUR REACH' : st.name.toUpperCase()}`;
-      const where = d.mountain ? 'on the mountain ahead' : d.autumn ? 'among the gold birches' : 'rising out of the fog';
+      const where = d.mountain ? 'on the mountain ahead' : d.river ? 'on the river ahead' : d.autumn ? 'among the gold birches' : 'rising out of the fog';
       // (a creature is announced as anything else from its depth, and not named)
       const what = d.family === 'creature' ? `, ${where}` : `: ${d.cls.toLowerCase()}, ${where}`;
       const sub = d.plus ? `The rarest of ${st.title}${what}` : d.glimpse ? `Deeper than your scanner reaches${what}` : `From ${st.title}${what}`;
@@ -473,12 +473,15 @@ export class Game {
       // that goes by itself
       if (this._aboard()) {
         this.audio.play('chime');
-        const where = a.d.mountain ? 'On the mountain ahead of the ship' : a.d.autumn ? 'Among the gold birches ahead of the ship' : 'Rising out of the fog ahead of the ship';
+        const where = a.d.mountain ? 'On the mountain ahead of the ship' : a.d.river ? 'On the river ahead of the ship' : a.d.autumn ? 'Among the gold birches ahead of the ship' : 'Rising out of the fog ahead of the ship';
         if (this.mode === 'seat' && !this.menu.open) this.hud.say('WILD ARTIFACT AHEAD', where, 4);
         else this.hud.toast('WILD ARTIFACT NEARBY', `${where}. Only this ship will ever find it.`);
       } else if (a.d.mountain) {
         // the mountains' own are always named
         this.hud.say('SIGNAL ON THE MOUNTAIN', `${a.d.cls} · only this ship can find it`, 4.5);
+      } else if (a.d.river) {
+        // and the rivers'
+        this.hud.say('SIGNAL ON THE RIVER', `${a.d.cls} · only this ship can find it`, 4.5);
       } else if (a.d.autumn) {
         // and the turned stands'
         this.hud.say('SIGNAL AMONG THE BIRCHES', `${a.d.cls} · only this ship can find it`, 4.5);
@@ -542,6 +545,18 @@ export class Game {
     else if (mt > 0.5 && !this._mountainSaid && !overlay && (this.mode === 'fly' || this.mode === 'seat')) {
       this._mountainSaid = true;
       this.hud.say('MOUNTAINS', 'peaks rising out of the fog', 4);
+    }
+    // over a river, or down in a canyon: a word (once, until it is well behind)
+    this._riverT = (this._riverT || 0) - dt;
+    if (this._riverT <= 0) {
+      this._riverT = 0.5;
+      const sx = this.ship.x, sz = this.ship.z, R = riverAt(sx, sz);
+      if (R.d > 400) this._riverSaid = false;
+      else if (!this._riverSaid && R.d < R.rw && height(sx, sz) < WATER && !overlay && (this.mode === 'fly' || this.mode === 'seat')) {
+        this._riverSaid = true;
+        const deep = Math.max(height(sx + R.gx * 120, sz + R.gz * 120), height(sx - R.gx * 120, sz - R.gz * 120)) - WATER > 45;
+        this.hud.say(deep ? 'A CANYON' : 'A RIVER', deep ? 'cut down through the hills: follow it' : 'winding through the forest: follow it', 4.5);
+      }
     }
     if (this._autumn < 0.1) this._autumnSaid = false;
     else if (this._autumn > 0.5 && !this._autumnSaid && !overlay && (this.mode === 'fly' || this.mode === 'seat')) {
@@ -614,6 +629,7 @@ export class Game {
       ...(d.family === 'curio' ? { ground: true, curio: d.curio } : {}),
       ...(d.mountain ? { mountain: true } : {}),
       ...(d.autumn ? { autumn: true } : {}),
+      ...(d.river ? { river: true } : {}),
       ...(a.fx && a.fx.list.length ? { fx: [...a.fx.list] } : {}),
       ...(this.anomalies.now.length && d.kind === 'wild' ? { anomalies: this.anomalies.now } : {}),
     };
@@ -753,18 +769,21 @@ export class Game {
       // where it would rise is on a mountain: it is one of the mountains' own
       const [fx0, fz0] = this.ship.forward(), sd = this.field.spawnDistance();
       const onMountain = mountainEnv(this.ship.x + fx0 * sd, this.ship.z + fz0 * sd) > 0.45;
-      // and in a turned stand, one of the stands' own
-      const inAutumn = !onMountain && autumn(this.ship.x + fx0 * sd, this.ship.z + fz0 * sd) > 0.45;
+      // on a river (where it would rise is near one's middle), one of the rivers' own; else in
+      // a turned stand, one of the stands' own
+      const sx = this.ship.x + fx0 * sd, sz = this.ship.z + fz0 * sd;
+      const onRiver = !onMountain && riverAt(sx, sz).d < 90 && mountainEnv(sx, sz) < 0.08;
+      const inAutumn = !onMountain && !onRiver && autumn(sx, sz) > 0.45;
       // now and then, a creature (never on a mountain: what rises there is the mountains'
       // own), and now and then one of the marked: the rarest a depth holds
-      const creature = !onMountain && Math.random() < CREATURE;
+      const creature = !onMountain && !onRiver && Math.random() < CREATURE;
       const plus = !creature && depth >= 1 && Math.random() < PLUS;
       // and once the scanner reaches deep enough, very rarely, a clearing to land in
       const landing = !creature && !plus && !onMountain && !wave.length && this.progress.depth >= LANDING_DEPTH && Math.random() < LANDING;
       const recent = this.progress.seen;
       (wave.length ? this.field.spawnWave(wave, { far: away ? this.ship.speed * 30 : 0 })
         : landing ? this.field.spawnWild({ landing: true })
-          : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, autumn: inAutumn, plus, creature, recent }).then((a) => {
+          : this.field.spawnWild({ depth, glimpse: depth > this.progress.depth, mountain: onMountain, autumn: inAutumn, river: onRiver, plus, creature, recent }).then((a) => {
             this.progress.see(shapeOf(a.d));
             // the anomalies running lay their marks on it
             for (const m of this.anomalies.mark(a)) this.markFx(a, m);
@@ -1098,6 +1117,17 @@ export class Game {
         const a = await this.field.spawnWild({ life: sp, depth, ahead, lateral: 0, quiet: true });
         this._inspect = { a };
         return { name: a.d.name, code: a.d.code, notes: a.d.notes, x: Math.round(a.x), z: Math.round(a.z) };
+      },
+      // one of the rivers' own, at a depth (0: a surface family, named as form), on the
+      // river nearest the ship
+      river: async (depth = 0, form = null) => {
+        for (const a of [...this.field.active]) this.field.remove(a);
+        const R = riverAt(this.ship.x, this.ship.z), s = Math.sign(R.v) || 1;
+        const at = { x: this.ship.x - s * R.gx * R.d, z: this.ship.z - s * R.gz * R.d };
+        const opts = depth > 0 ? { depth, form, river: true } : { river: true, family: form || undefined };
+        const a = await this.field.spawnWild({ ...opts, ahead: 300, lateral: 0 });
+        this._inspect = { a };
+        return { name: a.d.name, code: a.d.code, form: a.d.form || a.d.family, notes: a.d.notes, x: Math.round(a.x), z: Math.round(a.z), at };
       },
       // a clearing to land in, ahead
       site: async (ahead = 320) => {

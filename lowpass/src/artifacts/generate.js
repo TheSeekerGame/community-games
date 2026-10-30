@@ -39,6 +39,8 @@ export const MOUNTAIN_FAMILIES = ['cairns', 'banners', 'relay', 'door', 'arch', 
 // and what stands in the turned stands, among the gold birches (autumn.js), at the surface
 // and below (deep.js)
 export const AUTUMN_FAMILIES = ['leafstorm', 'lanternbirch', 'amber', 'birches', 'hearth', 'goldleaf'];
+// and on the rivers and in the canyons (river.js; deep.js below), worth more for it
+export const RIVER_FAMILIES = ['falls', 'naturalbridge', 'waterwheel', 'ferry', 'drowned'];
 
 // (echo, the witnessed seeker, stays last: a wild one is never drawn from it)
 export const FAMILIES = ['ring', 'obelisk', 'orb', 'lattice', 'shell', 'crystal', 'tether', 'fungi', 'gate', 'solids', 'glyph', 'chimes',
@@ -59,6 +61,7 @@ const CODE = {
   cairns: 'CRN', banners: 'WND', relay: 'RLY', door: 'DOR', arch: 'ARH', observatory: 'OBS', harp: 'HRP', ice: 'ICE',
   leafstorm: 'LFS', lanternbirch: 'LBR', amber: 'AMB', birches: 'BRC', hearth: 'HRT', goldleaf: 'GLF',
   pendulum: 'PND', hourglass: 'HRG', mobile: 'MBL', lens: 'LNS',
+  falls: 'FLS', naturalbridge: 'BRG', waterwheel: 'WHL', ferry: 'FRY', drowned: 'DRW',
 };
 
 const CLASS = {
@@ -69,6 +72,7 @@ const CLASS = {
   cairns: 'Cairns', banners: 'Wind lines', relay: 'Relay', door: 'Door in the rock', arch: 'Arch', observatory: 'Observatory', harp: 'Wind harp', ice: 'Frozen fall',
   leafstorm: 'Leaf storm', lanternbirch: 'Lantern birch', amber: 'Amber', birches: 'Birch ring', hearth: 'Cold fire', goldleaf: 'Gold leaf',
   pendulum: 'Pendulum', hourglass: 'Hourglass', mobile: 'Mobile', lens: 'Burning lens',
+  falls: 'Falls', naturalbridge: 'Stone bridge', waterwheel: 'Waterwheel', ferry: 'Ferry', drowned: 'Drowned colonnade',
 };
 
 const NOUNS = {
@@ -107,6 +111,9 @@ const NOUNS = {
   hearth: ['Hearth', 'Fire', 'Embers', 'Kindling', 'Warmth', 'Vigil'], goldleaf: ['Leaf', 'Blade', 'Sail', 'Banner', 'Page', 'Flame'],
   pendulum: ['Pendulum', 'Plumb', 'Swing', 'Measure', 'Witness', 'Rosette'], hourglass: ['Hourglass', 'Glass', 'Measure', 'Sand', 'Turning', 'Hour'],
   mobile: ['Mobile', 'Balance', 'Scales', 'Constellation', 'Weather', 'Hang'], lens: ['Lens', 'Eye', 'Burning Glass', 'Focus', 'Gathering', 'Point'],
+  falls: ['Falls', 'Cascade', 'Pour', 'Spill', 'Veil', 'Voice'], naturalbridge: ['Bridge', 'Span', 'Crossing', 'Arch', 'Way Over', 'Brow'],
+  waterwheel: ['Wheel', 'Mill', 'Turning', 'Round', 'Engine', 'Patience'], ferry: ['Ferry', 'Boat', 'Crossing', 'Drifter', 'Barge', 'Passage'],
+  drowned: ['Colonnade', 'Columns', 'Court', 'Hall', 'Portico', 'Temple'],
 };
 const ADJ = ['Hollow', 'Pale', 'Silent', 'Patient', 'Drowned', 'Sleeping', 'Unlit', 'Folded', 'Listening', 'Distant', 'Last',
   'Second', 'Inverted', 'Quiet', 'Slow', 'Cold', 'Borrowed', 'Forgotten', 'Waking', 'Nameless', 'Leaning', 'Humming',
@@ -145,6 +152,11 @@ const AUTUMN_ORIGIN = [
   'Among the gold birches. No other ship will find it.',
   'In a turned stand, where the leaves are going; seen from this ship alone.',
   'Where the forest turns gold. The Codex holds no other record of it.',
+];
+const RIVER_ORIGIN = [
+  'On the river. No other ship will find it.',
+  'Where the river runs; seen from this ship alone, and only by following it.',
+  'Down in the cut the river made. The Codex holds no other record of it.',
 ];
 const WILD_LIGHT = [0x91cbde, 0xd6edf5, 0x8ca893, 0x7bacbc, 0x97acb0, 0xcfdde4, 0x8f7aa8, 0xaf634b];
 
@@ -203,7 +215,7 @@ export function describe(move, seekerInfo, force = null) {
   const charge = move.charge || 0;
 
   // family: a witnessed artifact is the seeker itself
-  let family = wild ? (move.mountain ? R0.pick(MOUNTAIN_FAMILIES) : move.autumn ? R0.pick(AUTUMN_FAMILIES) : FAMILIES[Math.floor(R0() * (FAMILIES.length - 1))]) : 'echo';
+  let family = wild ? (move.mountain ? R0.pick(MOUNTAIN_FAMILIES) : move.river ? R0.pick(RIVER_FAMILIES) : move.autumn ? R0.pick(AUTUMN_FAMILIES) : FAMILIES[Math.floor(R0() * (FAMILIES.length - 1))]) : 'echo';
   if (force) family = force;
   if (family === 'echo' && !lead) family = 'obelisk';
 
@@ -221,7 +233,7 @@ export function describe(move, seekerInfo, force = null) {
   const d = {
     v: GENERATOR_VERSION, tx: move.tx, key: move.key || move.tx, total: move.total || tokens.length, block: wild ? null : move.block, tokens, lead, family, accent, strength, size, count,
     pool: move.pool || 'dormant', charge, recipients: move.recipients || 0, time: move.time || null,
-    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !special && !!move.mountain, autumn: wild && !special && !move.mountain && !!move.autumn, plus: wild && !special && depth >= 1 && !!move.plus,
+    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !special && !!move.mountain, autumn: wild && !special && !move.mountain && !move.river && !!move.autumn, river: wild && !special && !move.mountain && !!move.river, plus: wild && !special && depth >= 1 && !!move.plus,
   };
   const P = d.params;
   let structure = '';
@@ -544,6 +556,39 @@ export function describe(move, seekerInfo, force = null) {
       P.columns = R1.int(9, 17);
       structure = `A fall of water stopped where it fell: ${P.columns} columns of ice down a cliff, lit from within.`;
       break;
+    case 'falls':
+      P.height = R1.range(24, 38) * size;
+      P.width = R1.range(12, 22) * size;
+      P.ribbons = R1.int(7, 12);
+      P.bank = 18;
+      structure = `Water falling ${Math.round(P.height)} meters from a shelf of rock into the river, in ${P.ribbons} ribbons; in the mist at its foot, a bow of light.`;
+      break;
+    case 'naturalbridge':
+      P.height = R1.range(24, 36) * size;
+      P.half = R1.range(26, 38) * size;
+      P.thick = R1.range(3.2, 4.6) * size;
+      structure = `A bridge of stone across the river, ${Math.round(P.height)} meters over the water: high enough to fly under. Threaded, it is worth more.`;
+      break;
+    case 'waterwheel':
+      P.radius = R1.range(9, 13) * size;
+      P.paddles = R1.pick([12, 16, 20, 24]);
+      P.speed = R1.range(0.15, 0.3);
+      P.bank = 18;
+      structure = `A wheel of stone ${Math.round(P.radius * 2)} meters across on the bank, ${P.paddles} paddles, turning in the current; its rim is written with light.`;
+      break;
+    case 'ferry':
+      P.length = R1.range(18, 26) * size;
+      P.speed = R1.range(2.5, 4.5);
+      structure = `A ferry ${Math.round(P.length)} meters long drifting down the river, a lantern at its bow and one at its stern; there is nobody aboard.`;
+      break;
+    case 'drowned':
+      P.n = R1.int(4, 7);
+      P.height = R1.range(16, 26) * size;
+      P.gap = R1.range(8, 11) * size;
+      P.width = R1.range(16, 22) * size;
+      P.fallen = R1.range(0.15, 0.4);
+      structure = `Two rows of ${P.n} columns standing in the river to their waists, some fallen; the water's light comes up from under them.`;
+      break;
     case 'pendulum':
       P.height = R1.range(34, 48) * size;
       P.span = R1.range(26, 36) * size;
@@ -658,7 +703,7 @@ export function describe(move, seekerInfo, force = null) {
   d.code = `${CODE[family]}-${seedHex.slice(2, 6).toUpperCase()}`;
   d.cls = CLASS[family];
   let origin;
-  if (wild) origin = R3.pick(d.mountain ? MOUNTAIN_ORIGIN : d.autumn ? AUTUMN_ORIGIN : WILD_ORIGIN);
+  if (wild) origin = R3.pick(d.mountain ? MOUNTAIN_ORIGIN : d.river ? RIVER_ORIGIN : d.autumn ? AUTUMN_ORIGIN : WILD_ORIGIN);
   else {
     const total = move.total || tokens.length;
     const who = tokens.length > 1 ? `SEEKER ${tokens.map((t) => '#' + t).join(', ')} moved together` : total > 1 ? `SEEKER #${lead} moved, one of ${total} that moved together` : `SEEKER #${lead} moved`;

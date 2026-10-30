@@ -55,6 +55,7 @@ const FAMILY = {
   arch: ['breath', 'glass'], observatory: ['glass', 'chirp'], harp: ['glass', 'grains'], ice: ['glass', 'chirp'],
   leafstorm: ['breath', 'grains'], lanternbirch: ['glass', 'chirp'], amber: ['whale', 'glass'], birches: ['breath', 'chirp'], hearth: ['breath', 'grains'], goldleaf: ['glass', 'whale'],
   pendulum: ['whale', 'grains'], hourglass: ['grains', 'glass'], mobile: ['glass', 'chirp'], lens: ['fm', 'glass'],
+  falls: ['breath', 'glass'], naturalbridge: ['whale', 'breath'], waterwheel: ['grains', 'chirp'], ferry: ['glass', 'whale'], drowned: ['whale', 'glass'],
   // life, by kind
   flock: ['chirp', 'breath'], deer: ['breath', 'chirp'], owl: ['whale', 'breath'], fish: ['glass', 'chirp'],
   // the creatures, by species

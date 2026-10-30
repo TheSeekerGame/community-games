@@ -1784,7 +1784,77 @@ function prism(k, P, S, art, mini) {
   return { light: new THREE.Vector3(0, Hc, 0), focus: new THREE.Vector3(0, mini ? 0 : Hc * 0.6, 0), span: Math.max(L * 1.4, 14 * S * f), height: Hc + L, solid: L, low: Hc - L * 0.6 };
 }
 
-const FORMS = { corolla, spine, nest, armillary, choir, geode, bloom, knot, nautilus, archipelago, murmuration, medusa, sun, watcher, chandelier, helicon, prism,
+// ------------------------------------------------------------------ the rivers' own
+// (deep.js draws from these for one that rises on a river or in a canyon)
+
+// LOTUS: a lotus of the deep floating on the river, pads of shell about it on the water,
+// its petals opening and closing, a light standing up out of its heart
+function lotus(k, P, S, art, mini) {
+  const R = art.R, c = art.pal, f = mini ? 0.45 : 1;
+  const y0 = mini ? 0 : 0.6, Rp = 13 * S * f;
+  const pads = [];
+  if (!mini) for (let i = 0; i < P.pads; i++) {
+    const a = i * GOLDEN, r = Rp * (1.4 + 0.25 * Math.sqrt(i)), pr = (3 + R() * 4) * S;
+    const pk = k.sub(Math.cos(a) * r, y0 - 0.3, Math.sin(a) * r);
+    pk.shell.add(new THREE.CylinderGeometry(pr, pr * 0.95, 0.4 * S, 18, 1, false, 0.25, TAU - 0.5), mat(0, 0, 0), mixHex(c.shellLo, c.third, 0.3));
+    pk.lit.add(new THREE.TorusGeometry(pr * 0.98, 0.12 * S, 3, 24), mat(0, 0.25 * S, 0, Math.PI / 2, 0, 0), c.third, PULSE);
+    pads.push({ k: pk, ph: R() * TAU });
+  }
+  const bloom = k.sub(0, y0, 0), petals = [];
+  for (let w = 0; w < P.whorls; w++) {
+    const n = 8 + w * 3;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU + w * 0.3, h = bloom.sub();
+      h.group.rotation.y = a;
+      const L = Rp * (1 - w * 0.22), g = new THREE.SphereGeometry(L * 0.5, 8, 6, 0, Math.PI, 0, Math.PI);
+      g.scale(0.55, 0.2, 1);
+      g.translate(0, 0, L * 0.5);
+      const p = h.sub();
+      p.shell.add(g, mat(0, 0, 0), mixHex(c.shellLo, c.shellHi, 0.3 + w * 0.25));
+      petals.push({ p, w });
+    }
+  }
+  k.glow.ico(2.4 * S * f, 1, mat(0, y0 + 3 * S * f, 0), mixHex(c.light, 0xffffff, 0.5), 1);
+  if (!mini) bar(k.glow, new THREE.Vector3(0, y0 + 3 * S, 0), new THREE.Vector3(0, y0 + 40 * S, 0), 0.8 * S, c.light, 0.5);
+  art.updates.push((t) => {
+    const open = 0.5 + 0.5 * Math.sin(t * 0.18);
+    for (const q of petals) q.p.group.rotation.x = -(0.2 + q.w * 0.35 + open * (0.9 - q.w * 0.2));
+    bloom.group.rotation.y = t * 0.03;
+    for (const q of pads) q.k.group.position.y = y0 - 0.3 + Math.sin(t * 0.8 + q.ph) * 0.15 * S;
+  });
+  return { light: new THREE.Vector3(0, y0 + 3 * S * f, 0), focus: new THREE.Vector3(0, y0 + 4 * S * f, 0), span: Rp * (mini ? 1.1 : 2), height: y0 + 12 * S * f, solid: Rp, low: 0 };
+}
+
+// TIDE-GATE: two towers of shell, one on either bank, and between them across the river a
+// curtain of light rippling in no wind, for the ship to fly through
+function tidegate(k, P, S, art, mini) {
+  const c = art.pal, f = mini ? 0.45 : 1;
+  const H = (mini ? 22 : 56) * S, half = mini ? 10 * S : Math.max(26 * S, (art.river ? art.river.rw : 20) + 10 * S);
+  const y0 = mini ? -H / 2 : 0;
+  for (const q of [-1, 1]) {
+    const t = k.sub(q * half, y0 + (mini ? 0 : art.ground(q * half, 0)), 0);
+    t.shell.cyl(3.2 * S * f, 4.4 * S * f, H, 6, mat(0, H / 2, 0), c.shellHi);
+    t.stone.cyl(5 * S * f, 5.4 * S * f, 3 * S * f, 6, mat(0, 1.5 * S * f, 0), c.stone[2]);
+    t.lit.box(1.4 * S * f, 1.4 * S * f, 1.4 * S * f, mat(0, H + 1.4 * S * f, 0), c.light, PULSE);
+    for (let i = 1; i < 6; i++) t.lit.add(new THREE.TorusGeometry(3.6 * S * f, 0.2 * S * f, 3, 24), mat(0, (H * i) / 6, 0, Math.PI / 2, 0, 0), [c.light, c.second][i % 2], PULSE);
+  }
+  if (!mini) bar(k.shell, new THREE.Vector3(-half, y0 + H, 0), new THREE.Vector3(half, y0 + H, 0), 2 * S, c.shellLo);
+  const n = mini ? 8 : P.bands, M = 14;
+  const curtain = strips(art, k.group, n, M, (q, u, side) => mixHex(side ? c.second : c.light, c.third, u), (q, u) => Math.pow(1 - u, 0.5) * 0.8, 0.9);
+  art.updates.push((t) => {
+    for (let q = 0; q < n; q++) {
+      const x0 = ((q + 0.5) / n - 0.5) * half * 1.9, w = (half / n) * 0.95;
+      for (let i = 0; i < M; i++) {
+        const u = i / (M - 1), y = y0 + H - 1.5 * S - u * (H - 2 * S), dz = Math.sin(t * 0.8 + q * 0.7 + u * 3) * 2.5 * S * f * u;
+        curtain.set(q, i, x0 - w, y, dz, x0 + w, y, dz);
+      }
+    }
+    curtain.commit();
+  });
+  return { light: new THREE.Vector3(0, y0 + H * 0.6, 0), focus: new THREE.Vector3(0, y0 + H * 0.5, 0), span: half * 1.1, height: y0 + H + 3 * S, solid: 0, low: 0 };
+}
+
+const FORMS = { corolla, spine, nest, armillary, choir, geode, bloom, knot, nautilus, archipelago, murmuration, medusa, sun, watcher, chandelier, helicon, prism, lotus, tidegate,
   spire, temple, halo, loom, storm, serpent, cathedral, tree, vortex, mobius, menger, whale, turning, pyre, seedpod, leaffall };
 
 // ------------------------------------------------------------------ ornaments
@@ -2002,6 +2072,7 @@ export function buildDeep(d, A, mats, ctx) {
   const art = {
     d, st, depth: d.depth, R: rng(d.seed[5]), kits: [], updates: [], fades: [],
     ground: (x, z) => (ctx.ground ? ctx.ground(x, z) : 0),
+    river: ctx.river || null,
     pal: {
       stone: STONE.map(stoneOf), light: st.light, second: st.second, third: st.third,
       shellLo: mixHex(st.irid[0], st.dark, 0.35), shellHi: mixHex(st.irid[2], st.irid[1], 0.4),

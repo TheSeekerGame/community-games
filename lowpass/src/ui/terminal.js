@@ -221,7 +221,7 @@ export class Terminal {
     const o = el('div', 'rows', d);
     const row = (k, v, cls) => { const r = el('div', 'row', o); el('span', 'k', r, k); return el('span', 'v ' + (cls || ''), r, v); };
     if (e.kind === 'wild') {
-      row('ORIGIN', e.mountain ? 'WILD · on the mountain · found by this ship alone' : 'WILD · found by this ship alone');
+      row('ORIGIN', e.mountain ? 'WILD · on the mountain · found by this ship alone' : e.river ? 'WILD · on the river · found by this ship alone' : e.autumn ? 'WILD · among the gold birches · found by this ship alone' : 'WILD · found by this ship alone');
       if (e.depth) row('DEPTH', `${stratum(e.depth).numeral}${e.plus ? '+ · MARKED' : ''} · ${stratum(e.depth).title}`).style.color = depthColor(e.depth);
       if (e.fx && e.fx.length) row('EFFECTS', e.fx.map((id) => DONE[id] || id).join(', '));
       row('SEED', `${e.tx.slice(0, 10)}…${e.tx.slice(-6)}`, 'muted');

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { hash2, fbm2, smoothstep, clamp } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
-import { height, forestDensity, treeKind, autumn, mountainEnv, WATER } from './terrain.js';
+import { height, forestDensity, treeKind, autumn, mountainEnv, canyonAt, WATER } from './terrain.js';
 import { treeGeometries, BIRCH, BIRCH_SHAPES, WALK } from './trees.js';
 import { worldMaterial, treeMaterial, COMMON, U, TREES, MAX_CLEARINGS, STRANGE } from '../render/materials.js';
 
@@ -64,6 +64,15 @@ function groundColor(x, z, h, steep, dens) {
   if (h < WATER + 0.6) return 0x20242a;
   if (h < WATER + 2.6) return n < 0.5 ? 0x6c7983 : 0x5d666d;
   const mtn = h > 90 ? mountainEnv(x, z) : 0;
+  // a canyon's walls: the rock in its layers, a band every few meters, each its own
+  if (steep > 0.55 && mtn <= 0) {
+    const cy = canyonAt(x, z, h);
+    if (cy > 0.05) {
+      const band = Math.floor((h + 400 + (fbm2(x * 0.01, z * 0.01, 2) - 0.5) * 6) / 5.5) % 5;
+      const L = [0x4d4642, 0x6a584a, 0x55555a, 0x7a6754, 0x5e5048][band];
+      return mixHex(n < 0.5 ? 0x353e50 : 0x4f5d73, mixHex(L, 0x2a2826, n * 0.35), cy);
+    }
+  }
   if (steep > 0.75 && mtn <= 0) return n < 0.5 ? 0x353e50 : 0x4f5d73;
   const frost = smoothstep(34, 70, h + (fbm2(x * 0.02, z * 0.02, 2) - 0.5) * 24);
   let c;

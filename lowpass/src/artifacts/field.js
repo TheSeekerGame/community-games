@@ -6,7 +6,7 @@ import { lookOf } from '../companion/companion.js';
 import * as art from '../chain/art.js';
 import { U } from '../render/materials.js';
 import { FOG } from '../render/pipeline.js';
-import { WATER, canopyTop } from '../world/terrain.js';
+import { WATER, canopyTop, riverAt } from '../world/terrain.js';
 import { angleDelta, clamp, TAU, damp } from '../core/math.js';
 import { SPECIES } from './species.js';
 
@@ -95,7 +95,7 @@ export class Field {
   // first): seeds are drawn until one is of none of them (or else of the one seen
   // longest ago), so the same shape never comes back too soon.
   spawnWild(opts = {}) {
-    const move = { tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain, autumn: !!opts.autumn, plus: !!opts.plus, creature: !!opts.creature, species: opts.species, landing: !!opts.landing, life: opts.life || null };
+    const move = { tx: wildSeed(), wild: true, depth: opts.depth || 0, glimpse: !!opts.glimpse, form: opts.form, mountain: !!opts.mountain, autumn: !!opts.autumn, river: !!opts.river, plus: !!opts.plus, creature: !!opts.creature, species: opts.species, landing: !!opts.landing, life: opts.life || null };
     const recent = opts.recent || [];
     if (recent.length && !move.landing) {
       let best = null, age = -1;
@@ -140,6 +140,13 @@ export class Field {
       if (w.groundAt(px, pz) < WATER - 2 && w.groundAt(px + 18, pz) < WATER - 1 && w.groundAt(px - 18, pz) < WATER - 1 && w.groundAt(px, pz + 18) < WATER - 1 && w.groundAt(px, pz - 18) < WATER - 1) return [px, pz];
     }
     return null;
+  }
+
+  // The middle of the river nearest (x, z) (a few steps down the field to where it crosses),
+  // and the river there.
+  _riverMiddle(x, z) {
+    for (let i = 0; i < 4; i++) { const R = riverAt(x, z), s = Math.sign(R.v) || 1; x -= s * R.gx * R.d; z -= s * R.gz * R.d; }
+    return [x, z, riverAt(x, z)];
   }
 
   // The flattest dry ground near (x, z), for a clearing to land in.
@@ -239,10 +246,13 @@ export class Field {
     if (d.mountain && !a.at) [x, z] = this._summit(x, z);
     if (d.family === 'landing' && !a.at) [x, z] = this._flat(x, z);
     if (d.family === 'life' && d.species === 'deer' && !a.at) [x, z] = this._shore(x, z);
+    // the rivers' own: on its middle, turned across it
+    let river = null;
+    if (d.river && !a.at) { [x, z, river] = this._riverMiddle(x, z); a.riverYaw = Math.atan2(-river.gz, river.gx); }
     if (d.family === 'life' && d.species === 'fish' && !a.at) [x, z] = this._water(x, z) || [x, z];
     const ground = Math.max(g.world.groundAt(x, z), WATER);
     // (a gate lies across the way; a door faces the ship; a creature, away from it)
-    const yaw = d.family === 'gate' || d.family === 'creature' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : d.family === 'life' ? 0 : (d.seed[2] / 4294967296) * TAU;
+    const yaw = d.family === 'gate' || d.family === 'creature' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : d.family === 'life' ? 0 : d.river && a.riverYaw !== undefined ? a.riverYaw : (d.seed[2] / 4294967296) * TAU;
     const c = Math.cos(yaw), s = Math.sin(yaw);
     // a witnessed one: its seeker, giant, built from its art as it is now
     let seeker = null;
@@ -255,6 +265,7 @@ export class Field {
       ground: (lx, lz) => Math.max(g.world.groundAt(x + lx * c + lz * s, z - lx * s + lz * c), WATER) - ground,
       ringY: canopyTop(x, z) + 17 - ground,
       seeker,
+      river: river ? { rw: river.rw } : null,
     };
     const model = buildArtifact(d, ctx);
     const y = d.family === 'creature' ? canopyTop(x, z) + FLY_Y : d.family === 'life' && d.species === 'flock' ? canopyTop(x, z) + 4 : ground;

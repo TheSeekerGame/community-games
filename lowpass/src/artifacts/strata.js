@@ -29,6 +29,8 @@ export const FORMS = [['corolla', 1], ['spine', 1], ['nest', 1], ['armillary', 1
 export const MOUNTAIN_FORMS = [['spire', 1], ['temple', 1], ['halo', 1], ['loom', 1], ['storm', 2], ['serpent', 3], ['cathedral', 3]];
 // the turned stands' own (one that rises among the gold birches)
 export const AUTUMN_FORMS = [['turning', 1], ['pyre', 1], ['seedpod', 1], ['leaffall', 2]];
+// the rivers' own (one that rises on a river, or in a canyon)
+export const RIVER_FORMS = [['lotus', 1], ['tidegate', 1]];
 // the marked ones' own (+): the rarest at every depth, a few of them from the first
 export const PLUS_FORMS = [['tree', 1], ['vortex', 1], ['mobius', 1], ['menger', 2], ['whale', 3]];
 export const ORNAMENTS = [['halo', 1], ['sigil', 1], ['orbiters', 1], ['motes', 1], ['pillar', 2], ['beams', 2], ['shards', 2],
@@ -83,6 +85,7 @@ export function stratum(depth) {
     forms: FORMS.filter(([, d]) => d <= depth).map(([f]) => f),
     mountainForms: MOUNTAIN_FORMS.filter(([, d]) => d <= depth).map(([f]) => f),
     autumnForms: AUTUMN_FORMS.filter(([, d]) => d <= depth).map(([f]) => f),
+    riverForms: RIVER_FORMS.filter(([, d]) => d <= depth).map(([f]) => f),
     plusForms: PLUS_FORMS.filter(([, d]) => d <= depth).map(([f]) => f),
     ornaments: ORNAMENTS.filter(([, d]) => d <= depth).map(([f]) => f),
     harmonics: Array.from({ length: depth }, (_, i) => harmonicOf(i + 1)),

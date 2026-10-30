@@ -89,7 +89,10 @@ to it and press E.
   meters over the forest, rising out of the fog, the trees thinning up their flanks to a
   treeline, bare rock on every steep face and snow above a ragged line. The ship climbs
   them steadily (it starts early enough to pass just over the top) and drifts down the
-  far side. Ground and trees newly built come out of the fog in the dither, over a
+  far side. **Rivers** wind through it, one every few kilometers: through low ground
+  between banks, through high ground down in **canyons** as deep as the hills are high,
+  their walls stepped in ledges of layered rock, trees only on the ledges. Fly along one
+  and the ship goes down into it, between its walls, over the water. Ground and trees newly built come out of the fog in the dither, over a
   couple of seconds, rather than all at once.
 - **Flight.** The ship flies on at 24 m/s, its height following the canopy ahead. You
   steer, and you can **boost**: the core at the tail burns plasma, flares, and sheds a
@@ -126,7 +129,12 @@ to it and press E.
   among the gold birches, one of the stands' own: a column of leaves held turning in
   the air, a bare birch hung with swaying lanterns, a great drop of amber with something
   dark in it, a ring of white birches with leaves falling only inside it, a cold fire of
-  pale gold, a leaf of gold as tall as the trees.
+  pale gold, a leaf of gold as tall as the trees. On a river or in a canyon (follow one
+  to find them), one of the rivers' own, worth two and a half times as much: water
+  falling from a shelf of rock with a bow of light in its mist, a bridge of stone across
+  the river high enough to fly under (threaded, worth half as much again), a wheel of
+  stone turning in the current, a ferry drifting down the river with nobody aboard, a
+  colonnade standing in the water to its waist.
 - **The deep.** A wild artifact may come from below the surface, from a **depth**: the
   deeper the scanner is tuned (in the Codex's SHOP), the more of them do. Each starts at
   the surface and goes one depth deeper three times in four, as far as the scanner
@@ -148,7 +156,9 @@ to it and press E.
   light, stone halos hung with shards, aurora looms, storm crowns throwing lightning,
   wind serpents, ice cathedrals; the turned stands four: a tree whose crown is a sphere
   of leaves of light, a pyre of stilled flames, a seed opening and closing under an arch
-  of boughs, a disc pouring a fall of leaves of light into a pool. Deeper, one form
+  of boughs, a disc pouring a fall of leaves of light into a pool; the rivers two: a
+  lotus floating among its pads, two towers on the banks with a curtain of light between
+  them across the water. Deeper, one form
   crowns another, a court of small ones stands about it, and ornaments gather: rings,
   figures of light on the ground, beams, pillars, rain of light, aurora veils, its double hanging
   upside down in the sky, its echoes a moment behind it. Each sings (below). Rarest of
@@ -472,7 +482,8 @@ src/ship/                 the ships (their designs and hulls) and their flight, 
 src/artifacts/            from a seed or a move to an artifact: generation, models (the
                           first families, the witnessed seeker, the auras), the newer
                           families, their shared parts, the field, the photograph; the
-                          mountains' own, the turned stands' own, the instruments; life in
+                          mountains' own, the turned stands' own, the rivers' own, the
+                          instruments; life in
                           the forest; a few more (the field flies them); the effects
                           (fx.js); the deep: its strata, its descriptions, its forms
 src/companion/            a seeker aboard: its voxel model (after Soundings, also the

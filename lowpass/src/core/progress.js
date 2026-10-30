@@ -3,6 +3,7 @@ import { SHIPS } from '../ship/designs.js';
 import { EFFECTS, FX_VALUE } from '../artifacts/fx.js';
 import { ANOMALY_VALUE } from '../world/anomaly.js';
 import { LIFE_VALUE } from '../artifacts/life.js';
+import { RIVER_VALUE, THREADED_VALUE } from '../artifacts/river.js';
 
 // Progress: DATA, and what it buys: how deep the scanner reaches (without end), how much
 // plasma the tank holds and how often signals are picked up out of the fog (five levels
@@ -57,7 +58,7 @@ export const MAX = { tank: COSTS.tank.length, gain: COSTS.gain.length };
 
 export const costOf = (depth) => FIRST * Math.pow(2, depth - 1);     // to reach this depth
 export const valueOf = (e) => (e.kind === 'wild'
-  ? Math.round(BASE * (1 + (e.depth || 0)) * (e.plus ? PLUS_VALUE : 1) * (e.creature ? CREATURE_VALUE : e.ground ? CURIO_VALUE : e.life ? LIFE_VALUE : 1) * Math.pow(FX_VALUE, (e.fx || []).length) * Math.pow(ANOMALY_VALUE, (e.anomalies || []).length))
+  ? Math.round(BASE * (1 + (e.depth || 0)) * (e.plus ? PLUS_VALUE : 1) * (e.creature ? CREATURE_VALUE : e.ground ? CURIO_VALUE : e.life ? LIFE_VALUE : 1) * Math.pow(FX_VALUE, (e.fx || []).length) * Math.pow(ANOMALY_VALUE, (e.anomalies || []).length) * (e.river ? RIVER_VALUE : 1) * (e.family === 'naturalbridge' && e.passes > 0 ? THREADED_VALUE : 1))
   : e.special ? WITNESSED : BASE);
 
 export function rollDepth(reach, rand = Math.random) {

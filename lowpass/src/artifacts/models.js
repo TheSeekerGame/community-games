@@ -15,6 +15,7 @@ import { buildCurio } from './curios.js';
 import { buildLife } from './life.js';
 import { AUTUMN } from './autumn.js';
 import { INSTRUMENTS } from './instruments.js';
+import { RIVER } from './river.js';
 
 // An artifact as geometry: dark masses in the codex's stone and shell ramps, selective
 // pale rims, and one light of the moved seeker's colorway that pulses to its rhythm.
@@ -709,7 +710,7 @@ function echo(d, A, mats, ctx) {
   return out;
 }
 
-const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, ...MOUNTAIN, ...AUTUMN, ...INSTRUMENTS, deep: buildDeep, creature: buildCreature, landing: buildLanding, curio: buildCurio, life: buildLife };
+const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, ...MOUNTAIN, ...AUTUMN, ...INSTRUMENTS, ...RIVER, deep: buildDeep, creature: buildCreature, landing: buildLanding, curio: buildCurio, life: buildLife };
 
 // ctx: { ground(lx, lz) -> local y, ringY, seeker (a witnessed one's SeekerModel, built) }
 export function buildArtifact(d, ctx) {

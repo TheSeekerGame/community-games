@@ -424,6 +424,7 @@ export class Field {
     }
     if (inRange && inCone && !g.asleep) {
       this.state = 'lock';
+      t.revealed = true;        // (held in the scanner, it is found: it stays where it is)
       if (scanHeld) this.scan = Math.min(1, this.scan + (dt * g.ship.design.fly.scan) / (t.fly ? SPECIES[t.d.species].scan : SCAN_TIME));
       else this.scan = Math.max(0, this.scan - dt * 0.4);
       if (this.scan >= 1) {

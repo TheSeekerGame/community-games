@@ -500,7 +500,7 @@ export class Game {
     if (this.mode === 'ground') { const a = this.afoot, t = a.target; return t && !t.scanned && (a.state === 'lock' || a.state === 'near') ? t : null; }
     if (this.mode !== 'fly' && this.mode !== 'seat') return null;
     const f = this.field, t = f.target;
-    return t && t.model && !t.scanned && t.revealed && !t.special && t.d.family !== 'landing' && (f.state === 'lock' || f.state === 'near') ? t : null;
+    return t && t.model && !t.building && !t.scanned && !t.special && t.d.family !== 'landing' && (f.state === 'lock' || f.state === 'near') ? t : null;
   }
 
   // an anomaly's mark laid on an artifact (or the mark of anomalies meeting: 'combo:' and
@@ -520,6 +520,7 @@ export class Game {
     if (!this.progress.useFx(id)) { this.audio.play('error'); this.hud.say(`NO ${e.name} LEFT`, 'more in the SHOP, on the Codex computer', 3); return false; }
     if (!t.fx) t.fx = new ArtifactFx(t);
     t.fx.add(id);
+    t.revealed = true;          // (it stays where it is now, with what was fired at it)
     if (this.mode !== 'ground') { this.shot.fire(e.color); this._shotAt = this.field.lightPos(t).clone(); }
     this.audio.play('fx', { id, pan: clamp(-(t.bearing || 0), -1, 1) });
     this.buzz(18);
@@ -583,23 +584,28 @@ export class Game {
   // Rivers and canyons (terrain.js): seen ahead, a word on how to follow one (turn along
   // it); turned along one, near its middle, the ship follows it (ship.js: down in its cut,
   // along its bends), steering itself gently toward its middle a little way on, until the
-  // pilot steers firmly away or turns off it. steer: what the pilot asks; returns what the
-  // ship does.
+  // pilot steers firmly away or turns off it; and on by itself while the pilot is inside
+  // (walking, over coffee, at the Codex) until the river ends. steer: what the pilot asks;
+  // returns what the ship does.
   _river(dt, steer) {
     const s = this.ship, overlay = this.terminal.open || this.menu.open || this.reader.open;
-    const flying = (this.mode === 'fly' || this.mode === 'seat') && !this.landed && !this.landing.active;
+    const aboard = !this.landed && !this.landing.active && ['fly', 'seat', 'walk', 'coffee'].includes(this.mode);
+    const flying = aboard && (this.mode === 'fly' || this.mode === 'seat');
     this._riverT = (this._riverT || 0) - dt;
     if (this._riverT <= 0) {
-      this._riverT = 0.2;
+      this._riverT = 0.1;
       const R = riverAt(s.x, s.z), [fx, fz] = s.forward(), sg = Math.sign(R.v) || 1;
       const cx = s.x - sg * R.gx * R.d, cz = s.z - sg * R.gz * R.d;
-      const real = R.d < R.rw + 90 && height(cx, cz) < WATER - 1 && mountainEnv(cx, cz) < 0.1;
+      // (once following, carried well off its middle, too fast for its bends, it lets go and
+      // climbs out over what is ahead, rather than meet the walls)
+      const real = R.d < (this._riverOn ? R.rw + 22 : R.rw + 90) && height(cx, cz) < WATER - 1 && mountainEnv(cx, cz) < 0.1;
       const align = Math.abs(fx * -R.gz + fz * R.gx);
       const was = this._riverOn;
-      this._riverOn = flying && real && align > (was ? 0.5 : 0.8) && Math.abs(steer) < 0.7;
+      // (it takes a river up only at the controls or outside; it keeps one from anywhere aboard)
+      this._riverOn = (was ? aboard : flying) && real && align > (was ? 0.5 : 0.8) && Math.abs(steer) < 0.7;
       // a canyon (deep in the hills) or a river (between banks)
       const canyon = () => Math.max(height(cx + R.gx * 130, cz + R.gz * 130), height(cx - R.gx * 130, cz - R.gz * 130)) - WATER > 45;
-      if (this._riverOn && !was && !overlay && this.time - (this._riverSaidAt ?? -99) > 40) {
+      if (this._riverOn && !was && flying && !overlay && this.time - (this._riverSaidAt ?? -99) > 40) {
         this._riverSaidAt = this.time;
         this.hud.say(canyon() ? 'FOLLOWING THE CANYON' : 'FOLLOWING THE RIVER', 'steer away to climb out', 3.5);
       }
@@ -614,13 +620,14 @@ export class Game {
         } else if (!ahead && R.d > 500) this._riverAheadSaid = false;
       }
     }
-    s.follow = damp(s.follow, this._riverOn ? 1 : 0, this._riverOn ? 0.7 : 1.4, dt);
+    s.follow = damp(s.follow, this._riverOn ? 1 : 0, this._riverOn ? 0.7 : 3.5, dt);
     if (s.follow > 0.2) {
-      // toward its middle a little way on; the harder the pilot steers, the less
-      const [[px, pz]] = s.riverPath([110 * Math.max(1, s.speed / 24)]);
+      // toward its middle a little way on (near enough to keep to it through the bends);
+      // the harder the pilot steers, the less
+      const [[px, pz]] = s.riverPath([65 * Math.max(1, s.speed / 24)]);
       const e = angleDelta(s.heading, Math.atan2(px - s.x, pz - s.z));
       const free = 1 - clamp(Math.abs(steer) / 0.7, 0, 1);
-      steer = clamp(steer - clamp(e * 2.2, -1, 1) * s.follow * free, -1, 1);
+      steer = clamp(steer - clamp(e * 3, -1, 1) * s.follow * free, -1, 1);
     }
     return steer;
   }

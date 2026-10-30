@@ -4,7 +4,7 @@ import { worldMaterial, halo, U } from '../render/materials.js';
 import { FOG, LAYER_FX } from '../render/pipeline.js';
 import { damp, clamp, lerp, smoothstep, TAU } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
-import { canopyTop, mountainEnv, riverAt } from '../world/terrain.js';
+import { canopyTop, mountainEnv, riverAt, height, WATER } from '../world/terrain.js';
 import { Hull, DOOR } from './hull.js';
 import { SHIPS } from './designs.js';
 
@@ -23,6 +23,7 @@ import { SHIPS } from './designs.js';
 const CLEARANCE = 17;               // above the canopy
 const LEG = 1.5;                    // landed, its belly stands this high over the ground
 const CLIMB = 0.45;                 // the slope it climbs a mountain at
+const RIVER_SPEED = 46;             // the most it flies following a river (m/s), boosting
 
 const v3 = (p) => new THREE.Vector3(p[0], p[1], p[2]);
 const lift = (c, k) => mixHex(c, 0xffffff, k);
@@ -474,22 +475,25 @@ export class Ship {
   }
 
   // the height that keeps it down in the river's cut, over the water, along the river's
-  // own bends (and clear of what is right in front of it, whichever way it points)
+  // own bends (not the straight line it points along: in a bend that is the bank)
   _riverTarget() {
     const far = Math.max(1, this.speed / 24);
     let top = -Infinity;
     for (const [x, z] of this.riverPath([0, 35, 70, 110, 160, 220].map((d) => d * far))) top = Math.max(top, canopyTop(x, z));
-    const [fx, fz] = this.forward();
-    for (const d of [0, 20 * far]) top = Math.max(top, canopyTop(this.x + fx * d, this.z + fz * d) - 6);
     return top + CLEARANCE * 0.85;
   }
 
   // The least height it may fly at, here: clear of the canopy (or the bare rock) under its
   // nose, its tail and its wingtips, whatever the spring that eases its height is doing.
+  // (Following a river, low in its cut: what is under it and its wings is the bare
+  // ground, the banks' few trees standing back from the water, and ahead is along the
+  // river, not straight on.)
   _floor() {
     const [fx, fz] = this.forward(), half = Math.max(8, (this.H ? this.H.zMax - this.H.zMin : 16) * 0.5), side = Math.max(5, this.span);
-    let top = canopyTop(this.x, this.z);
-    for (const [a, s] of [[half, 0], [-half, 0], [0, side], [0, -side], [half * 2.2, 0]]) top = Math.max(top, canopyTop(this.x + fx * a + fz * s, this.z + fz * a - fx * s));
+    const river = this.follow > 0.5, at = river ? (x, z) => Math.max(height(x, z), WATER) + 2 : canopyTop;
+    let top = at(this.x, this.z);
+    for (const [a, s] of [[half, 0], [-half, 0], [0, side], [0, -side]]) top = Math.max(top, at(this.x + fx * a + fz * s, this.z + fz * a - fx * s));
+    if (river) { const [[x, z]] = this.riverPath([half * 2.2]); top = Math.max(top, at(x, z)); } else top = Math.max(top, at(this.x + fx * half * 2.2, this.z + fz * half * 2.2));
     return top + 4;
   }
 
@@ -502,6 +506,8 @@ export class Ship {
     // the core takes a moment to come up to a burn, and longer to settle back
     this.boost = damp(this.boost, boosting ? 1 : 0, boosting ? 1.4 : 0.9, dt);
     this.speed = this.cruise * (1 + this.boostK * this.boost);
+    // (following a river, no faster than its bends allow)
+    if (this.follow > 0.001) this.speed += (Math.min(this.speed, Math.max(this.cruise, RIVER_SPEED)) - this.speed) * this.follow;
     // heading grows toward +x, which is to the left when facing +z: steering right turns it down
     const target = -clamp(steer + this.drift, -1, 1) * this.maxYaw;
     this.yawRate = damp(this.yawRate, target, 2.0, dt);

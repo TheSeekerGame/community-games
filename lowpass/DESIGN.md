@@ -189,10 +189,13 @@ built as layers that all go together, instead of as more kinds of thing:
   are a sink for DATA that grows with depth, as the depth costs do.
 - **Places** have their own sets: the mountains, the turned stands and the rivers each
   draw from their own families and forms at every depth, so the same depth looks
-  different by where it is found. The rivers are the terrain to fly along: a channel cut
-  where a slow, warped field crosses its middle, down below the lakes' level so the
-  lakes' own water stands in it, as deep as the ground is high (a canyon in the hills,
-  ledged and layered), out of the mountains' hearts. Turned along one (the HUD says so
+  different by where it is found. The rivers are the terrain to fly along, and rare
+  enough to be found: one in about half the cells of a grid four and a half kilometers
+  on a side, each from a spring in that cell's high ground down to a lake of its own at
+  its lowest, meandering, so every river begins and ends and every canyon has a head.
+  The channel is cut below the lakes' level so the lakes' own water stands in it, as
+  deep as the ground is high (a canyon in the hills, ledged and layered), out of the
+  mountains. Turned along one (the HUD says so
   as one comes into view), the ship follows it: its height from the river's own path
   ahead, not the straight line it points along, so it goes down between the walls and
   stays there through the bends, and a gentle hand on the steering toward the river's

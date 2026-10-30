@@ -10,7 +10,8 @@ import { fbm2, ridged2, smoothstep, clamp } from '../core/math.js';
 export const WATER = -46;           // lake level
 export const CANOPY = 31;           // the tall trees' tops above the ground
 
-export function height(x, z) {
+// The ground before any river is cut into it
+function ground(x, z, env) {
   const a = fbm2(x * 0.00062 + 31.7, z * 0.00062 - 12.3, 4);
   let h = (a - 0.5) * 170;
   const r = ridged2(x * 0.0015 + 4.1, z * 0.0015 - 7.7, 3);
@@ -18,34 +19,122 @@ export function height(x, z) {
   const b = fbm2(x * 0.00105 - 7.1, z * 0.00105 + 3.3, 3);
   h -= smoothstep(0.56, 0.74, b) * 52;
   h += (fbm2(x * 0.011, z * 0.011, 2) - 0.5) * 7;
-  const env = mountainEnv(x, z);
-  return carve(x, z, h + lift(x, z, env), env);
+  return h + lift(x, z, env);
 }
 
-// Rivers: where a slow field, warped so it meanders, crosses its middle, a river runs,
-// cut down below the lakes' level so the water stands in it (one every few kilometers on a
-// straight line). Through low ground it is a river between banks; through high ground, a
-// canyon as deep as the ground is high, its walls stepped in ledges, its rim as wide
-// again as it is deep. They keep out of the mountains' hearts, and end in their foothills.
+export function height(x, z) {
+  const env = mountainEnv(x, z);
+  return carve(x, z, ground(x, z, env), env);
+}
+
+// Rivers, now and then (about one cell in two of a grid RCELL meters on a side has one):
+// each from a spring in higher ground, two to four kilometers down to a lake of its own
+// at its mouth, meandering as it goes; cut down below the lakes' level so the water
+// stands in it. Through low ground it runs between banks; through high ground it is a
+// canyon as deep as the ground is high, its walls stepped in ledges, its head a wall
+// where the cut begins. They keep out of the mountains.
 export const RIVER_BED = WATER - 5;
-const rfield = (x, z) => {
-  const w = (fbm2(x * 0.0009 + 91.3, z * 0.0009 - 17.7, 2) - 0.5) * 0.7;
-  return fbm2(x * 0.00042 + 301.1 + w, z * 0.00042 - 155.7 - w, 3) - 0.5;
+const RCELL = 4500, RIVER_P = 0.55, RN = 48;
+const _rivers = new Map();
+const hashCell = (cx, cz, k) => {
+  let h = Math.imul(cx * 374761393 + cz * 668265263 + k * 1274126177, 1103515245) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
 };
-// About (x, z): how far from the river's middle (m), which way across it (the unit
-// gradient, pointing to the side where the field is higher), its half width at the water.
+// the river of a cell (or null): its course (points, lengths along it), its width at
+// each, its lake (x, z, r), its bounds
+function riverOf(cx, cz) {
+  const key = cx * 100003 + cz;
+  if (_rivers.has(key)) return _rivers.get(key);
+  let rv = null;
+  const H = (k) => hashCell(cx, cz, k);
+  if (H(1) < RIVER_P) {
+    // the lake: the lowest of a few places in the cell, out of the mountains
+    let lake = null;
+    for (let i = 0; i < 6; i++) {
+      const x = (cx + 0.27 + 0.46 * H(10 + i)) * RCELL, z = (cz + 0.27 + 0.46 * H(20 + i)) * RCELL, env = mountainEnv(x, z);
+      if (env > 0.02) continue;
+      const h = ground(x, z, env);
+      if (!lake || h < lake.h) lake = { x, z, h };
+    }
+    // the spring: the highest of a few places two to four kilometers off whose whole
+    // meandering way down to the lake keeps out of the mountains (where the cut would
+    // fade, and a ridge would stand across the river)
+    const springs = [];
+    if (lake) for (let i = 0; i < 9; i++) {
+      const a = H(30 + i) * Math.PI * 2, L = 2200 + 1800 * H(40 + i), x = lake.x + Math.cos(a) * L, z = lake.z + Math.sin(a) * L;
+      if (mountainEnv(x, z) < 0.01) springs.push({ x, z, h: ground(x, z, 0) });
+    }
+    springs.sort((p, q) => q.h - p.h);
+    const A1 = 120 + 260 * H(50), f1 = 1.2 + 1.6 * H(51), p1 = H(52) * 6.283, A2 = 40 + 90 * H(53), f2 = 3 + 3 * H(54), p2 = H(55) * 6.283;
+    for (const src of springs) {
+      for (const tame of [1, 0.45]) {
+        // its course: from the spring to the lake, meandering, its width growing
+        const dx = lake.x - src.x, dz = lake.z - src.z, L = Math.hypot(dx, dz), nx = -dz / L, nz = dx / L;
+        const xs = new Float64Array(RN + 1), zs = new Float64Array(RN + 1), acc = new Float64Array(RN + 1);
+        let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity, clear = true;
+        for (let i = 0; i <= RN && clear; i++) {
+          const t = i / RN, off = (A1 * Math.sin(6.283 * f1 * t + p1) + A2 * Math.sin(6.283 * f2 * t + p2)) * Math.sin(Math.PI * t) * tame;
+          xs[i] = src.x + dx * t + nx * off; zs[i] = src.z + dz * t + nz * off;
+          // (with room for its rim either side)
+          clear = mountainEnv(xs[i], zs[i]) < 0.01 && mountainEnv(xs[i] + nx * 220, zs[i] + nz * 220) < 0.04 && mountainEnv(xs[i] - nx * 220, zs[i] - nz * 220) < 0.04;
+          if (i) acc[i] = acc[i - 1] + Math.hypot(xs[i] - xs[i - 1], zs[i] - zs[i - 1]);
+          x0 = Math.min(x0, xs[i]); x1 = Math.max(x1, xs[i]); z0 = Math.min(z0, zs[i]); z1 = Math.max(z1, zs[i]);
+        }
+        if (!clear) continue;
+        const lr = 170 + 150 * H(60), pad = 420;
+        rv = { xs, zs, acc, len: acc[RN], rw: 18 + 12 * H(61), lake: { x: lake.x, z: lake.z, r: lr, ph: H(62) * 6.283 },
+          x0: Math.min(x0, lake.x - lr) - pad, x1: Math.max(x1, lake.x + lr) + pad, z0: Math.min(z0, lake.z - lr) - pad, z1: Math.max(z1, lake.z + lr) + pad };
+        break;
+      }
+      if (rv) break;
+    }
+  }
+  if (_rivers.size > 600) _rivers.clear();
+  _rivers.set(key, rv);
+  return rv;
+}
+const NONE = { d: Infinity, v: Infinity, gx: 1, gz: 0, rw: 20, t: 0, river: null };
+// About (x, z), the nearest river's course: how far from its middle (m), which way across
+// it (unit, pointing toward (x, z) from the middle; v: signed distance along it), its half
+// width at the water there, how far along it (0 at its spring, 1 at its lake).
 export function riverAt(x, z) {
-  const v = rfield(x, z), gx = (rfield(x + 2, z) - v) / 2, gz = (rfield(x, z + 2) - v) / 2, g = Math.hypot(gx, gz) || 1e-9;
-  return { d: Math.abs(v) / g, v, gx: gx / g, gz: gz / g, rw: 16 + 12 * fbm2(x * 0.004 + 3.1, z * 0.004 - 8.4, 2) };
+  const cx0 = Math.floor(x / RCELL), cz0 = Math.floor(z / RCELL);
+  let best = NONE;
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+    const rv = riverOf(cx0 + i, cz0 + j);
+    if (!rv || x < rv.x0 || x > rv.x1 || z < rv.z0 || z > rv.z1) continue;
+    const { xs, zs } = rv;
+    for (let k = 0; k < RN; k++) {
+      const ax = xs[k], az = zs[k], bx = xs[k + 1] - ax, bz = zs[k + 1] - az, L2 = bx * bx + bz * bz;
+      const u = clamp(((x - ax) * bx + (z - az) * bz) / L2, 0, 1), px = ax + bx * u, pz = az + bz * u;
+      const d = Math.hypot(x - px, z - pz);
+      if (d < best.d) {
+        const l = Math.sqrt(L2), t = (rv.acc[k] + l * u) / rv.len;
+        // across: from the middle toward (x, z); on the middle itself, the course's normal
+        const gx = d > 1e-3 ? (x - px) / d : -bz / l, gz = d > 1e-3 ? (z - pz) / d : bx / l;
+        best = { d, v: d, gx, gz, rw: 7 + (rv.rw - 7) * smoothstep(0, 0.6, t), t, river: rv };
+      }
+    }
+  }
+  return best;
 }
 // the half width of the cut at its rim, for ground h high
 const rimOf = (rw, h) => rw + Math.max(0, h - RIVER_BED) / 1.15 + 10;
 function carve(x, z, h, env) {
   if (h <= RIVER_BED) return h;
-  const keep = 1 - smoothstep(0.08, 0.4, env);
-  if (keep <= 0) return h;
-  const R = riverAt(x, z), D = h - RIVER_BED, half = rimOf(R.rw, h);
-  if (R.d >= half) return h;
+  const R = riverAt(x, z);
+  if (!R.river) return h;
+  let out = h;
+  // its lake: a bowl below the water, its shore a little ragged
+  const L = R.river.lake, ld = Math.hypot(x - L.x, z - L.z);
+  if (ld < L.r * 1.25 + 90) {
+    const a = Math.atan2(z - L.z, x - L.x), r = L.r * (1 + 0.14 * Math.sin(a * 3 + L.ph) + 0.08 * Math.sin(a * 5 - L.ph * 2));
+    const bowl = WATER - 9 * (1 - smoothstep(0, r, ld) ** 2);
+    out = Math.min(out, ld < r ? bowl : out + (bowl - out) * (1 - smoothstep(r, r + 90, ld)));
+  }
+  const D = h - RIVER_BED, half = rimOf(R.rw, h);
+  if (R.d >= half) return out;
   let to;
   if (R.d <= R.rw) to = RIVER_BED - 1.5 * (1 - R.d / R.rw);
   else {
@@ -55,7 +144,10 @@ function carve(x, z, h, env) {
     const ledges = (f + smoothstep(0.45, 0.9, s - f)) / steps;
     to = RIVER_BED + D * (smoothstep(0, 1, u) + (ledges - smoothstep(0, 1, u)) * smoothstep(14, 40, D));
   }
-  return h + (Math.min(h, to) - h) * keep;
+  // (at its spring the cut begins: a slope down to the water in low ground, a canyon's
+  // head wall in high; and it keeps out of the mountains)
+  const k = smoothstep(0, 0.05, R.t) * (1 - smoothstep(0.02, 0.2, env));
+  return Math.min(out, h + (Math.min(h, to) - h) * k);
 }
 // How much of a canyon's wall (x, z) is (0: none, or a low bank; 1: deep in a canyon's
 // side), for the rock to show its layers.

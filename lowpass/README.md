@@ -91,8 +91,10 @@ to it and press E.
   them steadily (it starts early enough to pass just over the top) and drifts down the
   far side. **Rivers** wind through it, one every few kilometers: through low ground
   between banks, through high ground down in **canyons** as deep as the hills are high,
-  their walls stepped in ledges of layered rock, trees only on the ledges. Fly along one
-  and the ship goes down into it, between its walls, over the water. Ground and trees newly built come out of the fog in the dither, over a
+  their walls stepped in ledges of layered rock, trees only on the ledges. As one comes
+  into view the HUD says so; turn along it, and the ship follows it: down into its cut,
+  low over the water, along its bends by itself, until you steer firmly away (or turn
+  off it) and it climbs out. Ground and trees newly built come out of the fog in the dither, over a
   couple of seconds, rather than all at once.
 - **Flight.** The ship flies on at 24 m/s, its height following the canopy ahead. You
   steer, and you can **boost**: the core at the tail burns plasma, flares, and sheds a

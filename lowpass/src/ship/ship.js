@@ -4,7 +4,7 @@ import { worldMaterial, halo, U } from '../render/materials.js';
 import { FOG, LAYER_FX } from '../render/pipeline.js';
 import { damp, clamp, lerp, smoothstep, TAU } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
-import { canopyTop, mountainEnv } from '../world/terrain.js';
+import { canopyTop, mountainEnv, riverAt } from '../world/terrain.js';
 import { Hull, DOOR } from './hull.js';
 import { SHIPS } from './designs.js';
 
@@ -333,6 +333,7 @@ export class Ship {
     this.boost = 0;           // 0..1: how hard the core burns (W held), eased in and out
     this.lift = 0;            // meters more over the canopy than it would fly (an anomaly's)
     this.flip = 0;            // 0..1: rolled over (an inversion)
+    this.follow = 0;          // 0..1: following a river (the game decides), down in its cut
     this._t = 0;
   }
 
@@ -449,7 +450,38 @@ export class Ship {
         top = Math.max(top, this.obstacle(x, z, cruise) - (1 - w) * 18);
       }
     }
-    return top + CLEARANCE + this.lift;
+    const free = top + CLEARANCE + this.lift;
+    return this.follow > 0.001 ? free + (this._riverTarget() - free) * this.follow : free;
+  }
+
+  // Following a river: its middle ahead, d meters on, the way the ship is going (stepped
+  // along it, drawn back toward its middle as it goes): [[x, z, heading], ...]
+  riverPath(ds) {
+    let x = this.x, z = this.z, [fx, fz] = this.forward(), dist = 0;
+    const out = [];
+    for (const d of ds) {
+      while (dist < d - 1e-3) {
+        const step = Math.min(25, d - dist), R = riverAt(x, z), s = Math.sign(R.v) || 1;
+        let ax = -R.gz, az = R.gx;
+        if (ax * fx + az * fz < 0) { ax = -ax; az = -az; }
+        x += ax * step - s * R.gx * Math.min(R.d, step * 0.5);
+        z += az * step - s * R.gz * Math.min(R.d, step * 0.5);
+        fx = ax; fz = az; dist += step;
+      }
+      out.push([x, z, Math.atan2(fx, fz)]);
+    }
+    return out;
+  }
+
+  // the height that keeps it down in the river's cut, over the water, along the river's
+  // own bends (and clear of what is right in front of it, whichever way it points)
+  _riverTarget() {
+    const far = Math.max(1, this.speed / 24);
+    let top = -Infinity;
+    for (const [x, z] of this.riverPath([0, 35, 70, 110, 160, 220].map((d) => d * far))) top = Math.max(top, canopyTop(x, z));
+    const [fx, fz] = this.forward();
+    for (const d of [0, 20 * far]) top = Math.max(top, canopyTop(this.x + fx * d, this.z + fz * d) - 6);
+    return top + CLEARANCE * 0.85;
   }
 
   // The least height it may fly at, here: clear of the canopy (or the bare rock) under its

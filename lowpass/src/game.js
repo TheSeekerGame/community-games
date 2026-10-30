@@ -14,7 +14,7 @@ import { Cameras } from './ship/camera.js';
 import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
 import { load, save, codexAll, codexPut } from './core/store.js';
-import { clamp, damp } from './core/math.js';
+import { clamp, damp, angleDelta } from './core/math.js';
 import { Progress, rollDepth, REFILL, PLUS, CREATURE, LANDING, LANDING_DEPTH, LIFE_SHARE } from './core/progress.js';
 import { SPECIES } from './artifacts/species.js';
 import { stratum } from './artifacts/strata.js';
@@ -548,18 +548,6 @@ export class Game {
       this._mountainSaid = true;
       this.hud.say('MOUNTAINS', 'peaks rising out of the fog', 4);
     }
-    // over a river, or down in a canyon: a word (once, until it is well behind)
-    this._riverT = (this._riverT || 0) - dt;
-    if (this._riverT <= 0) {
-      this._riverT = 0.5;
-      const sx = this.ship.x, sz = this.ship.z, R = riverAt(sx, sz);
-      if (R.d > 400) this._riverSaid = false;
-      else if (!this._riverSaid && R.d < R.rw && height(sx, sz) < WATER && !overlay && (this.mode === 'fly' || this.mode === 'seat')) {
-        this._riverSaid = true;
-        const deep = Math.max(height(sx + R.gx * 120, sz + R.gz * 120), height(sx - R.gx * 120, sz - R.gz * 120)) - WATER > 45;
-        this.hud.say(deep ? 'A CANYON' : 'A RIVER', deep ? 'cut down through the hills: follow it' : 'winding through the forest: follow it', 4.5);
-      }
-    }
     if (this._autumn < 0.1) this._autumnSaid = false;
     else if (this._autumn > 0.5 && !this._autumnSaid && !overlay && (this.mode === 'fly' || this.mode === 'seat')) {
       this._autumnSaid = true;
@@ -590,6 +578,51 @@ export class Game {
         if (this._lifeSaid <= 2 && (this.mode === 'fly' || this.mode === 'seat')) this.hud.say(`${a.d.cls.toUpperCase()} AHEAD`, 'life in the forest: it can be scanned too', 4);
         return a;
       });
+  }
+
+  // Rivers and canyons (terrain.js): seen ahead, a word on how to follow one (turn along
+  // it); turned along one, near its middle, the ship follows it (ship.js: down in its cut,
+  // along its bends), steering itself gently toward its middle a little way on, until the
+  // pilot steers firmly away or turns off it. steer: what the pilot asks; returns what the
+  // ship does.
+  _river(dt, steer) {
+    const s = this.ship, overlay = this.terminal.open || this.menu.open || this.reader.open;
+    const flying = (this.mode === 'fly' || this.mode === 'seat') && !this.landed && !this.landing.active;
+    this._riverT = (this._riverT || 0) - dt;
+    if (this._riverT <= 0) {
+      this._riverT = 0.2;
+      const R = riverAt(s.x, s.z), [fx, fz] = s.forward(), sg = Math.sign(R.v) || 1;
+      const cx = s.x - sg * R.gx * R.d, cz = s.z - sg * R.gz * R.d;
+      const real = R.d < R.rw + 90 && height(cx, cz) < WATER - 1 && mountainEnv(cx, cz) < 0.1;
+      const align = Math.abs(fx * -R.gz + fz * R.gx);
+      const was = this._riverOn;
+      this._riverOn = flying && real && align > (was ? 0.5 : 0.8) && Math.abs(steer) < 0.7;
+      // a canyon (deep in the hills) or a river (between banks)
+      const canyon = () => Math.max(height(cx + R.gx * 130, cz + R.gz * 130), height(cx - R.gx * 130, cz - R.gz * 130)) - WATER > 45;
+      if (this._riverOn && !was && !overlay && this.time - (this._riverSaidAt ?? -99) > 40) {
+        this._riverSaidAt = this.time;
+        this.hud.say(canyon() ? 'FOLLOWING THE CANYON' : 'FOLLOWING THE RIVER', 'steer away to climb out', 3.5);
+      }
+      // one ahead, not yet followed: how to
+      if (!this._riverOn && flying && !overlay) {
+        const ahead = [150, 260, 370].find((d) => { const x = s.x + fx * d, z = s.z + fz * d, Q = riverAt(x, z); return Q.d < Q.rw && height(x, z) < WATER - 1 && mountainEnv(x, z) < 0.1; });
+        if (ahead && !this._riverAheadSaid) {
+          this._riverAheadSaid = true;
+          const x = s.x + fx * ahead, z = s.z + fz * ahead, Q = riverAt(x, z);
+          const deep = Math.max(height(x + Q.gx * 130, z + Q.gz * 130), height(x - Q.gx * 130, z - Q.gz * 130)) - WATER > 45;
+          this.hud.say(deep ? 'A CANYON AHEAD' : 'A RIVER AHEAD', 'turn along it, and the ship follows it down', 4.5);
+        } else if (!ahead && R.d > 500) this._riverAheadSaid = false;
+      }
+    }
+    s.follow = damp(s.follow, this._riverOn ? 1 : 0, this._riverOn ? 0.7 : 1.4, dt);
+    if (s.follow > 0.2) {
+      // toward its middle a little way on; the harder the pilot steers, the less
+      const [[px, pz]] = s.riverPath([110 * Math.max(1, s.speed / 24)]);
+      const e = angleDelta(s.heading, Math.atan2(px - s.x, pz - s.z));
+      const free = 1 - clamp(Math.abs(steer) / 0.7, 0, 1);
+      steer = clamp(steer - clamp(e * 2.2, -1, 1) * s.follow * free, -1, 1);
+    }
+    return steer;
   }
 
   // the wallet that has shared its address with this browser, if any
@@ -721,6 +754,8 @@ export class Game {
     if (!overlay && (this.mode === 'fly' || this.mode === 'seat')) steer = input.steer();
     // (rolled over, left is still left on the screen)
     if (this.ship.flip > 0.5) steer = -steer;
+    // following a river: turned along one, the ship keeps to it until steered away
+    steer = this._river(dt, steer);
     if (this.mode === 'title') steer = Math.sin(this.time * 0.05) * 0.25;
     // the boost burns plasma; spent, it waits until the core has gathered some back
     if (this.plasmaLeft <= 0) this._spent = true;

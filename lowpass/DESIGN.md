@@ -192,8 +192,12 @@ built as layers that all go together, instead of as more kinds of thing:
   different by where it is found. The rivers are the terrain to fly along: a channel cut
   where a slow, warped field crosses its middle, down below the lakes' level so the
   lakes' own water stands in it, as deep as the ground is high (a canyon in the hills,
-  ledged and layered), out of the mountains' hearts. The ship's height already follows
-  the ground ahead, so flying along one takes it down between the walls; the rivers'
+  ledged and layered), out of the mountains' hearts. Turned along one (the HUD says so
+  as one comes into view), the ship follows it: its height from the river's own path
+  ahead, not the straight line it points along, so it goes down between the walls and
+  stays there through the bends, and a gentle hand on the steering toward the river's
+  middle that the pilot's own steering overrides (steering firmly away lets it go); the
+  rivers'
   artifacts rise only near a river's middle, so they are found by following one, and
   are worth more for it.
 - **Life** fills the time between artifacts with small, frequent things that move and

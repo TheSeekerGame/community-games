@@ -57,14 +57,47 @@ was nothing to tell anybody. Fixed sites turn all three around:
 - **A shared world.** A place code (N5G-E3K) names a site for everyone. A pilot can say
   where the deepest thing they know of stands, and another can fly there and see it.
 
-About one site to six or seven square kilometers (a minute or two between neighbors at
-cruise, which is the old pace, but now the pilot's to keep or not): the forest's grid
-gives about half its 2.2 km cells one site, placed where the cell is most itself (a
-summit, a turned stand, a lake, else plain ground), and every river carries one or two
-more, and often one on its lake, so following a river or climbing a range is always
-answered. Eighty-two families by place (forty-six in the forest at large, thirteen on the
-mountains, ten in the turned stands, eight on the rivers, five on the lakes, and the
-traces); about one in seven is grand.
+About four sites in a hundred square kilometers. (At first there were three times as
+many, one every minute or two at cruise; the owner found they answered "way too often",
+so that none felt special. Now the forest's grid gives about one in seven of its 2.2 km
+cells a site, placed where the cell is most itself (a summit, a turned stand, a lake,
+else plain ground), some rivers one more, a few lakes one.)
+
+### Rarity: a reason to fly somewhere
+
+With every artifact equally likely there was no reason to fly to any particular one, or
+to follow another pilot's find. So every artifact site has a **tier** (src/artifacts/
+tiers.js), drawn from its seed: COMMON (about two in three), UNCOMMON (one in four), RARE
+(one in thirteen), EPIC (one in fifty), LEGENDARY (one in four hundred), MYTHIC (one in
+four thousand: at four sites in a hundred square kilometers, a hundred pilots exploring
+for a while will find perhaps one). Each tier is its own selection of art, at every
+layer: its own families at the surface (the first families, the sets, the grandest of
+both, then sets of their own for EPIC, LEGENDARY and MYTHIC, the MYTHIC ones landmarks two
+hundred meters tall) and its own true forms below (the newest forms are RARE's alone;
+EPIC, LEGENDARY and MYTHIC have their own; the old marked (+) forms became LEGENDARY's).
+The rarer, the more:
+- **it is worth**: a scan is multiplied by its tier (1, 2, 5, 15, 60, 400), on top of
+  the layers seen;
+- **it holds**: the least resonance rises with the tier (a MYTHIC holds five layers at
+  least), so attuning further pays most at the rare ones;
+- **it is heard and seen from afar**: heard farther (up to four times as far), and a
+  pillar of its tier's light stands over it (RARE and up), seen through the fog from as
+  far as it is heard, so a place code is enough to find it by eye;
+- **it is told**: when anyone finds an EPIC or rarer, every ship flying in the next
+  hours is told where, with SET COURSE.
+
+### Finders: the early ones share in the later
+
+Who comes first should matter, and telling others should pay. A linked holder's
+transmitted sites go to the relays as finds (src/net/finds.js: one small signed event per
+address and site, with the board's wallet proof), and every reader orders each site's
+finders the same way. Each finder shares in everyone after them: the first gets a tenth
+of the site's whole worth for each later finder, the second a twentieth, and so on, down
+eight finders (a pyramid, as the owner put it). Nobody pays: it is new DATA, credited as
+later finds come in. So the first to a MYTHIC does very well, and does better the more
+people it brings there; the second does well too. The order rests on each finder's own
+clock (a reader cannot know better); a find dated ahead of now is not counted, and only
+holders count, which keeps it to people with something at stake.
 
 ### Attunement and resonance: one world, seen to different depths
 
@@ -100,14 +133,10 @@ Why this shape:
 - **The climb is the old climb.** A scan is worth 10 and 10 more for every layer seen;
   levels cost 120, 240, 480... The economy of the deep is unchanged; only what it buys
   reads differently.
-- **Traces.** A few sites show next to nothing (one small stone, a ring of pebbles, a
-  crack with light in it) and are deep (III at least): the least at the surface, the
-  most below, and their true form stands on the ground beside them, larger than any.
-  They reward the pilot who looks at a small thing twice.
-
-The marked ones (+) stay the jackpot: about one resonant site in thirty holds one of the
-marked ones' own forms as its true form, a quarter larger, worth ten times as much once
-that form is seen (attuned to II). Now it is a place, and can be told.
+- **Traces.** Some EPIC sites show next to nothing (one small stone, a ring of pebbles, a
+  crack with light in it) and are deep: the least at the surface, the most below, and
+  their true form stands on the ground beside them, larger than any. They reward the
+  pilot who looks at a small thing twice.
 
 ### Telling one another where
 
@@ -155,7 +184,8 @@ never takes a scan away: the Codex is a collection, and the leaderboard counts i
 way. A site scanned again further in is paid only the difference.
 
 Two smaller upgrades have an end. The plasma tank starts at five seconds of boost and
-grows to fifteen; the signal gain is how far the receiver hears a site (2.5 km to 5), so
+grows to fifteen, and fills faster with each level (a larger tank that refilled at the
+old rate was no help once spent); the signal gain is how far the receiver hears a site (2.5 km to 5), so
 a pilot with more gain has more bearings to choose from, and none is ever left without
 one (with nothing in range, the nearest is heard faintly). Five levels each. Witnessed
 seekers are the network's, and stay exactly as they are.

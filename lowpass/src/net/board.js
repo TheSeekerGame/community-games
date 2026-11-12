@@ -2,6 +2,7 @@ import { placeCode, placeOf } from '../world/sites.js';
 import { Pool, RELAYS, boardKey, checkEvent, signEvent } from './nostr.js';
 import { checkLink, savedLink, link as linkWallet, forget } from './wallet.js';
 import { load, save, boardAll, boardKeep } from '../core/store.js';
+import { Finds, FINDS_TAG } from './finds.js';
 
 // The Codex board: scans and words from seekers, on public Nostr relays, readable by
 // anyone, in the game or in any Nostr client (kind 1 notes tagged #lowpasscodex).
@@ -87,6 +88,7 @@ export class Board {
     // what it is missing
     this.pool.onEose = (sub) => {
       if (sub === 'lp-ranks' || sub === 'lp-gallery') { if (this.ranks) this.ranks.ended(sub); return; }
+      if (sub.startsWith('lp-finds')) return;
       this.loaded = true;
       this._changed();
       clearTimeout(this._healT);
@@ -104,6 +106,7 @@ export class Board {
     this.healed = 0;
     this.devHolders = null;     // development only: addresses treated as holders
     this.ranks = null;          // the leaderboard (ranks.js), once its page has been opened
+    this.finds = new Finds(this);   // who found each site first (finds.js)
   }
 
   async start() {
@@ -121,6 +124,7 @@ export class Board {
     this.pool.subscribe('lp-names', { kinds: [0], '#t': [BOARD_TAG], limit: 500 });
     this.pool.subscribe('lp-dels', { kinds: [5], '#t': [BOARD_TAG], limit: 500 });
     this._timer = setInterval(() => this._checkHolders(), 1500);
+    this.finds.start();
   }
 
   // ---------------------------------------------------------------- names
@@ -259,7 +263,10 @@ export class Board {
   }
 
   async _event(ev) {
-    if (ev && ev.kind === 30078) return this.ranks ? this.ranks.event(ev) : undefined;
+    if (ev && ev.kind === 30078) {
+      if (tag(ev, 't') && tag(ev, 't')[1] === FINDS_TAG) return this.finds.event(ev);
+      return this.ranks ? this.ranks.event(ev) : undefined;
+    }
     if (ev && ev.kind === 0) return this._nameEvent(ev);
     if (ev && ev.kind === 5) return this._deleteEvent(ev);
     if (!ev || ev.kind !== 1 || typeof ev.content !== 'string' || ev.content.length > 1200) return;
@@ -338,6 +345,8 @@ export class Board {
   async linkWallet(provider) {
     this.link = await linkWallet(provider, this.key.pk);
     this._changed();
+    // the sites found before the link: to the relays now (finds.js)
+    this.finds.publish(this.game.codex.filter((e) => e.site && e.sent));
     return this.link;
   }
   unlink() {

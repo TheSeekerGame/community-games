@@ -14,8 +14,10 @@ import { Cameras } from './ship/camera.js';
 import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
 import { load, save, codexAll, codexPut } from './core/store.js';
-import { clamp, damp, angleDelta } from './core/math.js';
-import { Progress, REFILL, valueOf } from './core/progress.js';
+import { clamp, damp, angleDelta, formatInt } from './core/math.js';
+import { Progress, valueOf } from './core/progress.js';
+import { tierOf } from './artifacts/tiers.js';
+import { sitesNear } from './world/sites.js';
 import { Course } from './ship/course.js';
 import { SPECIES } from './artifacts/species.js';
 import { stratum } from './artifacts/strata.js';
@@ -263,6 +265,23 @@ export class Game {
     this.cams._cut = true;
     this.hud.say('THE FOG BELT', 'A survey flight over the planet’s warm band', 5);
     this._keysShown = this.time;
+    // the relays, a little after (news of rare finds, finders' shares: finds.js)
+    if (!new URLSearchParams(location.search).has('nonet')) setTimeout(() => { try { this.terminal.ensureBoard(); } catch (e) { console.warn('board', e); } }, 4000);
+  }
+
+  // One of the rarest found lately by another pilot: told, with the way there.
+  rareFound(f) {
+    const T = tierOf(f.tier), km = Math.hypot(f.x - this.ship.x, f.z - this.ship.z) / 1000;
+    this.audio.play('witness', {});
+    this.atmo.networkPulse(f.tier >= 5 ? 1.6 : 1.1);
+    this.hud.toast(`${T.name} FOUND`, `${f.name || 'Something rare'} · ${f.place} · ${km < 10 ? km.toFixed(1) : Math.round(km)} km from here. Fly there: every pilot who comes after the first gives the first a share.`, 40,
+      { label: 'SET COURSE', color: T.color, run: () => this.course.set(f.x, f.z, f.name) });
+  }
+
+  // DATA come in as a finder's share: pilots who came after this one to its sites.
+  royalty(data, pilots, sites) {
+    this.audio.play('transmit', { n: 1 });
+    this.hud.say(`+${formatInt(data)} DATA · FINDER'S SHARE`, `${pilots} pilot${pilots > 1 ? 's' : ''} came after you to ${sites > 1 ? `${sites} places` : 'a place'} you found`, 6);
   }
 
   enterCabin(seat = false) {
@@ -486,15 +505,20 @@ export class Game {
     if (d.family === 'landing') { this.audio.play('signal', { pan }); if (fly && first('landing', 3)) this.hud.say('A CLEARING', 'lanterns among the trees · hold the scanner on it to land', 5); return; }
     if (d.family === 'life') { if (fly && first('life')) this.hud.say(d.cls.toUpperCase(), 'life in the forest: it can be scanned too', 4); return; }
     if (d.family === 'creature') return;      // (the creatures are for finding out)
+    // a rare one (tiers.js): its tier first, always, in its color
+    const T = d.tier >= 2 ? tierOf(d.tier) : null;
+    if (T && fly) this.atmo.networkPulse(0.4 + d.tier * 0.2);
+    const head = (t) => (T ? `${T.name} · ${t}` : t);
     if (d.depth) {
       const st = stratum(d.depth);
       this.audio.play('deep', { depth: d.depth, chord: d.params.voice && d.params.voice.chord, glimpse: d.plus, pan });
       if (d.plus) this.atmo.networkPulse(0.8);
-      if (fly) this.hud.say(`${a.again ? 'MORE TO SEE · ' : ''}RESONANCE ${st.numeral}${d.plus ? '+' : ''} · ${st.name.toUpperCase()}`, `${d.cls}${d.overClass ? ` · at heart, ${d.overClass.toLowerCase()}` : ''}${d.res > d.depth ? ' · it resonates deeper than you are attuned' : ''}`, 5);
+      if (fly) this.hud.say(head(`${a.again ? 'MORE TO SEE · ' : ''}RESONANCE ${st.numeral}${d.plus ? '+' : ''} · ${st.name.toUpperCase()}`), `${d.cls}${d.overClass ? ` · at heart, ${d.overClass.toLowerCase()}` : ''}${d.res > d.depth ? ' · it resonates deeper than you are attuned' : ''}`, 5);
     } else if (d.res > 0) {
       this.audio.play('signal', { pan });
-      if (fly && first('deeper', 3)) this.hud.say('IT RESONATES', `${d.cls} · more lies in it than you can see yet · attune at the Codex computer`, 6);
-    } else if (fly && d.trace && first('trace')) this.hud.say('ALMOST NOTHING', 'a trace: little at the surface', 4);
+      if (fly && (T || first('deeper', 3))) this.hud.say(head('IT RESONATES'), `${d.cls} · more lies in it than you can see yet · attune at the Codex computer`, 6);
+    } else if (fly && T) this.hud.say(T.name, `${d.cls} · worth ${T.value} times a common one`, 5);
+    else if (fly && d.trace && first('trace')) this.hud.say('ALMOST NOTHING', 'a trace: little at the surface', 4);
   }
 
   // what was fired at an artifact before it was put away, laid on it again
@@ -646,6 +670,7 @@ export class Game {
       // a site's: where it stands (for anyone), how much lies in it
       ...(a.site ? { site: a.site.key, x: Math.round(a.x), z: Math.round(a.z), res: d.res || 0 } : {}),
       ...(d.plus ? { plus: true } : {}),
+      ...(d.tier ? { tier: d.tier } : {}),
       ...(d.family === 'creature' ? { creature: d.species } : {}),
       ...(d.family === 'life' ? { life: d.species } : {}),
       ...(d.family === 'curio' ? { ground: true, curio: d.curio } : {}),
@@ -771,7 +796,7 @@ export class Game {
     this.ship.update(dt, steer, boosting);
     const tank = this.tankSecs;
     if (boosting) this.plasmaLeft = Math.max(0, this.plasmaLeft - (dt * this.ship.boost) / tank);
-    else if (this.mode !== 'title') this.plasmaLeft = Math.min(1, this.plasmaLeft + (dt * REFILL * this.refillBoost) / tank);
+    else if (this.mode !== 'title') this.plasmaLeft = Math.min(1, this.plasmaLeft + (dt * this.progress.refill * this.refillBoost) / tank);
     const [fx, fz] = this.ship.forward();
     const cp = this.cams.cam.position;
     this.world.update(this.ship.x, this.ship.z, fx, fz, 2, cp.x + this.world.origin.x, cp.z + this.world.origin.z, dt);
@@ -1162,7 +1187,7 @@ export class Game {
         this.field.noSites = true;
         for (const a of [...this.field.active]) this.field.remove(a);
         const tx = opts.seed || '0x' + [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
-        const move = { tx, wild: true, site: 'dev', res, depth: Math.min(seen, res), mountain: !!opts.mountain, autumn: !!opts.autumn, river: !!opts.river, lake: !!opts.lake, plus: !!opts.plus, trace: !!opts.trace, form: opts.form };
+        const move = { tx, wild: true, site: 'dev', res, depth: Math.min(seen, res), mountain: !!opts.mountain, autumn: !!opts.autumn, river: !!opts.river, lake: !!opts.lake, plus: !!opts.plus, trace: !!opts.trace, form: opts.form, tier: opts.tier };
         const a = await this.field.spawn(move, { ahead, lateral: 0, family: family || undefined, quiet: true });
         this._inspect = { a };
         return { name: a.d.name, code: a.d.code, family: a.d.family, form: a.d.form, layers: a.d.over && a.d.over.layers, height: Math.round(a.model.height), span: Math.round(a.model.span), seed: tx, notes: a.d.notes };
@@ -1170,6 +1195,16 @@ export class Game {
       sitesOff: (v = true) => { this.field.noSites = v; if (v) for (const a of [...this.field.active]) if (a.site) this.field.remove(a); },
       // the sites heard and built now; attune to n; put the ship near a place
       sites: () => ({ signals: this.field.signals.map((s) => ({ key: s.key, kind: s.site.kind, place: s.site.place, res: s.site.res, dist: Math.round(s.dist), built: !!s.a })), built: [...this.field.sites.values()].map((a) => ({ key: a.site.key, name: a.d.name, family: a.d.family, depth: a.d.depth, res: a.d.res, dist: Math.round(a.dist), scanned: a.scanned })) }),
+      // the nearest site of a tier (tiers.js) within r: put the ship `back` meters short of it
+      rare: (tier = 2, back = 1500, r = 60000) => {
+        const all = sitesNear(this.ship.x, this.ship.z, r, 1e9).sites.filter((s) => s.kind === 'artifact' && (s.tier || 0) === tier);
+        all.sort((p, q) => Math.hypot(p.x - this.ship.x, p.z - this.ship.z) - Math.hypot(q.x - this.ship.x, q.z - this.ship.z));
+        const s = all[0];
+        if (!s) return null;
+        const h = Math.atan2(s.x - this.ship.x, s.z - this.ship.z);
+        this.ship.place(s.x - Math.sin(h) * back, s.z - Math.cos(h) * back, h);
+        return { key: s.key, tier: s.tier, res: s.res, x: Math.round(s.x), z: Math.round(s.z), of: all.length };
+      },
       att: (n) => { this.progress.depth = n; this.progress.save(); this.field.reattune(); return n; },
       goto: (x, z, heading) => { this.ship.place(x, z, heading ?? this.ship.heading); return [x, z]; },
       families: () => ALL_FAMILIES,

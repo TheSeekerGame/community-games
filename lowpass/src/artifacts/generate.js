@@ -2,7 +2,8 @@ import { rng, seedsFromHex, clamp, formatInt, formatNum } from '../core/math.js'
 import { pitch } from '../core/tuning.js';
 import { keccak256, toHex } from '../core/keccak.js';
 import { describeDeep, describeOver } from './deep.js';
-import { EXTRA } from './sets/index.js';
+import { EXTRA, BASE_EXTRA } from './sets/index.js';
+import { familiesFor, tierOf } from './tiers.js';
 import { roman, stratum } from './strata.js';
 import { describeCreature } from './species.js';
 import { describeLanding } from './clearing.js';
@@ -33,7 +34,7 @@ import { describeLife } from './life.js';
 //
 // Raise GENERATOR_VERSION when the output for a seed changes.
 
-export const GENERATOR_VERSION = 7;
+export const GENERATOR_VERSION = 8;
 
 // What stands on the mountains is its own (mountain.js): a wild one that rises there is
 // drawn from these instead, and at any depth from the mountains' own forms (deep.js).
@@ -51,11 +52,14 @@ export const FAMILIES = ['ring', 'obelisk', 'orb', 'lattice', 'shell', 'crystal'
 
 // with the families of the sets (sets/index.js), by the place each belongs to; out on a
 // lake, the lakes' own, or one of the few that hang in the air and need no ground
-const extraAt = (place) => Object.keys(EXTRA).filter((k) => EXTRA[k].place === place);
+const extraAt = (place) => Object.keys(BASE_EXTRA).filter((k) => BASE_EXTRA[k].place === place);
 const GENERAL = [...FAMILIES.slice(0, -1), ...extraAt('any')];
 const ON = { mountain: [...MOUNTAIN_FAMILIES, ...extraAt('mountain')], autumn: [...AUTUMN_FAMILIES, ...extraAt('autumn')], river: [...RIVER_FAMILIES, ...extraAt('river')], lake: extraAt('lake') };
 const FLOATERS = ['orb', 'solids', 'tesseract', 'swarm', 'lanterns', 'mobile'];
 export const ALL_FAMILIES = { any: GENERAL, ...ON, trace: ['trace'] };
+// the first families by place, for the tiers to split (tiers.js)
+const BASE = { any: FAMILIES.slice(0, -1), mountain: MOUNTAIN_FAMILIES, autumn: AUTUMN_FAMILIES, river: RIVER_FAMILIES, floaters: FLOATERS };
+export const tierFamilies = (tier, place) => familiesFor(tier, place, BASE);
 
 // the light a colorway gives: [color, strength]
 const BY_COLORWAY = {
@@ -179,7 +183,7 @@ const LAKE_ORIGIN = [
 const WILD_LIGHT = [0x91cbde, 0xd6edf5, 0x8ca893, 0x7bacbc, 0x97acb0, 0xcfdde4, 0x8f7aa8, 0xaf634b];
 
 const PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43];
-const FIB = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+const FIB = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610];
 const CA_RULES = [30, 45, 73, 90, 105, 110, 150, 182, 26, 18, 57, 62];
 const POLY = ['tetrahedron', 'cube', 'octahedron', 'dodecahedron', 'icosahedron'];
 const POLY_N = { tetrahedron: 4, cube: 6, octahedron: 8, dodecahedron: 12, icosahedron: 20 };
@@ -236,7 +240,10 @@ export function describe(move, seekerInfo, force = null) {
   let family = 'echo';
   if (wild) {
     const r = R0();
-    const pool = move.trace ? ['trace'] : move.mountain ? ON.mountain : move.river ? ON.river : move.lake ? (ON.lake.length && r < 0.65 ? ON.lake : FLOATERS) : move.autumn ? ON.autumn : GENERAL;
+    const place = move.mountain ? 'mountain' : move.river ? 'river' : move.lake ? 'lake' : move.autumn ? 'autumn' : 'any';
+    // a site's: from its tier's own (tiers.js); else (development) from all at the place
+    const pool = move.trace ? ['trace'] : move.site && move.tier !== undefined ? familiesFor(move.tier, place, BASE)
+      : move.mountain ? ON.mountain : move.river ? ON.river : move.lake ? (ON.lake.length && r < 0.65 ? ON.lake : FLOATERS) : move.autumn ? ON.autumn : GENERAL;
     family = pool[Math.floor(R0() * pool.length)];
   }
   if (force) family = force;
@@ -244,8 +251,11 @@ export function describe(move, seekerInfo, force = null) {
 
   const [accent, strength] = BY_COLORWAY[traits.Colorway] || [R0.pick(WILD_LIGHT), 1];
   // witnessed artifacts stand larger: the network's moment; a grand wild one too
-  const grand = wild && R0() < 0.14 && !move.trace;
-  const size = wild ? (0.8 + R0() * 0.35) * (grand ? 1.45 : 1) : (0.85 + 0.55 * clamp(Math.log10(1 + charge) / 3.3, 0, 1)) * 1.2;
+  // (a site's tier: RARE ones always grand; EPIC ones larger still; LEGENDARY and MYTHIC
+  // are built to their own great scale)
+  const tier = wild ? Math.max(0, Math.min(5, move.tier | 0)) : 0;
+  const grand = wild && family !== 'trace' && (tier === 2 || (tier < 2 && R0() < 0.14));
+  const size = wild ? (tier >= 3 ? (tier === 3 && family !== 'trace' ? 1.35 : 0.94) + R0() * 0.12 : (0.8 + R0() * 0.35) * (grand ? 1.45 : 1)) : (0.85 + 0.55 * clamp(Math.log10(1 + charge) / 3.3, 0, 1)) * 1.2;
   const count = tokens.length;
 
   const depth = wild ? Math.max(0, Math.floor(move.depth || 0)) : 0;
@@ -259,7 +269,7 @@ export function describe(move, seekerInfo, force = null) {
     seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !special && !!move.mountain, autumn: wild && !special && !move.mountain && !move.river && !!move.autumn, river: wild && !special && !move.mountain && !!move.river, lake: wild && !special && !!move.lake,
     // (a site's: one of the marked shows its mark once its true form is seen)
     plus: wild && !special && depth >= (move.site ? 2 : 1) && !!move.plus, marked: wild && !special && !!move.plus, trace: wild && !special && family === 'trace',
-    site: move.site || null, res: wild ? Math.max(0, Math.floor(move.res || 0)) : 0,
+    site: move.site || null, res: wild ? Math.max(0, Math.floor(move.res || 0)) : 0, tier: special || !wild ? 0 : tier,
   };
   const P = d.params;
   let structure = '';

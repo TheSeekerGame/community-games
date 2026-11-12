@@ -66,3 +66,22 @@ Check: `node --import ./tools/check/reg.mjs tools/check/formtest.mjs src/artifac
 You cannot see the picture from the checks: work out where every part is in meters, compare
 the measured extents with what you intended, and reread your geometry for parts that would
 float, sink, intersect badly or face the wrong way.
+
+## Rarity tiers (what each tier's art must feel like)
+Every site has a tier, the same for every ship: COMMON, UNCOMMON, RARE, EPIC, LEGENDARY,
+MYTHIC (MYTHIC so rare that among a hundred pilots perhaps one ever finds one). Each tier
+has its own families at the surface and its own true forms below; the higher the tier,
+the more a pilot must feel, on arriving, that the flight was worth it.
+- EPIC (sets/epic.js; forms in deepforms4.js): 40-80 m at the surface, one unforgettable
+  idea, more parts in motion than an ordinary family, a second light color allowed (the
+  tier's violet, 0xb48cff, beside the accent A).
+- LEGENDARY (sets/legendary.js; forms in deepforms4.js): 70-130 m, monumental and slow,
+  gold as its second light (0xffd27a), something that keeps changing over a minute so it
+  rewards circling it.
+- MYTHIC (sets/mythic.js; forms in deepforms5.js): a landmark, 120-260 m, unlike anything
+  else in the game, seen from far through the fog (tall glowing parts, LAYER_FX light),
+  prismatic second light (cycling hue is fine), a slow event that unfolds over minutes.
+Tier families stand on any ground ('any'); set `floats: true` on one that hangs in the air
+with nothing on the ground, so it may stand out on a lake too. Their `kin` may name any
+existing form: the tier's own forms are assigned centrally (src/artifacts/tiers.js).
+Tier forms use set: 'plus' and from: 1.

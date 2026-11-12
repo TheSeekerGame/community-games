@@ -1,3 +1,4 @@
+import { TIERS } from '../artifacts/tiers.js';
 import { el, clear, key } from './dom.js';
 import { stratum } from '../artifacts/strata.js';
 import { TANK } from '../core/progress.js';
@@ -78,9 +79,12 @@ export class Hud {
     this.toastTitle = el('div', 'at', this.toastEl);
     this.toastText = el('div', 'as muted', this.toastEl);
     const trow = el('div', 'arow', this.toastEl);
-    const tgo = el('button', 'btn', trow, 'GO OUTSIDE');
-    key(el('span', 'muted', trow), 'V');
-    tgo.onclick = () => { this.hideToast(); if (this.onAlarm) this.onAlarm(); };
+    this.toastGo = el('button', 'btn', trow, 'GO OUTSIDE');
+    this.toastKey = el('span', 'muted', trow);
+    key(this.toastKey, 'V');
+    this.toastLater = el('button', 'chip', trow, 'NOT NOW');
+    this.toastLater.onclick = () => this.hideToast();
+    this.toastGo.onclick = () => { const act = this._toastAct; this.hideToast(); if (act) act.run(); else if (this.onAlarm) this.onAlarm(); };
     this._toastT = 0;
     this._noticeT = 0;
     this._cardT = 0;
@@ -230,15 +234,22 @@ export class Hud {
   }
 
   // over everything, for a few seconds (unless the alert is up)
-  toast(title, text, secs = 7) {
+  // (act: { label, run, color }: its own button in place of GO OUTSIDE, and a NOT NOW)
+  toast(title, text, secs = 7, act = null) {
     if (this.alarmOn) return;
     this.toastTitle.textContent = title;
     this.toastText.textContent = text;
+    this._toastAct = act;
+    this.toastGo.textContent = act ? act.label : 'GO OUTSIDE';
+    this.toastKey.style.display = act ? 'none' : '';
+    this.toastLater.style.display = act ? '' : 'none';
+    this.toastEl.style.setProperty('--tc', act && act.color ? act.color : '');
+    this.toastEl.classList.toggle('tinted', !!(act && act.color));
     this.toastEl.classList.add('on');
     this._toastT = secs;
   }
   hideToast() { this._toastT = 0; this.toastEl.classList.remove('on'); }
-  get toastOn() { return this._toastT > 0; }
+  get toastOn() { return this._toastT > 0 && !this._toastAct; }
 
   // list: [{ name, color, left (s) }]
   setAnomalies(list) {
@@ -272,7 +283,7 @@ export class Hud {
     if (this._toastT > 0) {
       this._toastT -= dt;
       // gone by itself, or once one is where it can be seen from
-      if (this._toastT <= 0 || this.alarmOn || ((g.mode === 'fly' || g.mode === 'seat') && !g.terminal.open && !g.menu.open && !g.reader.open)) this.hideToast();
+      if (this._toastT <= 0 || this.alarmOn || (!this._toastAct && (g.mode === 'fly' || g.mode === 'seat') && !g.terminal.open && !g.menu.open && !g.reader.open)) this.hideToast();
     }
 
     const ground = g.mode === 'ground';
@@ -316,7 +327,10 @@ export class Hud {
       // (what has risen for the ship will not wait: it leads)
       // (a course set leads, unless something has risen for the ship)
       const course = g.course && g.course.on ? { course: true, dist: g.course.dist(), bearing: g.course.bearing() } : null;
-      const lead = rest.find((x) => x.gold) || course || (held ? null : (t && rest.find((x) => x.a === t)) || rest[0] || null);
+      // (a rare one heard leads, the rarest: it is what the pilot would fly to; tiers.js)
+      const tierOfX = (x) => (x.site && x.site.kind === 'artifact' ? x.site.tier || 0 : 0);
+      const rare = rest.filter((x) => tierOfX(x) >= 2 && !x.faint).sort((p, q) => tierOfX(q) - tierOfX(p) || p.dist - q.dist)[0];
+      const lead = rest.find((x) => x.gold) || course || (held ? null : (t && rest.find((x) => x.a === t)) || rare || rest[0] || null);
       if (course && lead !== course) rest.unshift(course);
       marks = rest.filter((x) => x !== lead).slice(0, 6);
       if (lead) {
@@ -329,7 +343,13 @@ export class Hud {
         const n = rest.length;
         const gold = rest.filter((x) => x.gold).length;
         if (lead.course) this.sigLabel.textContent = `${g.course.phase === 'hold' ? 'HOLDING' : 'COURSE'} · ${m}`;
-        else this.sigLabel.textContent = `${lead.gold ? (gold > 1 ? `${gold} WITNESSED` : 'WITNESSED') : lead.faint ? 'FAINT SIGNAL' : n > 1 ? `${n} SIGNALS` : 'SIGNAL'} · ${m}`;
+        else {
+          const T = tierOfX(lead);
+          this.sigLabel.textContent = `${lead.gold ? (gold > 1 ? `${gold} WITNESSED` : 'WITNESSED') : lead.faint ? 'FAINT SIGNAL' : T >= 1 ? `${TIERS[T].name}${n > 1 ? ` · ${n} SIGNALS` : ''}` : n > 1 ? `${n} SIGNALS` : 'SIGNAL'} · ${m}`;
+        }
+        const LT = lead.course || lead.gold ? 0 : tierOfX(lead);
+        this.signal.style.setProperty('--tc', LT >= 1 ? TIERS[LT].color : '');
+        this.signal.classList.toggle('tiered', LT >= 1);
         this.signal.classList.toggle('faint', !!lead.faint);
         this.signal.classList.toggle('course', !!lead.course);
       } else if (marks.length) {
@@ -349,6 +369,9 @@ export class Hud {
       mk.classList.toggle('edge', Math.abs(a.bearing) > 1.2);
       mk.classList.toggle('gold', !!a.gold);
       mk.classList.toggle('course', !!a.course);
+      const T = a.site && a.site.kind === 'artifact' ? a.site.tier || 0 : 0;
+      mk.classList.toggle('tiered', T >= 1);
+      if (T >= 1) mk.style.setProperty('--tc', TIERS[T].color);
     });
     // brackets
     let shown = false;

@@ -4,6 +4,8 @@ import { Ranks } from '../net/ranks.js';
 import { load, save, codexPut } from '../core/store.js';
 import { valueOf, owedFor, MAX } from '../core/progress.js';
 import { placeCode } from '../world/sites.js';
+import { tierOf } from '../artifacts/tiers.js';
+import { siteId as siteIdOf } from '../net/finds.js';
 import { CodexMap, placesIn } from './map.js';
 import { stratum, harmonicOf } from '../artifacts/strata.js';
 import { discover, connect, connected, disconnect } from '../net/wallet.js';
@@ -17,23 +19,27 @@ import { ANOMALIES, ANOMALY_SECS, AT_ONCE, anomalyCost, readKeys } from '../worl
 const SHELVES = [['upgrades', 'UPGRADES'], ['fx', 'EFFECTS'], ['anomalies', 'ANOMALIES'], ['ships', 'SHIPS']];
 import { portrait } from '../ship/portrait.js';
 
-// The Codex computer. Six tabs:
-//   LOG      what you have recorded: each photograph, its name, where it came from, the
-//            Codex's notes; share it to the board; set course back to it.
+// The Codex computer. Four tabs, and along the top, always: the DATA in hand, TRANSMIT
+// (the scans not yet sent, for DATA: they stay in the log; a holder's sites go to the
+// relays as found, finds.js) and the pilot (the wallet: your SEEKER NET seekers, your name).
+//   LOG      what you have recorded: each photograph, its name, its tier, where it stands,
+//            who found it first; set course back to it, share it; its notes, folded away.
 //   MAP      the forest about the ship, and what you know of it (map.js): set a course.
-//   BOARD    the seekers' board on Nostr: scans and words from holders, readable by all.
-//   SEEKERS  your SEEKER NET devices: charge, stage, Discharge, Uplink, shares, traits,
-//            and when each should activate; and the wallet link that lets you post.
-//   LEADERS  the holders who submitted their scans, witnessed ones first (ranks.js), each
-//            with a gallery of what they recorded; and your own submission.
-//   SHOP     DATA: transmit your scans for it (they stay in the Codex), and spend it on
-//            attunement, the plasma tank and the signal gain (progress.js), or
-//            on ships (designs.js), boarded from here.
+//   BOARD    the seekers' board on Nostr, three ways: POSTS (scans and words from
+//            holders), FINDS (who found what lately, rarest first: fly there), LEADERS
+//            (the holders who submitted their scans, ranks.js).
+//   SHOP     spend DATA on attunement, the plasma tank and the signal gain (progress.js),
+//            effects, anomalies, ships (designs.js).
+// SEEKERS (the pilot's page) opens from the pilot at the top right.
 // Keys: TAB changes tab, arrows move, ENTER chooses, ESC closes. Text fields take the keys
 // while they have focus.
 
-const TABS = ['log', 'map', 'board', 'seekers', 'ranks', 'shop'];
-const NAMES = { log: 'LOG', map: 'MAP', board: 'BOARD', seekers: 'SEEKERS', ranks: 'LEADERS', shop: 'SHOP' };
+const TABS = ['log', 'map', 'board', 'shop'];
+const NAMES = { log: 'LOG', map: 'MAP', board: 'BOARD', shop: 'SHOP' };
+// the board's three pages under its one tab; the pilot's page under none
+const GROUP = { finds: 'board', ranks: 'board', seekers: null };
+const groupOf = (t) => (t in GROUP ? GROUP[t] : t);
+const ORD = ['FIRST', 'SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'SIXTH', 'SEVENTH', 'EIGHTH'];
 const hexCss = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
 const depthColor = (d) => (d ? hexCss(stratum(d).light) : 'var(--muted)');
 const DAY = 86400000;
@@ -60,6 +66,14 @@ export class Terminal {
       b.onclick = () => this.setTab(t);
       this.tabBtns[t] = b;
     }
+    // DATA, TRANSMIT, the pilot
+    const right = el('div', 'tright', head);
+    this.dataPill = el('button', 'datap', right);
+    this.dataPill.onclick = () => this.setTab('shop');
+    this.sendBtn = el('button', 'btn sendp', right);
+    this.sendBtn.onclick = () => this._transmit();
+    this.pilotBtn = el('button', 'pilot', right);
+    this.pilotBtn.onclick = () => this.setTab('seekers');
     const x = el('button', 'tclose', head, 'X');
     x.onclick = () => this.hide();
     this.body = el('div', 'tbody', this.win);
@@ -71,7 +85,9 @@ export class Terminal {
     this.map = new CodexMap(this);
   }
 
-  show(tab) {
+  // the board, its relays and the finds (created once: at the Codex, or soon after the
+  // flight begins, so news of rare finds reaches the ship in the air)
+  ensureBoard() {
     const g = this.game;
     if (!this.board) {
       // a test relay on this machine, for development only (never a stranger's link)
@@ -82,12 +98,24 @@ export class Terminal {
         if (!this.open) return;
         if (this.tab === 'board') { this._renderBoardList(); save('board.seen', Date.now()); }
         if (this.tab === 'seekers') this._renderWalletLine();
+        if (this.tab === 'finds' && !this._findsT) this._findsT = setTimeout(() => { this._findsT = null; if (this.open && this.tab === 'finds') this.render(); }, 800);
+        this._head();
         this._dots();
       };
       const l = this.board.link;
       this.seekers.address = l ? l.address : connected();
+      const F = this.board.finds;
+      F.onRare = (f) => g.rareFound(f);
+      F.onRoyalty = (data, pilots, sites) => g.royalty(data, pilots, sites);
+      F.onChange = () => { if (!this.open) return; if (this.tab === 'map') this.map.update(); else if (this.tab === 'log' || this.tab === 'finds') this.render(); };
     }
     this.board.start();
+    return this.board;
+  }
+
+  show(tab) {
+    const g = this.game;
+    this.ensureBoard();
     g.input.unlock();
     this.open = true;
     if (tab) this.tab = tab;
@@ -127,10 +155,8 @@ export class Terminal {
     if (!b) return;
     const seen = load('board.seen', 0);
     const newest = b.posts.length ? b.posts[0].at : 0;
-    this.tabBtns.board.classList.toggle('dot', this.tab !== 'board' && newest > seen);
-    const sent = new Set(b.ranks ? b.ranks.sent.keys : load('ranks.sent', { keys: [] }).keys);
-    this.tabBtns.ranks.classList.toggle('dot', !!b.link && this.tab !== 'ranks' && g.codex.some((e) => !sent.has(e.tx)));
-    this.tabBtns.shop.classList.toggle('dot', this.tab !== 'shop' && (g.codex.some((e) => !e.sent) || g.progress.anyCan));
+    this.tabBtns.board.classList.toggle('dot', groupOf(this.tab) !== 'board' && newest > seen);
+    this.tabBtns.shop.classList.toggle('dot', this.tab !== 'shop' && g.progress.anyCan);
   }
 
   keys(input) {
@@ -138,7 +164,8 @@ export class Terminal {
     if (this.tab === 'ranks' && this.gallery && input.hit('Escape', 'Pad1')) { this._closeGallery(); return; }
     if (input.hit('Escape', 'KeyX', 'KeyK', 'Pad1')) { this.hide(); return; }
     if (input.hit('Tab', 'Pad5')) {
-      this.setTab(TABS[(TABS.indexOf(this.tab) + 1) % TABS.length]);
+      const at = TABS.indexOf(groupOf(this.tab));
+      this.setTab(TABS[(at + 1) % TABS.length]);
       return;
     }
     if (this.tab === 'ranks') { this._rankKeys(input); return; }
@@ -171,8 +198,9 @@ export class Terminal {
   }
 
   render() {
-    for (const t of TABS) this.tabBtns[t].classList.toggle('sel', t === this.tab);
-    this.win.dataset.tab = this.tab;
+    for (const t of TABS) this.tabBtns[t].classList.toggle('sel', t === groupOf(this.tab));
+    this.win.dataset.tab = groupOf(this.tab) || this.tab;
+    this._head();
     clear(this.body);
     clear(this.foot);
     this._chargeEl = null;
@@ -182,17 +210,79 @@ export class Terminal {
     else if (this.tab === 'map') this.map.render(this.body);
     else if (this.tab === 'ranks') this._ranks();
     else if (this.tab === 'shop') this._shop();
+    else if (this.tab === 'finds') this._finds();
     else this._seekersTab();
     const f = this.foot;
     const k = (cap, what) => { const s = el('span', 'kr', f); key(s, cap); el('span', '', s, what); };
     k('TAB', 'tab');
     if (this.tab === 'ranks') k(this.gallery ? '←→' : '↑↓', 'choose');
     else if (this.tab === 'map') { k('←→', 'choose'); k('ENTER', 'set course'); k('Z', 'zoom'); }
-    else if (this.tab !== 'board' && this.tab !== 'shop') k('←→', 'choose');
+    else if (this.tab === 'log' || this.tab === 'seekers') k('←→', 'choose');
     if (this.tab === 'ranks' && !this.gallery) k('ENTER', 'their scans');
     if (this.tab === 'shop') { k('←→', 'shelves'); k('↑↓', 'choose'); k('ENTER', 'select'); }
     k('ESC', this.tab === 'ranks' && this.gallery ? 'back' : 'close');
     this._dots();
+  }
+
+  // the top right: DATA in hand, TRANSMIT while there is something to send, the pilot
+  _head() {
+    const g = this.game, pr = g.progress;
+    clear(this.dataPill);
+    el('span', 'muted', this.dataPill, 'DATA ');
+    this._dataEl = el('span', '', this.dataPill, formatInt(pr.data));
+    this.dataPill.classList.toggle('sel', this.tab === 'shop');
+    const un = pr.unsent(g.codex);
+    this.sendBtn.style.display = un.list.length ? '' : 'none';
+    this.sendBtn.textContent = `TRANSMIT +${formatInt(un.value)}`;
+    this.sendBtn.title = `${un.list.length} scan${un.list.length === 1 ? '' : 's'} to send; they stay in your log`;
+    const b = this.board, link = b && b.link;
+    const name = link ? b.nameOf(link.address) || `${link.address.slice(0, 6)}…${link.address.slice(-4)}` : 'LINK WALLET';
+    this.pilotBtn.textContent = link ? name : this.seekers.address ? 'MY SEEKERS' : 'LINK WALLET';
+    this.pilotBtn.classList.toggle('sel', this.tab === 'seekers');
+    this.pilotBtn.classList.toggle('linked', !!link);
+  }
+
+  // POSTS · FINDS · LEADERS: the board's pages
+  _boardNav(parent) {
+    const nav = el('div', 'subnav', parent);
+    for (const [t, label] of [['board', 'POSTS'], ['finds', 'FINDS'], ['ranks', 'LEADERS']]) {
+      const c = el('button', 'chip' + (this.tab === t ? ' sel' : ''), nav, label);
+      c.onclick = () => { if (this.tab !== t) this.setTab(t); };
+    }
+    return nav;
+  }
+
+  // ---------------------------------------------------------------- FINDS
+  // Who found what lately, rarest first: where it stands, how far, how many have been;
+  // and what this pilot's own finds have brought it.
+  _finds() {
+    const g = this.game, b = this.board, F = b.finds;
+    const top = el('div', 'boardtop', this.body);
+    this._boardNav(top);
+    el('div', 'muted', top, b.link ? `Your finder's shares: ${formatInt(g.progress.royalties || 0)} DATA` : 'Link a wallet to be counted among the finders');
+    el('div', 'fine findwhy', this.body, 'The first pilot to transmit a site gets a share of every later find there; the second, half that; and so on. Fly to them.');
+    const list = el('div', 'findlist', this.body);
+    const rows = F.recent(0);
+    if (!rows.length) {
+      if (b.loaded) el('div', 'muted empty', list, 'No finds heard in the last week. Transmit a site you have found, and it is the first here.');
+      else loader(list, 'Listening to the relays');
+      return;
+    }
+    for (const f of rows.slice(0, 80)) {
+      const T = tierOf(f.tier);
+      const r = el('div', 'find', list);
+      r.style.setProperty('--tc', T.color);
+      el('span', 'tbadge', r, T.name);
+      const mid = el('div', 'fmid', r);
+      el('div', '', mid, f.name || f.code || 'A find');
+      const here = g.codex.some((e) => e.site === f.key);
+      const dist = Number.isFinite(f.x) ? km(Math.hypot(f.x - g.ship.x, f.z - g.ship.z)) : '';
+      el('div', 'fine', mid, [f.place, dist, `${f.count} finder${f.count === 1 ? '' : 's'}`, ago(f.at * 1000), here ? 'you have been' : ''].filter(Boolean).join(' · '));
+      if (Number.isFinite(f.x)) {
+        const go = el('button', 'chip', r, 'SET COURSE');
+        go.onclick = () => { g.course.set(f.x, f.z, f.name); g.audio.play('ui', { h: 28 }); go.textContent = 'COURSE SET'; };
+      }
+    }
   }
 
   // ---------------------------------------------------------------- LOG
@@ -215,9 +305,12 @@ export class Terminal {
       const img = el('img', '', w);
       img.src = e.photo;
       img.alt = e.name;
+      // its tier, if above the common (tiers.js); else how far it was seen into
+      const T = e.kind === 'wild' && e.tier ? tierOf(e.tier) : null;
       if (e.special) el('span', 'wtag', w, 'WITNESSED');
-      else if (e.depth) { const tg = el('span', 'wtag', w, `${stratum(e.depth).numeral}${e.plus ? '+' : ''} · ${stratum(e.depth).name.toUpperCase()}`); tg.style.color = depthColor(e.depth); w.style.borderColor = depthColor(e.depth); }
-      w.onclick = () => { this.sel = i; this.render(); this.game.audio.play('ui', { h: 24 }); };
+      else if (T) { const tg = el('span', 'wtag', w, T.name); tg.style.color = T.color; w.style.borderColor = T.color; }
+      else if (e.depth) { const tg = el('span', 'wtag', w, stratum(e.depth).numeral); tg.style.color = depthColor(e.depth); }
+      w.onclick = () => { this.sel = i; this._shareOpen = false; this.render(); this.game.audio.play('ui', { h: 24 }); };
     });
     const e = list[this.sel];
     const d = el('div', 'detail', cols);
@@ -225,28 +318,54 @@ export class Terminal {
     ph.src = e.photo;
     ph.alt = e.name;
     el('div', 'name', d, e.name);
-    el('div', 'muted', d, `${e.code} · ${e.cls}`);
-    const o = el('div', 'rows', d);
+    // what it is, in a few marks: its tier, how far into it this pilot has seen
+    const tags = el('div', 'badges', d);
+    const badge = (text, color) => { const x = el('span', 'tbadge', tags, text); x.style.setProperty('--tc', color); return x; };
+    if (e.special) badge('WITNESSED', 'var(--gold)');
+    else if (e.kind === 'wild' && e.site) badge(tierOf(e.tier).name, tierOf(e.tier).color);
+    if (e.depth) badge(`${stratum(e.depth).numeral} · ${stratum(e.depth).name.toUpperCase()}`, depthColor(e.depth));
+    if (e.kind === 'wild' && e.site && e.res > (e.depth || 0)) badge('MORE TO SEE', 'var(--muted)');
+    // one line: what, where; one line: who came first, what it is worth
+    const where = e.site && e.x !== undefined ? `${placeCode(e.x, e.z)} · ${km(Math.hypot(e.x - g.ship.x, e.z - g.ship.z))}` : '';
+    const what = e.special || e.kind !== 'wild' ? (e.tokens.length > 1 ? `SEEKER ${e.tokens.slice(0, 6).map((t) => '#' + t).join(' ')}` : `SEEKER #${e.lead}`) + (e.time ? ` · moved ${ago(e.time)}` : '') : e.cls;
+    el('div', 'muted', d, [what, where].filter(Boolean).join(' · '));
+    if (e.site && this.board) {
+      const fs = this.board.finds.finders(siteIdOf(e.site)), r = this.board.finds.rankOf(e.site);
+      let line = '';
+      if (r >= 0) line = `${r < ORD.length ? ORD[r] : `#${r + 1}`} TO FIND IT${fs.length - 1 - r > 0 ? ` · ${fs.length - 1 - r} came after you` : ''}`;
+      else if (fs.length) line = `${fs.length} pilot${fs.length > 1 ? 's' : ''} found it before you`;
+      if (line) el('div', r === 0 ? 'gold' : 'muted', d, line);
+    }
+    el('div', e.sent ? 'muted' : 'pos', d, `${formatInt(valueOf(e))} DATA · ${e.sent ? 'transmitted' : e.paid ? `${formatInt(owedFor(e))} more to transmit` : 'not transmitted yet'}`);
+    // what to do with it
+    const acts = el('div', 'acts', d);
+    if (e.site && e.x !== undefined) {
+      const go = el('button', 'btn', acts, g.course.on && g.course.to && g.course.to.x === Math.round(e.x) && g.course.to.z === Math.round(e.z) ? 'COURSE SET' : 'SET COURSE');
+      go.onclick = () => { g.course.set(e.x, e.z, e.name); g.audio.play('ui', { h: 28 }); this.render(); };
+    }
+    if (e.shared) el('span', 'pos fine', acts, `SHARED ${ago(e.shared.at).toUpperCase()}`);
+    else if (this.board && this.board.link) {
+      const sh = el('button', 'btn ghost' + (this._shareOpen ? ' sel' : ''), acts, 'SHARE');
+      sh.onclick = () => { this._shareOpen = !this._shareOpen; this.render(); };
+    } else {
+      const lk = el('button', 'btn ghost', acts, 'LINK WALLET TO SHARE');
+      lk.onclick = () => this._toLink();
+    }
+    if (this._shareOpen && !e.shared && this.board && this.board.link) this._shareBox(d, e);
+    // the Codex's notes and the particulars, folded
+    const more = el('details', 'more', d);
+    if (this._notesOpen) more.open = true;
+    more.addEventListener('toggle', () => { this._notesOpen = more.open; });
+    el('summary', '', more, 'NOTES');
+    const notes = el('div', 'notes', more);
+    for (const n of e.notes) el('div', '', notes, n);
+    const o = el('div', 'rows', more);
     const row = (k, v, cls) => { const r = el('div', 'row', o); el('span', 'k', r, k); return el('span', 'v ' + (cls || ''), r, v); };
     if (e.kind === 'wild') {
-      const where = e.mountain ? ' · on the mountain' : e.river ? ' · on the river' : e.autumn ? ' · among the gold birches' : '';
-      // (a site's: it stands there for any ship; before the survey, they grew for one ship alone)
-      row('ORIGIN', e.site ? `WILD${where} · it stands there for every ship` : `WILD${where} · found by this ship alone`);
-      if (e.site && e.x !== undefined) {
-        const v = row('PLACE', `${placeCode(e.x, e.z)} · ${km(Math.hypot(e.x - g.ship.x, e.z - g.ship.z))} `);
-        const go = el('button', 'chip inl', v, 'SET COURSE');
-        go.onclick = () => { g.course.set(e.x, e.z, e.name); this.render(); };
-      }
-      if (e.site) {
-        const r = row('RESONANCE', !e.res ? 'none: all of it is at the surface' : `${stratum(e.res).numeral} · seen ${(e.depth || 0) >= e.res ? 'whole' : e.depth ? `to ${stratum(e.depth).numeral}${e.plus ? '+ · MARKED' : ''}, ${stratum(e.depth).title}` : 'not at all yet'}`);
-        if (e.depth) r.style.color = depthColor(e.depth);
-      } else if (e.depth) row('DEPTH', `${stratum(e.depth).numeral}${e.plus ? '+ · MARKED' : ''} · ${stratum(e.depth).title}`).style.color = depthColor(e.depth);
       if (e.fx && e.fx.length) row('EFFECTS', e.fx.map((id) => DONE[id] || id).join(', '));
+      if (e.site) row('RESONANCE', !e.res ? 'none' : `${stratum(e.res).numeral}${(e.depth || 0) >= e.res ? ' · seen whole' : ''}`);
       row('SEED', `${e.tx.slice(0, 10)}…${e.tx.slice(-6)}`, 'muted');
     } else {
-      if (e.special) row('WITNESSED', 'a seeker moved while you flew: every ship flying then met this one', 'gold');
-      row('ORIGIN', e.tokens.length > 1 ? `SEEKER ${e.tokens.slice(0, 6).map((t) => '#' + t).join(' ')}` : `SEEKER #${e.lead}`);
-      if (e.time) row('MOVED', `${dateStr(e.time)} · ${ago(e.time)}`);
       if (e.block) row('BLOCK', formatInt(e.block));
       const tx = row('TX', '');
       const h = e.hash || e.tx;
@@ -256,42 +375,36 @@ export class Terminal {
       a.rel = 'noopener noreferrer';
     }
     row('RECORDED', `${dateStr(e.scannedAt)} · ${e.clock} on the planet`);
-    row('DATA', `${valueOf(e)}${e.sent ? ' · transmitted' : e.paid ? ` · ${owedFor(e)} more to transmit` : ' · not transmitted yet'}`, e.sent ? 'muted' : 'pos');
-    const notes = el('div', 'notes', d);
-    for (const n of e.notes) el('div', '', notes, n);
-    // share
+  }
+
+  // a note for the board, and SEND, under a scan being shared
+  _shareBox(d, e) {
     const share = el('div', 'share', d);
-    if (e.shared) {
-      el('div', 'pos', share, `SHARED TO THE BOARD · ${ago(e.shared.at)}`);
-    } else if (this.board && this.board.link) {
-      const input = this._textField(share, 'A note for the board (optional, no links)', 200);
-      const b = el('button', 'btn', share, 'SHARE TO BOARD');
-      const msg = el('div', 'msg', share);
-      b.onclick = async () => {
-        b.disabled = true;
-        msg.textContent = 'Signing and sending…';
-        msg.className = 'msg muted';
-        try {
-          const r = await this.board.send(input.value, e);
-          e.shared = { id: r.id, at: Date.now() };
-          const { img, ...stored } = e;
-          (await import('../core/store.js')).codexPut(stored);
-          this.game.audio.play('send');
-          msg.textContent = `Sent to ${r.ok} of ${r.of} relays.`;
-          msg.className = 'msg pos';
-          setTimeout(() => { if (this.open && this.tab === 'log') this.render(); }, 1600);
-        } catch (err) {
-          msg.textContent = err.message;
-          msg.className = 'msg neg';
-          this._countdown(b, 'SHARE TO BOARD', 'SHARE IN', () => this.board.sendWait);
-          this.game.audio.play('error');
-        }
-      };
-      this._countdown(b, 'SHARE TO BOARD', 'SHARE IN', () => this.board.sendWait);
-    } else {
-      const b = el('button', 'btn ghost', share, 'LINK A WALLET TO SHARE');
-      b.onclick = () => this._toLink();
-    }
+    const input = this._textField(share, 'A note for the board (optional, no links)', 200);
+    const b = el('button', 'btn', share, 'SEND TO BOARD');
+    const msg = el('div', 'msg', share);
+    b.onclick = async () => {
+      b.disabled = true;
+      msg.textContent = 'Signing and sending…';
+      msg.className = 'msg muted';
+      try {
+        const r = await this.board.send(input.value, e);
+        e.shared = { id: r.id, at: Date.now() };
+        const { img, ...stored } = e;
+        codexPut(stored);
+        this.game.audio.play('send');
+        msg.textContent = `Sent to ${r.ok} of ${r.of} relays.`;
+        msg.className = 'msg pos';
+        this._shareOpen = false;
+        setTimeout(() => { if (this.open && this.tab === 'log') this.render(); }, 1600);
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = 'msg neg';
+        this._countdown(b, 'SEND TO BOARD', 'SEND IN', () => this.board.sendWait);
+        this.game.audio.play('error');
+      }
+    };
+    this._countdown(b, 'SEND TO BOARD', 'SEND IN', () => this.board.sendWait);
   }
 
   // a post's words, with any place codes in them made buttons that set a course there
@@ -351,7 +464,7 @@ export class Terminal {
   _shopItems() {
     const g = this.game;
     const shelf = this.shelf === 'ships' ? SHIPS.map((d) => d.id) : this.shelf === 'fx' ? EFFECTS.map((e) => e.id) : this.shelf === 'anomalies' ? ANOMALIES.map((a) => a.id) : ['depth', 'tank', 'gain'];
-    return [...(g.codex.some((e) => !e.sent) ? ['send'] : []), ...shelf];
+    return shelf;
   }
 
   _shop() {
@@ -360,17 +473,7 @@ export class Terminal {
     this.shopSel = clamp(this.shopSel || 0, 0, items.length - 1);
     const sel = items[this.shopSel];
     const wrap = el('div', 'shop' + (this.shelf === 'ships' ? ' wide' : ''), this.body);
-    const top = el('div', 'shoptop', wrap);
-    const bal = el('div', 'bal', top);
-    el('span', 'muted', bal, 'DATA');
-    this._dataEl = el('span', 'big', bal, formatInt(pr.data));
-    const un = pr.unsent(g.codex);
-    if (un.list.length) {
-      const sendBox = el('div', 'sendbox', top);
-      const b = el('button', 'btn' + (sel === 'send' ? ' sel' : ''), sendBox, `TRANSMIT ${un.list.length} · +${formatInt(un.value)}`);
-      b.onclick = () => this._transmit();
-      el('span', 'fine', sendBox, 'scans stay in your log');
-    }
+    // (DATA and TRANSMIT are along the top, on every page)
     // the shelves
     const sw = el('div', 'shelves', wrap);
     for (const [k, label] of SHELVES) {
@@ -402,7 +505,7 @@ export class Terminal {
       if (this._shopMsg && this._shopMsg.kind === kind) { const m = el('div', 'msg', c, this._shopMsg.text); m.style.color = kind === 'depth' ? depthColor(pr.depth) : 'var(--acc)'; this._shopMsg = null; }
     };
     card('depth', 'ATTUNEMENT', 'ATTUNE FURTHER', 'how far into every artifact you see · each layer makes its scan worth more');
-    card('tank', 'PLASMA TANK', 'UPGRADE');
+    card('tank', 'PLASMA TANK', 'UPGRADE', 'more boost, and it comes back faster');
     card('gain', 'SIGNAL GAIN', 'UPGRADE', 'how far off the ship hears a site');
   }
 
@@ -581,6 +684,8 @@ export class Terminal {
     const { list, value } = pr.unsent(g.codex);
     if (!list.length) return;
     for (const e of list) { e.paid = valueOf(e); e.sent = true; const { img, ...stored } = e; codexPut(stored); }
+    // (a linked holder's sites go to the relays as found: finds.js)
+    if (this.board) this.board.finds.publish(list.filter((e) => e.site)).then((n) => { if (n) this.render(); });
     const from = pr.data;
     pr.credit(value);
     g.audio.play('transmit', { n: list.length });
@@ -601,7 +706,7 @@ export class Terminal {
     if (!pr.buy(kind)) { g.audio.play('error'); return; }
     g.audio.play('buy', kind === 'depth' ? { harm: harmonicOf(pr.depth) } : {});
     if (kind === 'depth') g.field.reattune();
-    const text = kind === 'depth' ? `Attuned to ${stratum(pr.depth).numeral}, ${stratum(pr.depth).title}. Every artifact shows you more.` : kind === 'tank' ? (pr.tank >= MAX.tank ? 'The tank is as large as it gets.' : 'A larger tank.') : (pr.gain >= MAX.gain ? 'The gain is as high as it goes.' : 'The ship hears farther.');
+    const text = kind === 'depth' ? `Attuned to ${stratum(pr.depth).numeral}, ${stratum(pr.depth).title}. Every artifact shows you more.` : kind === 'tank' ? (pr.tank >= MAX.tank ? 'The tank is as large as it gets.' : 'A larger tank, and it fills faster.') : (pr.gain >= MAX.gain ? 'The gain is as high as it goes.' : 'The ship hears farther.');
     this._shopMsg = { kind, text };
     this.render();
   }
@@ -610,12 +715,8 @@ export class Terminal {
   _board() {
     const b = this.board;
     const top = el('div', 'boardtop', this.body);
-    this._boardStatus = el('div', 'muted', top);
-    const filters = el('div', 'filters', top);
-    for (const [f, label] of [['all', 'ALL'], ['scan', 'SCANS'], ['msg', 'WORDS']]) {
-      const x = el('button', 'chip' + (this.boardFilter === f ? ' sel' : ''), filters, label);
-      x.onclick = () => { this.boardFilter = f; this.render(); };
-    }
+    this._boardNav(top);
+    this._boardStatus = el('div', 'muted fine', top);
     this._boardList = el('div', 'posts', this.body);
     // a conversation: oldest at the top, newest at the bottom, opened at the newest;
     // it follows new posts while you are at the bottom, and stays put while you read up
@@ -631,36 +732,6 @@ export class Terminal {
     }
     const comp = el('div', 'compose', this.body);
     if (b.link) {
-      // your name on the board: shown instead of your address, on every post, old and new
-      const nm = el('div', 'nameRow', comp);
-      el('span', 'muted', nm, 'NAME');
-      const nameIn = el('input', 'field one', nm);
-      nameIn.maxLength = 24;
-      nameIn.placeholder = 'a name instead of your address (2 to 20)';
-      nameIn.value = b.myName || b.nameOf(b.link.address) || '';
-      nameIn.addEventListener('focus', () => { this.game.input.uiCapture = true; });
-      nameIn.addEventListener('blur', () => { this.game.input.uiCapture = false; });
-      nameIn.addEventListener('keydown', (ev) => { ev.stopPropagation(); if (ev.key === 'Escape') nameIn.blur(); if (ev.key === 'Enter') nameBtn.click(); });
-      const nameBtn = el('button', 'chip', nm, 'SAVE');
-      const nameMsg = el('div', 'msg muted', comp, b.nameOf(b.link.address) ? `Posting as ${b.nameOf(b.link.address)}. Every post of yours shows it, old ones too.` : 'No name yet: your posts show a shortened address.');
-      nameBtn.onclick = async () => {
-        nameBtn.disabled = true;
-        nameMsg.className = 'msg muted';
-        nameMsg.textContent = 'Signing and sending…';
-        try {
-          const r = await b.setName(nameIn.value);
-          nameMsg.className = 'msg pos';
-          nameMsg.textContent = r.name ? `Posting as ${r.name}, on every post of yours, old ones too (sent to ${r.ok} of ${r.of} relays).` : 'Name cleared: your posts show a shortened address again.';
-          this.game.audio.play('send');
-          this._renderBoardList();
-        } catch (err) {
-          nameMsg.className = 'msg neg';
-          nameMsg.textContent = err.message;
-          this.game.audio.play('error');
-        }
-        this._countdown(nameBtn, 'SAVE', 'SAVE IN', () => b.nameWait);
-      };
-      this._countdown(nameBtn, 'SAVE', 'SAVE IN', () => b.nameWait);
       const input = this._textField(comp, 'Words for the board: text only, no links (280)', 280);
       // where you are, in words anyone can fly to
       const here = el('button', 'chip', comp, '+ WHERE I AM');
@@ -774,7 +845,8 @@ export class Terminal {
     R.onPhoto = () => { if (this.open && this.tab === 'ranks' && this.gallery) this._renderRanks(); };
     R.start();
     const top = el('div', 'boardtop', this.body);
-    this._rankStatus = el('div', 'muted', top);
+    this._boardNav(top);
+    this._rankStatus = el('div', 'muted fine', top);
     this._rankArea = el('div', 'ranks', this.body);
     this._rankFoot = el('div', 'rsubmit', this.body);
     this._renderRanks();
@@ -950,6 +1022,7 @@ export class Terminal {
   // ---------------------------------------------------------------- SEEKERS
   _seekersTab() {
     const S = this.seekers;
+    this._nameRow();
     const top = el('div', 'wallet', this.body);
     this._walletEl = top;
     this._renderWalletLine();
@@ -960,6 +1033,44 @@ export class Terminal {
     if (S.address && !S.ids && !S.loading) this._loadSeekers(S.address);
     this._renderSeekerGrid();
     if (!S.net) this._loadNetwork();
+  }
+
+  // your name on the board (a linked holder's): shown instead of your address, on every
+  // post, old and new, and on your finds
+  _nameRow() {
+    const b = this.board;
+    if (!b || !b.link) return;
+    const comp = el('div', 'compose namebox', this.body);
+      // your name on the board: shown instead of your address, on every post, old and new
+      const nm = el('div', 'nameRow', comp);
+      el('span', 'muted', nm, 'NAME');
+      const nameIn = el('input', 'field one', nm);
+      nameIn.maxLength = 24;
+      nameIn.placeholder = 'a name instead of your address (2 to 20)';
+      nameIn.value = b.myName || b.nameOf(b.link.address) || '';
+      nameIn.addEventListener('focus', () => { this.game.input.uiCapture = true; });
+      nameIn.addEventListener('blur', () => { this.game.input.uiCapture = false; });
+      nameIn.addEventListener('keydown', (ev) => { ev.stopPropagation(); if (ev.key === 'Escape') nameIn.blur(); if (ev.key === 'Enter') nameBtn.click(); });
+      const nameBtn = el('button', 'chip', nm, 'SAVE');
+      const nameMsg = el('div', 'msg muted', comp, b.nameOf(b.link.address) ? `Posting as ${b.nameOf(b.link.address)}. Every post of yours shows it, old ones too.` : 'No name yet: your posts show a shortened address.');
+      nameBtn.onclick = async () => {
+        nameBtn.disabled = true;
+        nameMsg.className = 'msg muted';
+        nameMsg.textContent = 'Signing and sending…';
+        try {
+          const r = await b.setName(nameIn.value);
+          nameMsg.className = 'msg pos';
+          nameMsg.textContent = r.name ? `Posting as ${r.name}, on every post of yours, old ones too (sent to ${r.ok} of ${r.of} relays).` : 'Name cleared: your posts show a shortened address again.';
+          this.game.audio.play('send');
+          this._renderBoardList();
+        } catch (err) {
+          nameMsg.className = 'msg neg';
+          nameMsg.textContent = err.message;
+          this.game.audio.play('error');
+        }
+        this._countdown(nameBtn, 'SAVE', 'SAVE IN', () => b.nameWait);
+      };
+      this._countdown(nameBtn, 'SAVE', 'SAVE IN', () => b.nameWait);
   }
 
   // pick a wallet (EIP-6963), then do something with it; a phone's browser has none, so

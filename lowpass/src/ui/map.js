@@ -1,3 +1,4 @@
+import { tierOf } from '../artifacts/tiers.js';
 import { el, clear } from './dom.js';
 import { height, autumn, mountainEnv, riverOf, WATER, RCELL, RN } from '../world/terrain.js';
 import { placeCode, placeOf } from '../world/sites.js';
@@ -53,12 +54,14 @@ export class CodexMap {
     for (const e of g.codex) {
       if (!e.site || !Number.isFinite(e.x) || seen.has(e.site)) continue;
       seen.add(e.site);
-      out.push({ x: e.x, z: e.z, kind: 'rec', label: e.name, e, color: e.depth ? hexCss(stratum(e.depth).light) : '#cfd6dc', more: (e.res || 0) > (e.depth || 0) && att > (e.depth || 0) });
+      // (in its tier's color, if above the common: tiers.js; else the color it was seen to)
+      out.push({ x: e.x, z: e.z, kind: 'rec', label: e.name, e, color: e.tier ? tierOf(e.tier).color : e.depth ? hexCss(stratum(e.depth).light) : '#cfd6dc', more: (e.res || 0) > (e.depth || 0) && att > (e.depth || 0) });
     }
     for (const s of g.field.signals || []) {
       if (seen.has(s.key) || s.faint) continue;
       seen.add(s.key);
-      out.push({ x: s.site.x, z: s.site.z, kind: 'sig', label: 'A signal', color: '#d6edf5' });
+      const T = s.site.kind === 'artifact' ? s.site.tier || 0 : 0;
+      out.push({ x: s.site.x, z: s.site.z, kind: 'sig', label: T ? `A signal · ${tierOf(T).name}` : 'A signal', color: T ? tierOf(T).color : '#d6edf5' });
     }
     const b = this.t.board;
     if (b) {
@@ -72,6 +75,12 @@ export class CodexMap {
           by.add(k);
           out.push({ x: q.x, z: q.z, kind: 'shared', label: q.label || 'A place named on the board', by: who, color: '#b9a87b' });
         }
+      }
+      // what other pilots found lately (finds.js), in its tier's color
+      for (const f of b.finds.recent(0)) {
+        if (seen.has(f.key) || !Number.isFinite(f.x)) continue;
+        seen.add(f.key);
+        out.push({ x: f.x, z: f.z, kind: 'shared', label: `${tierOf(f.tier).name} · ${f.name || 'a find'}`, by: b.labelOf(f.address).name, color: f.tier ? tierOf(f.tier).color : '#b9a87b' });
       }
     }
     return out;
@@ -87,7 +96,7 @@ export class CodexMap {
     const zoom = el('div', 'filters mapzoom', left);
     RADII.forEach((r, i) => { const c = el('button', 'chip' + (i === this.ri ? ' sel' : ''), zoom, `${r / 1000} KM`); c.onclick = () => { this.ri = i; this.t.render(); }; });
     const legend = el('div', 'maplegend muted', left);
-    for (const [cls, what] of [['rec', 'recorded'], ['sig', 'heard'], ['shared', 'named on the board']]) { const s = el('span', '', legend); el('i', `lg ${cls}`, s); el('span', '', s, what); }
+    for (const [cls, what] of [['rec', 'recorded'], ['sig', 'heard'], ['shared', 'found or named by others']]) { const s = el('span', '', legend); el('i', `lg ${cls}`, s); el('span', '', s, what); }
     this.panel = el('div', 'mappanel', wrap);
     this._panel();
     this.draw();

@@ -1,5 +1,6 @@
 import { rng, clamp, TAU } from '../core/math.js';
 import { height, WATER, mountainEnv, autumn, riverAt, riverOf, RCELL, RN } from './terrain.js';
+import { drawTier, tierOf } from '../artifacts/tiers.js';
 
 // The sites: where the artifacts stand. Nothing is spawned for anyone: every artifact has
 // its place, a pure function of the world's seed and its coordinates, the same for every
@@ -7,26 +8,29 @@ import { height, WATER, mountainEnv, autumn, riverAt, riverOf, RCELL, RN } from 
 // gives them the artifact.
 //
 // Two kinds of place:
-//   - the forest at large: a grid of cells CELL meters on a side, about half of them
-//     holding one site, set where the cell is most itself (on a summit if it has mountains,
-//     in a turned stand, out on a lake, else on plain ground away from the rivers);
-//   - the rivers: one or two sites down each river's course, in its middle, and often one
-//     out on the lake it ends in.
+//   - the forest at large: a grid of cells CELL meters on a side, about one in seven
+//     holding one site, set where the cell is most itself (on a summit if it has
+//     mountains, in a turned stand, out on a lake, else on plain ground away from the
+//     rivers);
+//   - the rivers: some hold one site down their course, and a few one out on the lake
+//     they end in.
+// Few enough that each is worth the flight (about four in a hundred square kilometers).
 // What a site holds is drawn from its seed: mostly an artifact; now and then life (a herd
 // at a shore, a shoal, a flock, an owl by night), a creature that flees, or a clearing to
-// land in. Its resonance (how many layers lie hidden in it, for those attuned: without
-// end, each rarer than the last) is drawn here too; so is whether it is one of the marked
-// (+), and whether it is a trace: next to nothing at the surface, and a great deal below.
+// land in. An artifact's tier (tiers.js: COMMON to MYTHIC, each rarer by far than the
+// last) is drawn here, and its resonance (how many layers lie hidden in it, for those
+// attuned: without end, each rarer than the last, and the rarer the tier, the more).
 
-export const WORLD = 'low-pass:1';       // the world's seed (change it, and every site moves)
+export const WORLD = 'low-pass:2';       // the world's seed (change it, and every site moves)
 export const CELL = 2200;
-const SITE_P = 0.5;
+const SITE_P = 0.14;
+const RIVER_P = 0.4, LAKE_P = 0.2;     // a river holds a site this often; the lake it ends in
 // how far the ship's receiver hears a site's signal, by the gain's level (progress.js)
 export const HEAR = [2500, 2900, 3300, 3800, 4400, 5000];
 export const FAINT = 9000;            // with nothing in range, the nearest is still heard, faintly, this far
 
-const P_LIFE = 0.17, P_CREATURE = 0.07, P_LANDING = 0.09, P_TRACE = 0.06, P_PLUS = 0.035;
-const NO_RES = 0.15, DEEPER = 0.66;      // a site has no resonance at all; else each layer more, this likely
+const P_LIFE = 0.17, P_CREATURE = 0.07, P_LANDING = 0.09;
+const NO_RES = 0.15;                    // a site has no resonance at all (a common one); else each layer more, as likely as its tier says
 
 // two 32-bit hashes of a string (FNV-1a, two bases): 64 bits to seed a site with
 function hash64(str) {
@@ -47,10 +51,10 @@ function seedOf(key) {
 }
 
 // how many layers a site holds
-function resonance(R, least = 0) {
+function resonance(R, least = 0, deeper = 0.66) {
   if (!least && R() < NO_RES) return 0;
   let r = Math.max(1, least);
-  while (R() < DEEPER) r++;
+  while (R() < deeper) r++;
   return r;
 }
 
@@ -125,10 +129,10 @@ function fill(site, R) {
     return site;
   }
   site.kind = 'artifact';
-  // a trace: almost nothing at the surface, and deep
-  if (p === 'any' && R() < P_TRACE) { site.trace = true; site.res = resonance(R, 3); }
-  else site.res = resonance(R);
-  site.plus = site.res >= 2 && R() < P_PLUS;
+  // its tier (tiers.js): the rarer, the more layers in it
+  site.tier = drawTier(R());
+  const T = tierOf(site.tier);
+  site.res = resonance(R, T.least, T.deeper);
   return site;
 }
 
@@ -160,7 +164,7 @@ function riverSites(cx, cz) {
   const rv = riverOf(cx, cz);
   if (!rv) return [];
   const out = [], [a] = hash64(`${WORLD}|r${cx},${cz}`), R = rng(a);
-  const n = R() < 0.3 ? 2 : 1;
+  const n = R() < RIVER_P ? 1 : 0;
   for (let i = 0; i < n; i++) {
     const t = 0.2 + 0.66 * ((i + 0.25 + 0.5 * R()) / n), f = t * RN, k = Math.min(RN - 1, Math.floor(f)), u = f - k;
     const key = `r${cx},${cz}:${i}`;
@@ -168,9 +172,9 @@ function riverSites(cx, cz) {
     if (s) out.push(s);
   }
   // the lake it ends in
-  if (R() < 0.45 && open(rv.lake.x, rv.lake.z, 45)) {
+  if (R() < LAKE_P && open(rv.lake.x, rv.lake.z, 45)) {
     const key = `l${cx},${cz}`, s = fill({ key, seed: seedOf(key), place: 'lake', x: rv.lake.x, z: rv.lake.z }, rng(hash64(key)[1]));
-    if (s) { s.kind = 'artifact'; if (s.res === undefined) s.res = 1; s.species = undefined; s.place = 'lake'; out.push(s); }
+    if (s) { s.kind = 'artifact'; if (s.res === undefined) s.res = 1; if (s.tier === undefined) s.tier = 0; s.species = undefined; s.place = 'lake'; out.push(s); }
   }
   return out;
 }
@@ -216,5 +220,21 @@ export function placeOf(code) {
   if (!m) return null;
   const z = parseInt(m[2], 36) * 10 * (m[1] === 'N' ? -1 : 1), x = parseInt(m[4], 36) * 10 * (m[3] === 'W' ? -1 : 1);
   return Number.isFinite(x) && Number.isFinite(z) ? { x, z } : null;
+}
+// A site by its key, worked out again (anyone can: finds.js checks what a find claims)
+export function siteByKey(key) {
+  let m = /^g(-?\d+),(-?\d+)$/.exec(key);
+  if (m) {
+    const k = cellKey(+m[1], +m[2]);
+    if (!_grid.has(k)) _grid.set(k, gridSite(+m[1], +m[2]));
+    return _grid.get(k) || null;
+  }
+  m = /^[rl](-?\d+),(-?\d+)(:\d)?$/.exec(key);
+  if (m) {
+    const k = cellKey(+m[1], +m[2]);
+    if (!_river.has(k)) _river.set(k, riverSites(+m[1], +m[2]));
+    return (_river.get(k) || []).find((s) => s.key === key) || null;
+  }
+  return null;
 }
 export const _dev = { gridSite, riverSites, resonance, clamp };

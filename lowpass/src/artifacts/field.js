@@ -6,10 +6,12 @@ import { lookOf } from '../companion/companion.js';
 import * as art from '../chain/art.js';
 import { U } from '../render/materials.js';
 import { FOG } from '../render/pipeline.js';
-import { WATER, canopyTop, riverAt } from '../world/terrain.js';
+import { WATER, canopyTop, riverAt, height } from '../world/terrain.js';
 import { angleDelta, clamp, TAU, damp } from '../core/math.js';
 import { SPECIES } from './species.js';
 import { sitesNear, HEAR, FAINT } from '../world/sites.js';
+import { tierOf, TIERS } from './tiers.js';
+import { Beacons } from './beacons.js';
 import { LANDING_DEPTH } from '../core/progress.js';
 
 // The artifacts in the forest: where each stands, the clearing it makes, its light in
@@ -85,6 +87,8 @@ export class Field {
     this.record = () => null;   // a site's seed -> its Codex entry, if it was recorded
     this.onSignal = null;       // a site heard for the first time
     this.onNear = null;         // a site's artifact come into sight
+    this.beacons = new Beacons(game.scene);   // the light over the rare ones (beacons.js)
+    this.lit = [];
   }
 
   // (life in the forest comes and goes on its own: it holds nothing back)
@@ -121,14 +125,17 @@ export class Field {
     if (this._sv <= 0) {
       this._sv = 0.25;
       const hear = HEAR[Math.min(g.progress.gain, HEAR.length - 1)];
-      const { sites } = sitesNear(ship.x, ship.z, Math.max(hear, BUILD_R), 8);
-      const sig = [];
+      // (the rarer a site, the farther off it is heard: tiers.js)
+      const { sites } = sitesNear(ship.x, ship.z, Math.max(hear * TIERS[TIERS.length - 1].hear, BUILD_R), 8);
+      const sig = [], lit = [];
       let next = null, nd = Infinity;
       for (const site of this.noSites ? [] : sites) {
         if (!this._there(site)) continue;
         const d = Math.hypot(site.x - ship.x, site.z - ship.z), a = this.sites.get(site.key) || null;
         if (d < BUILD_R && !a && d < nd && !(this.cool.get(site.key) > g.time)) { next = site; nd = d; }
-        if (d < hear && this._open(site) && !(a && a.scanned)) {
+        const inRange = d < hear * tierOf(site.tier).hear;
+        if (inRange && site.tier >= 2) lit.push({ key: site.key, x: site.x, z: site.z, y: site.y ?? (site.y = height(site.x, site.z)), tier: site.tier, d, done: !this._open(site) });
+        if (inRange && this._open(site) && !(a && a.scanned)) {
           sig.push({ site, key: site.key, a, dist: d, bearing: 0 });
           if (!this.heard.has(site.key)) { this.heard.add(site.key); if (this.onSignal && g.mode !== 'title') this.onSignal(sig[sig.length - 1]); }
         }
@@ -149,6 +156,7 @@ export class Field {
         if (this._faint && this._open(this._faint)) sig.push({ site: this._faint, key: this._faint.key, a: null, dist: 0, bearing: 0, faint: true });
       } else this._faint = null;
       this.signals = sig;
+      this.lit = lit;
       if (next && !this._raising && !this.noSites) this._raise(next);
     }
     for (const s of this.signals) {
@@ -164,7 +172,7 @@ export class Field {
     return {
       tx: site.seed, wild: true, site: site.key, res: site.res || 0, depth: this.seenOf(site),
       mountain: site.place === 'mountain', autumn: site.place === 'autumn', river: site.place === 'river', lake: site.place === 'lake',
-      plus: !!site.plus, trace: !!site.trace, creature: site.kind === 'creature', landing: site.kind === 'landing', life: site.kind === 'life' ? site.species : null,
+      tier: site.tier || 0, plus: !!site.plus, trace: !!site.trace, creature: site.kind === 'creature', landing: site.kind === 'landing', life: site.kind === 'life' ? site.species : null,
     };
   }
 
@@ -461,6 +469,7 @@ export class Field {
     const shipR = new THREE.Vector3(ship.x - o.x, ship.y, ship.z - o.z);
     const vis = this.visibility();
     this.survey(dt);
+    this.beacons.update(dt, this.noSites ? [] : this.lit, ship, o, g.time);
     this._mk = (this._mk || 0) - dt;
     const marks = this._mk <= 0;
     if (marks) this._mk = 0.5;

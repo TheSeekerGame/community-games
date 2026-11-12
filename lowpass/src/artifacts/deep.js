@@ -2,6 +2,7 @@ import { stratum, roman, harmonicOf, FORMS, PLUS_FORMS } from './strata.js';
 import { rng } from '../core/math.js';
 import { EXTRA } from './sets/index.js';
 import { NEW_FORMS } from './moreforms.js';
+import { formsFor, RESERVED_FORMS } from './tiers.js';
 
 // What the deep grows: a wild artifact from below the surface (generate.js hands it here
 // when its depth is one or more). Its seed chooses one of the forms its stratum has (and
@@ -395,8 +396,10 @@ const MARKED = PLUS_FORMS.map(([f]) => f);
 function kinOf(family) {
   const X = EXTRA[family];
   const list = [...(KIN[family] || (X && X.kin) || [])].filter((f) => !MARKED.includes(f) && DEEP_CODE[f]);
-  for (const [form, fams] of Object.entries(KIN_MORE)) if (NEW_FORMS[form] && fams.includes(family)) list.push(form);
-  return list.length ? list : FORMS.map(([f]) => f);
+  // (the newest forms, and the rare tiers' own, are theirs alone: tiers.js)
+  const reserved = RESERVED_FORMS();
+  const out = list.filter((f) => !reserved.has(f));
+  return out.length ? out : FORMS.map(([f]) => f).filter((f) => !reserved.has(f));
 }
 
 // what gathers about the true form, layer by layer, and the first layer each may be
@@ -433,7 +436,9 @@ export function describeOver(d, move, seen) {
   const R = rng((s[7] ^ 0x2545f491) >>> 0);
   // its true form: its family's kin (one of the marked: the marked's own), fixed for good
   // (development may ask for a form)
-  const pick = d.marked ? R.pick(MARKED) : R.pick(kinOf(d.family));
+  // (a rare tier's artifact: one of its tier's own forms, its family's kin among them first)
+  const own = formsFor(d.tier || 0), kin = own ? own.filter((f) => (KIN_MORE[f] || []).includes(d.family)) : null;
+  const pick = own ? R.pick(kin && kin.length && R() < 0.7 ? kin : own) : d.marked ? R.pick(MARKED) : R.pick(kinOf(d.family));
   const form = move.form && DEEP_CODE[move.form] ? move.form : pick;
   const tilt = R(), sizeK = 0.88 + R() * 0.24;
   const layers = layersOf(s, d.res).slice(0, seen);
@@ -465,7 +470,7 @@ export function describeOver(d, move, seen) {
   const more = layers.filter((l) => l === 'more').length;
   d.over = {
     form: seen >= 2 ? form : null, params: P, layers, tilt,
-    size: st.size * sizeK * (d.marked ? 1.25 : 1) * (d.trace ? 1.2 : 1) * (1 + 0.04 * more),
+    size: st.size * sizeK * (d.marked ? 1.25 : 1) * (d.trace ? 1.2 : 1) * (1 + 0.04 * more) * [1, 1, 1.1, 1.2, 1.3, 1.45][d.tier || 0],
     stand: !!d.trace,           // (a trace's form stands on the ground beside it; else it hangs over)
   };
   d.form = d.over.form;

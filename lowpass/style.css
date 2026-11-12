@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "b4664840"; }
+:root { --build: "9193bc5e"; }
 
 :root {
   --u: 3px;
@@ -71,6 +71,9 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 .hud .signal .mark.other.gold { background: var(--gold); opacity: 1; }
 .hud .signal .mark.other.edge { opacity: 0.4; }
 .hud .signal.faint .mark { opacity: 0.55; box-shadow: none; }
+.hud .signal.tiered:not(.course) .mark:not(.other) { background: var(--tc); box-shadow: 0 0 calc(var(--u) * 5) var(--tc); }
+.hud .signal.tiered:not(.course) .label { color: var(--tc); }
+.hud .signal .mark.other.tiered { background: var(--tc); opacity: 1; }
 .hud .signal.course .mark:not(.other), .hud .signal .mark.other.course { background: transparent; border: var(--u) solid var(--acc); box-shadow: none; animation: none; opacity: 1; }
 .hud .signal.course .label { color: var(--acc); }
 /* (a narrow screen: the strip under the status line, not across it) */
@@ -90,6 +93,9 @@ html.touchmode .alarm .arow .muted { display: none; }
 .alarm.toast .amark { width: calc(var(--u) * 4); height: calc(var(--u) * 4); background: var(--glow2); box-shadow: 0 0 calc(var(--u) * 4) var(--glow); }
 .alarm.toast .at { color: var(--glow2); }
 #ui .alarm.toast .btn { border-color: var(--line); background: #1b2029; }
+.alarm.toast.tinted .amark { background: var(--tc); box-shadow: 0 0 calc(var(--u) * 5) var(--tc); }
+.alarm.toast.tinted .at { color: var(--tc); }
+#ui .alarm.toast.tinted .btn { border-color: var(--tc); color: var(--tc); }
 .hud .signal .label { position: absolute; left: 0; right: 0; top: calc(var(--u) * -2); text-align: center; color: var(--muted); }
 @keyframes beat { 50% { opacity: 0.55; } }
 .hud .bracket { position: absolute; opacity: 0; transition: opacity 0.3s; }
@@ -267,6 +273,33 @@ html.touchmode #ui .hud .fx { padding: calc(var(--u) * 4) calc(var(--u) * 6); }
 .term .share { display: flex; flex-direction: column; gap: calc(var(--u) * 2); align-items: flex-start; padding-top: calc(var(--u) * 2); }
 .term .boardtop { display: flex; justify-content: space-between; align-items: center; gap: calc(var(--u) * 4); padding-bottom: calc(var(--u) * 3); }
 .term .filters { display: flex; gap: calc(var(--u) * 3); }
+/* the top right: DATA, TRANSMIT, the pilot */
+.term .tright { display: flex; align-items: center; gap: calc(var(--u) * 3); min-width: 0; }
+.term .datap { color: var(--text); white-space: nowrap; padding: 0 calc(var(--u) * 2); border-bottom: var(--u) solid transparent; }
+.term .datap.sel { border-bottom-color: var(--acc); }
+#ui .term .sendp { color: var(--pos); border-color: var(--pos); white-space: nowrap; }
+.term .pilot { color: var(--muted); white-space: nowrap; max-width: calc(var(--u) * 70); overflow: hidden; text-overflow: ellipsis; padding: 0 calc(var(--u) * 2); border: var(--u) solid var(--line); }
+.term .pilot.linked { color: var(--pos); }
+.term .pilot.sel { color: var(--text); border-color: var(--text); }
+/* a page's own pages (the board's) */
+.term .subnav { display: flex; gap: calc(var(--u) * 3); }
+/* marks: a tier, a stratum */
+.term .badges { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 2); }
+.term .tbadge { color: var(--tc); border: var(--u) solid var(--tc); padding: 0 calc(var(--u) * 2); white-space: nowrap; letter-spacing: calc(var(--u) * 0.3); }
+.term .acts { display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--u) * 3); }
+.term details.more > summary { cursor: pointer; color: var(--muted); list-style: none; padding: var(--u) 0; }
+.term details.more > summary::before { content: '+ '; }
+.term details.more[open] > summary::before { content: '\2212  '; }
+.term details.more[open] { display: flex; flex-direction: column; gap: calc(var(--u) * 3); }
+.term .gold { color: var(--gold); }
+/* FINDS */
+.term .findwhy { color: var(--muted); padding-bottom: calc(var(--u) * 3); max-width: calc(var(--u) * 260); }
+.term .findlist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 2); padding-right: calc(var(--u) * 2); }
+.term .find { display: grid; grid-template-columns: calc(var(--u) * 46) minmax(0, 1fr) auto; align-items: center; gap: calc(var(--u) * 4); background: rgba(18, 21, 29, 0.7); border-left: var(--u) solid var(--tc); padding: calc(var(--u) * 2) calc(var(--u) * 4); }
+.term .find .tbadge { justify-self: start; }
+.term .find .fmid { min-width: 0; }
+.term .find .fmid > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.term .namebox { flex: none; padding-bottom: calc(var(--u) * 3); }
 .term .posts { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 3); padding-right: calc(var(--u) * 2); }
 /* few posts sit at the bottom, against the box where new ones are written */
 .term .posts > :first-child { margin-top: auto; }
@@ -383,6 +416,10 @@ html.touchmode .term .hangar { touch-action: pan-y; }
   /* held upright, the tabs need the room the title takes (it is the Codex, plainly) */
   .term .ttitle { display: none; }
   .term .ttabs { column-gap: calc(var(--u) * 3.5); }
+  .term .thead { flex-wrap: wrap; row-gap: calc(var(--u) * 2); }
+  .term .tright { order: 3; width: 100%; justify-content: flex-start; }
+  .term .find { grid-template-columns: minmax(0, 1fr) auto; }
+  .term .find .tbadge { grid-column: 1 / -1; }
   .term .cols { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .term .grid { max-height: 30vh; }
   /* the seekers page, held upright: it scrolls as one, so a seeker's page (and its BRING

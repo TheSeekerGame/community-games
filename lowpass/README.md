@@ -107,8 +107,9 @@ to it and press E.
   steer, and you can **boost**: the core at the tail burns plasma, flares, and sheds a
   pale blue-violet trail, and the ship climbs to about 58 m/s while the view widens. The
   **PLASMA** meter, over the alertness, runs out after five seconds of burning at first
-  (up to fifteen, with a larger tank from the SHOP) and gathers back slowly; spent, the
-  boost waits until some has gathered again. However fast it flies, it looks as many
+  (up to fifteen, with a larger tank from the SHOP) and gathers back over about twenty
+  seconds (a larger tank fills faster too, so it takes the same twenty); spent, the boost
+  waits until some has gathered again. However fast it flies, it looks as many
   seconds ahead, foresees the curve of a turn, starts a climb sooner at speed, and never
   goes into the ground; the camera keeps over the trees and never has a ridge between it
   and the ship.
@@ -116,11 +117,11 @@ to it and press E.
   the world's seed and its coordinates, the same for every ship, today or in a year.
   Nothing appears for anyone and nothing dissolves behind you: fly past one, stay inside
   over coffee, come back tomorrow, and it is where it was. The forest at large is a grid
-  of cells 2.2 km on a side, about half of them holding one site, set where the cell is
+  of cells 2.2 km on a side, about one in seven holding one site, set where the cell is
   most itself (on a summit if it has mountains, in a turned stand, out on a lake, else on
-  plain ground); every river has one or two more down its course and often one on the
-  lake it ends in. About one site to every six or seven square kilometers: a minute or
-  two of flying between neighbors, and no hurry.
+  plain ground); some rivers have one more down their course, and a few one on the lake
+  they end in. About four sites in a hundred square kilometers: few enough that each is
+  worth the flight, and no hurry.
 - **Signals.** The ship's receiver hears the sites you have not recorded (and the ones
   that now hold more than you recorded) out to 2.5 km (to 5, with SIGNAL GAIN from the
   SHOP): each is a mark on the strip along the top of the view, at its bearing, the
@@ -176,12 +177,48 @@ to it and press E.
     hut on stilts with one lit window, a ring of giant reeds, the crown of a sunken bell
     with rings going out from it, glass floats in a net), or one of the few that hang in
     the air and need no ground.
-  About one in seven is **grand**: larger, with a column of its own light over it. And
-  about one site in twenty of the forest's holds a **trace**: next to nothing at the
-  surface (one small stone with a seam of light, a ring of pebbles, a thin post, a cup
-  of light in a flat stone, a crack with light in it), and a great deal under it.
+  These are the COMMON and UNCOMMON (below); about one in seven is **grand**: larger,
+  with a column of its own light over it.
   Now and then a site holds something else: life (below), a creature that flees, or,
   for a pilot attuned to III or further, lanterns in a clearing to land in.
+- **Rarity.** Every artifact site has a **tier**, the same for every ship, and each tier
+  has its own art at the surface and its own true forms below:
+  - **COMMON** (about two in three): the forest's first families;
+  - **UNCOMMON** (about one in four): the instruments, the places somebody left, the
+    lakes' and the newer mountains', stands' and rivers' own;
+  - **RARE** (one in thirteen): the grandest of both, always grand (orreries, hypersolids,
+    lighthouses, elder trees, burning lenses, derelicts, carillons, labyrinths,
+    amphitheatres, tensegrity masts, bell jars, heliostats; on the mountains the
+    observatory, the frozen fall, the cable car, the eyrie; the cold fire, the
+    chrysalides, the fairy ring; the drowned colonnade, the stone bridge, the lantern
+    boats; the sunken bell); and at heart the newest forms (a clock with no face, a
+    fountain of light, a radiolarian, a ringing plate, a ringed planet, a moth, a
+    dandelion, a storm of pages);
+  - **EPIC** (one in fifty): families of their own, and the **traces** (next to nothing at
+    the surface, a great deal under it); at heart a Hopf fibration of linked rings of
+    light, a glass Klein vessel, a drum writing a cellular automaton;
+  - **LEGENDARY** (one in four hundred): monuments of their own, gold; at heart a tree of
+    light, a maelstrom, a band with one side, a Menger sponge, a sky whale, a great
+    seed-head ripening along its spirals, a loom weaving cloths of light;
+  - **MYTHIC** (one in four thousand: among a hundred pilots, perhaps one ever finds
+    one): landmarks two hundred meters tall (a tower of strands drawn up and twisted to a
+    waist of fire, a forest of glass needles ringing in waves under an aurora, a seed
+    hanging in the sky that opens into a lattice of light); at heart the shadow of a
+    four-dimensional solid passing through itself, a barrel of irises opening on a sun,
+    a dome of pendulums falling into waves and back into line.
+  The rarer, the more layers it holds, the more its scan is worth (RARE five times as
+  much, EPIC fifteen, LEGENDARY sixty, MYTHIC four hundred), the farther off it is heard
+  (MYTHIC four times as far), and the higher a pillar of its tier's light stands over the
+  forest (RARE and up, seen from as far as it is heard), so a pilot told where one is
+  can find it by eye. The strip along the top names the tier of what it hears, in its
+  color, and a rare one heard leads it.
+- **Finders.** A holder who has linked a wallet tells the relays, by transmitting, which
+  sites they found, and every reader puts each site's finders in the same order. The
+  first to find a site gets a tenth of its whole worth every time another pilot finds
+  it after; the second, a twentieth; the third, a fortieth; and so on down eight
+  finders. Nobody pays it: it is new DATA, credited as the later finds come in (FINDER'S
+  SHARE). And when anyone finds an EPIC, LEGENDARY or MYTHIC, every ship flying in the
+  next hours is told where (MYTHIC FOUND · 38 km), with SET COURSE.
 - **Attunement and resonance.** What stands at a site is the same for everyone; what
   differs is how far into it you see. Under its surface an artifact holds **layers**, as
   many as its **resonance**: about one in six has none, most have one to three, and each
@@ -208,12 +245,7 @@ to it and press E.
   see, small lights flicker over it, one for each layer still hidden (six at most), each
   in the color of the stratum it waits in; the brackets say how far you see into it and
   how far it goes (III/VI). A trace's true form does not hang over it: it stands on the
-  ground beside the little there is, larger than any. About one resonant site in thirty
-  is **marked**: its true form is one of the marked ones' own (a tree of light dropping
-  leaves of light, a maelstrom turning in a standing ring, a band with one side, a Menger
-  sponge of four hundred cubes breathing apart, a whale of the under-sky swimming circles
-  over the trees), a quarter larger, its name ends in a **+** once that form is seen, and
-  its scan is then worth ten times as much. The forms: corollas that open as the ship
+  ground beside the little there is, larger than any. The forms: corollas that open as the ship
   nears, spines of turning crowns, nested solids, armillaries, choirs of monoliths,
   geodes, corals, knots and linked rings, nautilus shells, floating archipelagos with
   falls of light, strange attractors traced by thousands of motes, medusae, star engines,
@@ -349,28 +381,40 @@ minute as a WAV file.
 
 ## The Codex computer
 
-- **LOG**: every artifact you recorded, its photograph, where it came from (wild: its
-  place, with SET COURSE to fly back to it, its resonance and how far into it you saw; witnessed: the seeker, the block, the transaction, linked to the
-  explorer, tagged in gold), and the notes. Share to the board.
+Four tabs: LOG, MAP, BOARD, SHOP. Along the top, always: your **DATA**, **TRANSMIT**
+while there are scans not yet sent (for DATA; they stay in the LOG), and the pilot (your
+name or address once linked, else LINK WALLET), which opens your seekers.
+
+- **LOG**: every artifact you recorded: its photograph, its name, its tier and how far
+  into it you saw, what it is and where it stands (its place code and how far), where
+  you stand among its finders (FIRST TO FIND IT · 3 came after you), what it is worth;
+  SET COURSE back to it, SHARE it to the board. The Codex's notes and the particulars
+  (seed, resonance, effects, for a witnessed one its block and transaction, linked to
+  the explorer) are folded away under NOTES.
 - **MAP**: the forest about the ship, north up (3, 8 or 20 km to its edge; Z), drawn from
   the terrain itself: lakes, rivers, mountains and their snow, the turned stands. On it,
   only what you know of: what you recorded (in the color you saw it to, ringed where
   there is more to see now), the signals the receiver hears (its reach is the dashed
-  ring), and the places other pilots named on the BOARD. The rest stays to be found.
+  ring), and what other pilots found or named on the BOARD, in their tiers' colors. The
+  rest stays to be found.
   Choose one, or anywhere, and SET COURSE; or type a place code and FLY THERE.
-- **BOARD**: the seekers' board, on six free public Nostr relays (relay.damus.io, nos.lol,
+- **BOARD**, three pages: POSTS, FINDS and LEADERS.
+  **FINDS**: who found what in the last week, rarest first: each with its tier, its
+  place, how far, how many have been, and SET COURSE; and what your own finds have
+  brought you as finder's shares.
+  **POSTS**: the seekers' board, on six free public Nostr relays (relay.damus.io, nos.lol,
   relay.primal.net, offchain.pub, nostr.mom, relay.nostr.net; no account). Anyone can read
   it, in the game or in any Nostr client (kind 1 notes tagged `#lowpasscodex`). Holders
   post scans and words (text only, no links), take a **name** (shown instead of their
   address on all their posts, old ones too, for everyone; same names are told apart by a
   small colored mark), and **delete** their own posts (gone for every player, and from
   the relays that honor deletions). One post every 20 seconds (the button counts down).
-  It reads like a conversation, newest at the bottom; ALL, SCANS and WORDS filter it. A
+  It reads like a conversation, newest at the bottom. A
   scan's photograph shows as a thumbnail beside its words; a click or touch anywhere on
   the message opens it where it is, and again closes it. A shared scan of a site carries
   its place, with FLY THERE; any place code written in a post becomes a button that sets
   a course there, and + WHERE I AM writes your own into what you are about to send.
-- **SEEKERS**: the seekers an address holds (connect or link your wallet, or type any
+- **SEEKERS** (the pilot, at the top right): your name on the board, and the seekers an address holds (connect or link your wallet, or type any
   address to view), and, for your own, BRING ABOARD / SEND BACK: live charge, stage,
   status, Discharge, Uplink, shares received since the last move, when it last moved, the
   date it should activate at +50 a day and with the last day's shares, its traits, and the
@@ -379,13 +423,13 @@ minute as a WAV file.
   phone's own browser has no wallet in it: there, connecting offers OPEN IN METAMASK,
   which opens Low Pass in MetaMask's own browser, where it connects. Held upright, the
   page scrolls as one, and touching a seeker goes to its page.
-- **LEADERS**: the leaderboard. Holders submit their own scans (one button, after the
+- **LEADERS** (on the BOARD): the leaderboard. Holders submit their own scans (one button, after the
   same one-time wallet link as the board); holders are ranked by witnessed scans, then
   by the rest, then by name, and a holder with none does not appear. Names follow the
   board's. Each holder's scans open in a gallery (a click on their row, or ENTER).
-- **SHOP**: **DATA**, and what it buys. TRANSMIT sends every scan not yet sent for DATA
-  (they stay in the LOG and on the leaderboard; each counts once): a wild scan is worth
-  10, and 10 more for every layer of it that was seen (ten times that, if marked +); a
+- **SHOP**: what DATA buys. (TRANSMIT, at the top, sends every scan not yet sent for DATA;
+  they stay in the LOG and on the leaderboard; each counts once: a wild scan is worth
+  10, and 10 more for every layer of it that was seen, times its tier's worth; a
   site scanned again further in brings only the difference; a
   witnessed one 40; an effect or an anomaly makes a scan worth half as much again, each.
   Four shelves, UPGRADES, EFFECTS, ANOMALIES and SHIPS (left and right). Three upgrades:
@@ -393,9 +437,10 @@ minute as a WAV file.
     next one twice the last. Every level shows you one layer more of every artifact
     that has it, and makes those scans worth more.
   - **PLASMA TANK**, five levels (40, 80, 130, 200, 300): seconds of a full boost, from
-    5 to 15 (7, 9, 11, 13 between). The core gathers back about a quarter of a second's
-    burn every second, so a small tank fills sooner; the PLASMA meter is as long as the
-    tank is large.
+    5 to 15 (7, 9, 11, 13 between), and the core gathers it back faster with each level
+    (from a quarter of a second's burn every second to about two thirds), so an empty
+    tank of any size is full again in about twenty seconds; the PLASMA meter is as long
+    as the tank is large.
   - **SIGNAL GAIN**, five levels (80, 150, 250, 380, 550): how far off the ship hears a
     site, from 2.5 km to 5 (2.9, 3.3, 3.8, 4.4 between).
   The effects: three uses of GLITCH for 9 DATA, CHAOS 15, VOXEL 21, SHATTER 30, times
@@ -422,8 +467,8 @@ minute as a WAV file.
   page. Up and down choose, ENTER selects. Saved in this browser.
 
 Linking a wallet from LOG, BOARD or LEADERS brings you back where you were. A quiet mark
-on a tab says there is something new there: words on the board, scans not yet
-submitted, or (SHOP) scans to transmit or something you can buy. TAB changes page, the arrows choose, ESC closes (in a gallery, goes back).
+on a tab says there is something new there: words on the board, or (SHOP) something you
+can buy. TAB changes page, the arrows choose, ESC closes (in a gallery, goes back).
 
 ### The leaderboard: how scans are checked
 
@@ -564,18 +609,23 @@ src/artifacts/            from a seed or a move to an artifact: generation, mode
                           instruments; life in
                           the forest; a few more (the field flies them); the effects
                           (fx.js); the deep: its strata, its descriptions, its forms and
-                          their kit, the layers of a site; more families (sets/)
+                          their kit, the layers of a site; more families (sets/); the
+                          tiers (tiers.js: each tier's own families and forms) and the
+                          pillars of light over the rare ones (beacons.js)
 src/companion/            a seeker aboard: its voxel model (after Soundings, also the
                           witnessed giants'), its lines, its hovering and talking
 src/chain/                Robinhood Chain reads, the move watcher, the block clock, the
                           seekers' art
-src/net/                  BIP-340 Schnorr, Nostr, the wallet link, the board, the leaderboard
+src/net/                  BIP-340 Schnorr, Nostr, the wallet link, the board, the
+                          leaderboard, the finds (who came first, finders' shares)
 src/core/                 math, palette, input, storage, keccak, the score, the artifacts'
                           voices, the foley, progress (DATA, attunement, upgrades, ships)
 src/ui/                   HUD, the Codex computer, menus, reading, touch
 assets/                   fonts, SEEKER NET art atlas and metadata, shipped moves
 vendor/                   three.js r170, noble-secp256k1
-tools/                    local server, test relay, moves snapshot, the stylesheet stamp
+tools/                    local server, test relay, moves snapshot, the stylesheet stamp;
+                          check/: headless checks (the world, site density, a set of
+                          families, a file of forms) and how to write new artifacts
 ```
 
 ## Credits and licenses

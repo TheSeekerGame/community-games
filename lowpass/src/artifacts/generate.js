@@ -263,7 +263,7 @@ export function describe(move, seekerInfo, force = null) {
   // witnessed artifacts stand larger: the network's moment; a grand wild one too
   // (a site's tier: RARE ones always grand; EPIC ones larger still; LEGENDARY and MYTHIC
   // are built to their own great scale)
-  const tier = wild ? Math.max(0, Math.min(5, move.tier | 0)) : 0;
+  const tier = wild && !move.landing && !move.creature && !move.life && !move.curio ? Math.max(0, Math.min(5, move.tier | 0)) : 0;
   const grand = wild && family !== 'trace' && (tier === 2 || (tier < 2 && R0() < 0.14));
   const size = wild ? (tier >= 3 ? (tier === 3 && family !== 'trace' ? 1.35 : 0.94) + R0() * 0.12 : (0.8 + R0() * 0.35) * (grand ? 1.45 : 1)) : (0.85 + 0.55 * clamp(Math.log10(1 + charge) / 3.3, 0, 1)) * 1.2;
   const count = tokens.length;

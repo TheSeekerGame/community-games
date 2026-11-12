@@ -83,7 +83,7 @@ export class Finds {
     if (!checkLink(address, ev.pubkey, String(proof[2] || ''))) return;
     // (what it claims, against the site itself: anyone can work a site out from its key)
     const site = siteByKey(f[1]);
-    if (!site || site.kind !== 'artifact' || (site.tier || 0) !== (parseInt(f[2], 10) || 0) || (site.res || 0) !== (parseInt(f[3], 10) || 0)) return;
+    if (!site || (site.kind !== 'artifact' && site.kind !== 'landing') || (site.tier || 0) !== (parseInt(f[2], 10) || 0) || (site.res || 0) !== (parseInt(f[3], 10) || 0)) return;
     const find = {
       id, key: f[1], address, pubkey: ev.pubkey, at,
       tier: site.tier || 0, res: site.res || 0,
@@ -146,7 +146,7 @@ export class Finds {
   _tell(fresh) {
     const me = this.board.link && this.board.link.address, now = Date.now() / 1000;
     for (const f of fresh) {
-      if (f.tier < 3 || now - f.at > TELL || f.address === me || this.told.has(f.id) || !Number.isFinite(f.x)) continue;
+      if (f.tier < 3 || f.tier > 5 || now - f.at > TELL || f.address === me || this.told.has(f.id) || !Number.isFinite(f.x)) continue;
       if (this.game.codex.some((e) => e.site === f.key)) continue;
       // (the first of its finders only: the news is that it was found)
       if (this.finders(f.id)[0] !== f) continue;
@@ -193,7 +193,7 @@ export class Finds {
       if (!e.site || this.published.has(siteId(e.site))) continue;
       const id = siteId(e.site), place = Number.isFinite(e.x) ? placeCode(e.x, e.z) : '';
       const tags = [['d', `lowpass:find:${id}`], ['t', FINDS_TAG], ['s', id], ['client', 'Low Pass'], ['lp', PROTO, 'find'],
-        ['lp-proof', b.link.address, b.link.signature], ['lp-find', e.site, String(e.tier || 0), String(e.res || 0), place, String(e.name || '').slice(0, 60), String(e.code || '').slice(0, 14)]];
+        ['lp-proof', b.link.address, b.link.signature], ['lp-find', e.site, String(e.tier || 0), String(e.landing ? 0 : e.res || 0), place, String(e.landing ? 'A clearing' : e.name || '').slice(0, 60), String(e.landing ? '' : e.code || '').slice(0, 14)]];
       try {
         const ev = await signEvent({ kind: 30078, tags, content: '' }, b.key);
         const results = await b.pool.publish(ev);

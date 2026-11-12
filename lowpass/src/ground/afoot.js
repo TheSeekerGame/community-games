@@ -7,6 +7,7 @@ import { FOG } from '../render/pipeline.js';
 import { WATER } from '../world/terrain.js';
 import { clamp, damp, angleDelta } from '../core/math.js';
 import { WALK_R } from './landing.js';
+import { save } from '../core/store.js';
 
 // On foot, about a clearing the ship has landed in: first person among the trunks, the
 // fog close, and between the trees what can only be found this way (curios.js). Walk up
@@ -56,16 +57,23 @@ export class Afoot {
       if (w.trunksNear(x, z, 6).some((t) => Math.hypot(t.x - x, t.z - z) < t.r + 2.6)) continue;
       placed.push({ x, z, h });
     }
+    // how many things this clearing holds: it is done with once all are recorded (field.js)
+    if (fixed && g.clearings[site.site.key] !== placed.length) { g.clearings[site.site.key] = placed.length; save('clearings', g.clearings); }
     for (const at of placed) {
       // (how much lies in it: none, or a layer and each one more less likely)
       let res = 0;
       if (R() < 0.7) { res = 1; while (R() < 0.6) res++; }
-      const d = describe({ tx: hex(), wild: true, depth: Math.min(reach, res), res, curio: true, plus: R() < MARK }, null);
+      // (a clearing that is a site: its things are the place's own, of its reach if it is
+      // in one, never marked: their worth is shared out among them, progress.js)
+      const plus = R() < MARK && !fixed;
+      const d = describe({ tx: hex(), wild: true, depth: Math.min(reach, res), res, curio: true, plus, reach: fixed ? site.site.place : null }, null);
       const ctx = { ground: (lx, lz) => w.groundAt(at.x + lx, at.z + lz) - at.h, ringY: 0 };
       const model = buildArtifact(d, ctx);
       model.group.rotation.y = R() * Math.PI * 2;
       g.scene.add(model.group);
-      const c = { d, model, x: at.x, z: at.z, y: at.h, scanned: fixed && !!g.recorded(d.key), heard: false, dist: Infinity, bearing: 0, move: {}, pulse: 1, reveal: 1 };
+      const c = { d, model, x: at.x, z: at.z, y: at.h, scanned: fixed && !!g.recorded(d.key), heard: false, dist: Infinity, bearing: 0, move: {}, pulse: 1, reveal: 1,
+        // (where it is told to be: the clearing, for everyone; finds.js, the MAP)
+        clearing: fixed ? { key: site.site.key, x: site.site.x, z: site.site.z, of: placed.length } : null };
       this.curios.push(c);
       // (placed first: the marks find it where it stands)
       model.group.position.set(c.x - w.origin.x, c.y, c.z - w.origin.z);

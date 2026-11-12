@@ -59,12 +59,12 @@ export class CodexMap {
       if (!e.site || !Number.isFinite(e.x) || seen.has(e.site)) continue;
       seen.add(e.site);
       // (in its tier's color, if above the common: tiers.js; else the color it was seen to)
-      out.push({ x: e.x, z: e.z, kind: 'rec', label: e.name, e, color: e.tier ? tierOf(e.tier).color : e.depth ? hexCss(stratum(e.depth).light) : '#cfd6dc', more: (e.res || 0) > (e.depth || 0) && att > (e.depth || 0) });
+      out.push({ x: e.x, z: e.z, kind: 'rec', label: e.landing ? 'A clearing' : e.name, e, color: e.tier ? tierOf(e.tier).color : e.depth ? hexCss(stratum(e.depth).light) : '#cfd6dc', more: (e.res || 0) > (e.depth || 0) && att > (e.depth || 0) });
     }
     for (const s of g.field.signals || []) {
       if (seen.has(s.key) || s.faint) continue;
       seen.add(s.key);
-      const T = s.site.kind === 'artifact' ? s.site.tier || 0 : 0;
+      const T = s.site.kind === 'artifact' || s.site.kind === 'landing' ? s.site.tier || 0 : 0;
       out.push({ x: s.site.x, z: s.site.z, kind: 'sig', label: T ? `A signal · ${tierOf(T).name}` : 'A signal', color: T ? tierOf(T).color : '#d6edf5' });
     }
     const b = this.t.board;
@@ -131,7 +131,7 @@ export class CodexMap {
       // its tier and what it would bring you (worth.js): a place found or heard
       const w = s.kind === 'point' ? null : worthOf(g, siteAt(s.x, s.z));
       if (w) { const v = r2(w.T.name, worthWords(w, formatInt), w.recorded && !w.more ? 'muted' : 'pos'); v.previousSibling.style.color = w.T.color; }
-      if (s.e) {
+      if (s.e && !s.e.landing) {
         const e = s.e;
         r2('RESONANCE', !e.res ? 'none' : `${stratum(e.res).numeral} · seen ${(e.depth || 0) >= e.res ? 'whole' : e.depth ? `to ${stratum(e.depth).numeral}` : 'not at all'}`);
         if (s.more) r2('', 'more to see there now', 'pos');

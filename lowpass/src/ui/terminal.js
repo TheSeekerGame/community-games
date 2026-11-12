@@ -132,6 +132,9 @@ export class Terminal {
     this.game.input.uiCapture = false;
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     this.game.audio.play('close');
+    // news of a rare find that came while the Codex was open
+    const f = this.game._rareLater;
+    if (f) { this.game._rareLater = null; setTimeout(() => this.game.rareFound(f), 600); }
   }
 
   setTab(t) {
@@ -299,10 +302,10 @@ export class Terminal {
     this._noteT = setTimeout(() => this.noteEl.classList.remove('on'), 4500);
   }
 
-  // POSTS · FINDS · LEADERS: the board's pages
+  // CHAT · FINDS · LEADERS: the board's pages
   _boardNav(parent) {
     const nav = el('div', 'subnav', parent);
-    for (const [t, label] of [['board', 'POSTS'], ['finds', 'FINDS'], ['ranks', 'LEADERS']]) {
+    for (const [t, label] of [['board', 'CHAT'], ['finds', 'FINDS'], ['ranks', 'LEADERS']]) {
       const c = el('button', 'chip' + (this.tab === t ? ' sel' : ''), nav, label);
       c.onclick = () => { if (this.tab !== t) this.setTab(t); };
     }
@@ -310,35 +313,115 @@ export class Terminal {
   }
 
   // ---------------------------------------------------------------- FINDS
-  // Who found what lately, rarest first: where it stands, how far, how many have been;
-  // and what this pilot's own finds have brought it.
+  // Everything found and shared, one row a thing found: every scan shared on the board
+  // (with its photograph) and every find told to the relays (finds.js), gathered by what
+  // they are of: a site's artifact (a clearing's things all under the clearing), or a
+  // witnessed seeker. Each row: the photograph of the first who shared one, its tier,
+  // what it would bring this pilot, who found it first, how many have, where it is; open
+  // it for everyone's photographs of it, in a row to scroll.
+  _findGroups() {
+    const b = this.board, F = b.finds, groups = new Map();
+    const add = (key, init) => {
+      let gr = groups.get(key);
+      if (!gr) groups.set(key, (gr = { key, posts: [], finders: [], at: 0, ...init }));
+      return gr;
+    };
+    for (const id of F.sites.keys()) {
+      const fs = F.finders(id);
+      if (!fs.length) continue;
+      const f0 = fs[0], site = siteOfKey(f0.key);
+      const gr = add(`s:${f0.key}`, { site, x: f0.x, z: f0.z, name: site && site.kind === 'landing' ? 'A clearing' : f0.name, tier: f0.tier });
+      gr.finders = fs;
+      gr.at = Math.max(gr.at, fs[fs.length - 1].at * 1000);
+    }
+    for (const p of b.posts) {
+      if (p.type !== 'scan' || !p.scan) continue;
+      const sc = p.scan;
+      let gr = null;
+      if (sc.kind === 'wild' && sc.place) {
+        const st = siteAt(sc.place.x, sc.place.z, sc.tx);
+        if (st) gr = add(`s:${st.key}`, { site: st, x: st.x, z: st.z, name: st.kind === 'landing' ? 'A clearing' : sc.name, tier: st.tier || 0 });
+      }
+      if (!gr) gr = add(`t:${sc.tx}:${sc.tokens[0] || ''}`, { name: sc.name, witnessed: sc.kind === 'witnessed', tier: 0 });
+      gr.posts.push(p);
+      gr.at = Math.max(gr.at, p.at);
+    }
+    for (const gr of groups.values()) {
+      gr.posts.sort((p, q) => p.at - q.at);
+      gr.clearing = !!(gr.site && gr.site.kind === 'landing');
+      // who found it first: the first of its finders, else the first to share a photograph
+      const first = gr.finders[0] ? gr.finders[0].address : gr.posts[0] ? gr.posts[0].address : null;
+      gr.first = first ? b.labelOf(first).name : '';
+      gr.count = new Set([...gr.finders.map((f) => f.address), ...gr.posts.map((p) => p.address)]).size;
+    }
+    return [...groups.values()].sort((p, q) => q.at - p.at);
+  }
+
   _finds() {
-    const g = this.game, b = this.board, F = b.finds;
+    const g = this.game, b = this.board;
     const top = el('div', 'boardtop', this.body);
     this._boardNav(top);
-    el('div', 'muted', top, b.link ? `Your finder's shares: ${formatInt(g.progress.royalties || 0)} DATA` : 'Link a wallet to be counted among the finders');
-    el('div', 'fine findwhy', this.body, 'The first pilot to transmit a site gets a share of every later find there; the second, half that; and so on. Fly to them.');
+    el('div', 'muted fine', top, b.link ? `Your finder's shares: ${formatInt(g.progress.royalties || 0)} DATA` : 'Link a wallet to be counted among the finders');
+    // ALL · RARE AND UP · CLEARINGS · WITNESSED
+    const filt = el('div', 'filters findfilt', this.body);
+    this.findFilter = this.findFilter || 'all';
+    for (const [f, label] of [['all', 'ALL'], ['rare', 'RARE AND UP'], ['clearing', 'CLEARINGS'], ['witnessed', 'WITNESSED']]) {
+      const x = el('button', 'chip' + (this.findFilter === f ? ' sel' : ''), filt, label);
+      x.onclick = () => { this.findFilter = f; this.render(); };
+    }
+    el('span', 'fine muted findwhy', filt, 'The first to find a place gets a share of every find there after.');
     const list = el('div', 'findlist', this.body);
-    const rows = F.recent(0);
+    const keep = this._findScroll || 0;
+    list.addEventListener('scroll', () => { this._findScroll = list.scrollTop; });
+    const ok = { all: () => true, rare: (gr) => gr.tier >= 2 && gr.tier <= 5, clearing: (gr) => gr.clearing, witnessed: (gr) => gr.witnessed };
+    const rows = this._findGroups().filter(ok[this.findFilter] || ok.all);
     if (!rows.length) {
-      if (b.loaded) el('div', 'muted empty', list, 'No finds heard in the last week. Transmit a site you have found, and it is the first here.');
+      if (b.loaded) el('div', 'muted empty', list, this.findFilter === 'all' ? 'Nothing found and shared yet. Transmit a site you have found, or share a scan from your LOG, and it is the first here.' : 'None of these yet.');
       else loader(list, 'Listening to the relays');
       return;
     }
-    for (const f of rows.slice(0, 80)) {
-      const T = tierOf(f.tier);
-      const r = el('div', 'find', list);
-      r.style.setProperty('--tc', T.color);
-      el('span', 'tbadge', r, T.name);
+    this._openFinds = this._openFinds || new Set();
+    for (const gr of rows.slice(0, 80)) {
+      const T = tierOf(gr.tier), open = this._openFinds.has(gr.key) && gr.posts.length > 1;
+      const r = el('div', 'find' + (open ? ' open' : '') + (gr.posts.length > 1 ? ' opens' : ''), list);
+      r.style.setProperty('--tc', gr.witnessed ? 'var(--gold)' : T.color);
+      // the first photograph (or its tier where there is none)
+      const ph = el('div', 'fphoto', r);
+      if (gr.posts[0] && gr.posts[0].photo) { const im = el('img', '', ph); im.src = gr.posts[0].photo; im.alt = gr.name || ''; }
+      else ph.classList.add('empty');
+      if (gr.posts.length > 1) el('span', 'fcount', ph, `${gr.posts.length}`);
       const mid = el('div', 'fmid', r);
-      el('div', '', mid, f.name || f.code || 'A find');
-      this._worthTag(el('div', 'wline', mid), siteOfKey(f.key), false);
-      const here = g.codex.some((e) => e.site === f.key);
-      const dist = Number.isFinite(f.x) ? km(Math.hypot(f.x - g.ship.x, f.z - g.ship.z)) : '';
-      el('div', 'fine', mid, [f.place, dist, `${f.count} finder${f.count === 1 ? '' : 's'}`, ago(f.at * 1000), here ? 'you have been' : ''].filter(Boolean).join(' · '));
+      const head = el('div', 'fhead', mid);
+      const bd = el('span', 'tbadge', head, gr.witnessed ? 'WITNESSED' : T.name);
+      bd.style.setProperty('--tc', gr.witnessed ? 'var(--gold)' : T.color);
+      el('span', 'fname', head, gr.name || 'A find');
+      if (gr.site) this._worthTag(el('div', 'wline', mid), gr.site, false);
+      const here = gr.site && g.codex.some((e) => e.site === gr.site.key);
+      const dist = Number.isFinite(gr.x) ? km(Math.hypot(gr.x - g.ship.x, gr.z - g.ship.z)) : '';
+      el('div', 'fine', mid, [gr.first ? `first: ${gr.first}` : '', `${gr.count} pilot${gr.count === 1 ? '' : 's'}`, gr.posts.length ? `${gr.posts.length} photo${gr.posts.length === 1 ? '' : 's'}` : '', Number.isFinite(gr.x) ? placeCode(gr.x, gr.z) : '', dist, ago(gr.at), here ? 'you have been' : ''].filter(Boolean).join(' · '));
       const acts = el('div', 'facts', r);
-      if (Number.isFinite(f.x)) this.goButtons(acts, f.x, f.z, f.name, { cls: 'chip', words: 'SET COURSE' });
+      if (Number.isFinite(gr.x)) this.goButtons(acts, gr.x, gr.z, gr.name, { cls: 'chip', words: 'SET COURSE' });
+      if (gr.posts.length > 1) {
+        r.onclick = (ev) => {
+          if (ev.target.closest('button')) return;
+          if (this._openFinds.has(gr.key)) this._openFinds.delete(gr.key); else this._openFinds.add(gr.key);
+          this.game.audio.play('ui', { h: 24 });
+          this.render();
+        };
+      }
+      // opened: everyone's photographs of it, the first first, in a row to scroll
+      if (open) {
+        const strip = el('div', 'fstrip', r);
+        for (const p of gr.posts) {
+          const card = el('div', 'fshot', strip);
+          if (p.photo) { const im = el('img', '', card); im.src = p.photo; im.alt = p.scan.name || ''; }
+          el('div', 'fwho', card, `${b.labelOf(p.address).name} · ${ago(p.at)}`);
+          if (gr.clearing) el('div', 'fine muted', card, p.scan.name || '');
+          if (p.note) this._words(el('div', 'fine', card), p.note);
+        }
+      }
     }
+    requestAnimationFrame(() => { list.scrollTop = keep; });
   }
 
   // ---------------------------------------------------------------- LOG
@@ -852,14 +935,16 @@ export class Terminal {
     if (!this._boardList || !this._boardList.isConnected) return;
     const b = this.board;
     const n = b.pool.connected();
-    this._boardStatus.textContent = `${n} of ${b.pool.relays.length} relays · ${b.posts.length} post${b.posts.length === 1 ? '' : 's'} from holders${b.loaded ? '' : ' · reading…'}`;
+    const words = b.posts.filter((p) => p.type === 'msg').length;
+    this._boardStatus.textContent = `${n} of ${b.pool.relays.length} relays · ${words} message${words === 1 ? '' : 's'} from holders${b.loaded ? '' : ' · reading…'}`;
     const list = this._boardList;
     const keep = list.scrollTop, pinned = this._boardPinned;
     const toEnd = () => { if (this._boardPinned) list.scrollTop = list.scrollHeight; };
     clear(list);
-    const posts = b.posts.filter((p) => this.boardFilter === 'all' || p.type === this.boardFilter);
+    // (words only: shared scans are on FINDS, gathered by what they are of)
+    const posts = b.posts.filter((p) => p.type === 'msg');
     if (!posts.length) {
-      if (b.loaded) el('div', 'muted empty', list, 'Nothing here yet. The first scan shared will be the first thing here.');
+      if (b.loaded) el('div', 'muted empty', list, 'Nothing said here yet. Scans shared are on FINDS.');
       else loader(list, 'Listening to the relays');
       return;
     }

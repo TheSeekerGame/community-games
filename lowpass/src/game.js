@@ -17,7 +17,7 @@ import { Audio, BPM } from './core/audio.js';
 import { load, save, codexAll, codexPut } from './core/store.js';
 import { clamp, damp, angleDelta, formatInt } from './core/math.js';
 import { Progress, valueOf } from './core/progress.js';
-import { tierOf } from './artifacts/tiers.js';
+import { tierOf, CLEARING } from './artifacts/tiers.js';
 import { sitesNear, siteByKey } from './world/sites.js';
 import { worthOf, worthWords } from './ui/worth.js';
 import { Course } from './ship/course.js';
@@ -75,6 +75,7 @@ export class Game {
     FOG.tCanopy.value = this.world.canopy.texture;
     this.atmo = new Atmosphere();
     this.progress = new Progress();     // DATA, depth, upgrades, ships
+    this.clearings = load('clearings', {});   // how many things each clearing landed in holds (afoot.js)
     this.ship = new Ship(this.scene, this.world, shipById(this.progress.ship));
     this.interior = new Interior(this.ship);
     this.seeker = new Seeker(this.interior.group);
@@ -288,6 +289,8 @@ export class Game {
 
   // One of the rarest found lately by another pilot: told, with the way there.
   rareFound(f) {
+    // (not over the open Codex: it waits until it is closed, the newest only)
+    if (this.terminal.open) { this._rareLater = f; return; }
     const T = tierOf(f.tier), km = Math.hypot(f.x - this.ship.x, f.z - this.ship.z) / 1000;
     this.audio.play('witness', {});
     this.atmo.networkPulse(f.tier >= 5 ? 1.6 : 1.1);
@@ -692,6 +695,9 @@ export class Game {
       ...(d.family === 'creature' ? { creature: d.species } : {}),
       ...(d.family === 'life' ? { life: d.species } : {}),
       ...(d.family === 'curio' ? { ground: true, curio: d.curio } : {}),
+      // a thing about a clearing that is a site: told as the clearing (finds.js, the MAP),
+      // its worth a share of the clearing's (progress.js)
+      ...(a.clearing ? { site: a.clearing.key, x: Math.round(a.clearing.x), z: Math.round(a.clearing.z), of: a.clearing.of, tier: CLEARING, res: d.res || 0, landing: true } : {}),
       ...(d.mountain ? { mountain: true } : {}),
       ...(d.autumn ? { autumn: true } : {}),
       ...(d.river ? { river: true } : {}),

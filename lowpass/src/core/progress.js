@@ -4,7 +4,7 @@ import { EFFECTS, FX_VALUE, PACK, fxPrice } from '../artifacts/fx.js';
 import { ANOMALY_VALUE } from '../world/anomaly.js';
 import { LIFE_VALUE } from '../artifacts/life.js';
 import { RIVER_VALUE, THREADED_VALUE } from '../artifacts/river.js';
-import { tierOf } from '../artifacts/tiers.js';
+import { tierOf, CLEARING } from '../artifacts/tiers.js';
 
 // Progress: DATA, and what it buys: how far into every artifact the pilot sees
 // (attunement, without end), how much plasma the tank holds and how far off the ship
@@ -46,25 +46,32 @@ export const WITNESSED = 40;
 export const FIRST = 120;
 export const PLUS_VALUE = 10;      // one of the marked (+) is worth this many times its layers'
 export const CREATURE_VALUE = 4;   // a creature that flees (species.js), likewise
-export const LANDING_DEPTH = 3;    // a clearing's lanterns are seen once attuned this far (and nothing says so)
-export const CURIO_VALUE = 2;      // a thing found on foot about a clearing (curios.js)
+export const LANDING_DEPTH = 3;    // (once: a clearing's lanterns were seen only attuned this far; now by everyone)
+export const CURIO_VALUE = 2;      // a thing found on foot about a clearing, before clearings were sites' (curios.js)
+export const LANDING_TOTAL = 2 * BASE * 2;    // all a clearing's things together, at the surface: twice an UNCOMMON's scan
 
 export const TANK = [5, 7, 9, 11, 13, 15];
 // the teleporter kit: three jumps a kit, dear (teleport.js)
-export const KIT_PRICE = 3000, KIT_JUMPS = 3;
+export const KIT_PRICE = 1000, KIT_JUMPS = 3;
 export const REFILL = [0.24, 0.32, 0.4, 0.48, 0.56, 0.64];
 // what each level of the capped ones costs (the first entry buys level one)
 const COSTS = { tank: [40, 80, 130, 200, 300], gain: [80, 150, 250, 380, 550] };
 export const MAX = { tank: COSTS.tank.length, gain: COSTS.gain.length };
 
 export const costOf = (depth) => FIRST * Math.pow(2, depth - 1);     // to reach this depth
-export const valueOf = (e) => (e.kind === 'wild'
+export const valueOf = (e) => (e.kind === 'wild' && e.ground && e.of
+  ? Math.round((LANDING_TOTAL * (1 + (e.depth || 0)) / e.of) * Math.pow(FX_VALUE, (e.fx || []).length) * Math.pow(ANOMALY_VALUE, (e.anomalies || []).length))
+  : e.kind === 'wild'
   ? Math.round(BASE * (1 + (e.depth || 0)) * tierOf(e.tier).value * (e.plus ? PLUS_VALUE : 1) * (e.creature ? CREATURE_VALUE : e.ground ? CURIO_VALUE : e.life ? LIFE_VALUE : 1) * Math.pow(FX_VALUE, (e.fx || []).length) * Math.pow(ANOMALY_VALUE, (e.anomalies || []).length) * (e.river ? RIVER_VALUE : 1) * (e.family === 'naturalbridge' && e.passes > 0 ? THREADED_VALUE : 1))
   : e.special ? WITNESSED : BASE);
 
 // what a site is worth, whole: its tier's worth, every layer in it seen (what the pilots
 // before one at a site get their shares of: finds.js)
-export const siteWorth = (tier, res) => BASE * tierOf(tier).value * (1 + (res || 0));
+export const siteWorth = (tier, res) => (tier === CLEARING ? LANDING_TOTAL * 3 : BASE * tierOf(tier).value * (1 + (res || 0)));
+
+// A clearing's things, found on foot (curios.js), are worth together twice an UNCOMMON
+// artifact's scan at the same attunement: each one, LANDING_TOTAL (and as much more for
+// each of its layers seen) shared out among however many the clearing holds.
 
 // what transmitting a scan brings now: its worth, less what was paid for it before
 export const owedFor = (e) => Math.max(0, valueOf(e) - (e.paid || 0));

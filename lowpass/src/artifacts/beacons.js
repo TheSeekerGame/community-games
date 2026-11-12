@@ -13,9 +13,9 @@ import { tierOf } from './tiers.js';
 
 const MAX = 8;
 const DRAW_AT = 2100;
-const HEIGHT = [0, 0, 260, 420, 640, 900];
-const WIDTH = [0, 0, 10, 15, 21, 28];
-const GLOW = [0, 0, 0.5, 0.65, 0.8, 1];
+const HEIGHT = [0, 0, 260, 420, 640, 900, 560];
+const WIDTH = [0, 0, 10, 15, 21, 28, 18];
+const GLOW = [0, 0, 0.5, 0.65, 0.8, 1, 0.75];
 
 function pillarGeo() {
   // a tall open cylinder, light at its foot fading to nothing at the top, and a second
@@ -84,7 +84,7 @@ export class Beacons {
       it.group.visible = it.a > 0.01;
       const pulse = 0.85 + 0.15 * Math.sin(time * (0.6 + T * 0.1) + (s.x % 7));
       it.m.uniforms.uOpacity.value = GLOW[T] * it.a * pulse;
-      if (T >= 5) this._c.setHSL((time * 0.03) % 1, 0.75, 0.72); else this._c.setHex(tierOf(T).hex);
+      if (T === 5) this._c.setHSL((time * 0.03) % 1, 0.75, 0.72); else this._c.setHex(tierOf(T).hex);
       it.m.uniforms.uTint.value.copy(this._c);
     }
   }

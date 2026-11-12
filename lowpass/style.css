@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "19a2e0f9"; }
+:root { --build: "58e30877"; }
 
 :root {
   --u: 3px;
@@ -302,9 +302,22 @@ html.touchmode #ui .hud .fx { padding: calc(var(--u) * 4) calc(var(--u) * 6); }
 .term details.more[open] { display: flex; flex-direction: column; gap: calc(var(--u) * 3); }
 .term .gold { color: var(--gold); }
 /* FINDS */
-.term .findwhy { color: var(--muted); padding-bottom: calc(var(--u) * 3); max-width: calc(var(--u) * 260); }
+.term .findwhy { color: var(--muted); margin-left: calc(var(--u) * 2); }
 .term .findlist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 2); padding-right: calc(var(--u) * 2); }
-.term .find { display: grid; grid-template-columns: calc(var(--u) * 46) minmax(0, 1fr) auto; align-items: center; gap: calc(var(--u) * 4); background: rgba(18, 21, 29, 0.7); border-left: var(--u) solid var(--tc); padding: calc(var(--u) * 2) calc(var(--u) * 4); }
+.term .find { display: grid; grid-template-columns: calc(var(--u) * 52) minmax(0, 1fr) auto; align-items: center; gap: calc(var(--u) * 2) calc(var(--u) * 4); background: rgba(18, 21, 29, 0.7); border-left: var(--u) solid var(--tc); padding: calc(var(--u) * 2) calc(var(--u) * 3); }
+.term .find.opens { cursor: pointer; }
+@media (hover: hover) { .term .find.opens:hover { background: rgba(26, 30, 40, 0.8); } }
+.term .find .fphoto { position: relative; aspect-ratio: 16 / 9; background: var(--well); border: var(--u) solid var(--line); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.term .find .fphoto img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; display: block; }
+.term .find .fphoto.empty { border-color: var(--tc); opacity: 0.35; }
+.term .find .fcount { position: absolute; right: var(--u); bottom: 0; padding: 0 var(--u); background: rgba(4, 6, 10, 0.8); color: var(--text); }
+.term .find .fhead { display: flex; align-items: center; gap: calc(var(--u) * 2); min-width: 0; }
+.term .find .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.term .find .fstrip { grid-column: 1 / -1; display: flex; gap: calc(var(--u) * 3); overflow-x: auto; padding: calc(var(--u) * 2) 0; scroll-snap-type: x proximity; }
+.term .find .fshot { flex: none; width: calc(var(--u) * 80); scroll-snap-align: start; display: flex; flex-direction: column; gap: var(--u); }
+.term .find .fshot img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; image-rendering: pixelated; border: var(--u) solid var(--line); }
+.term .find .fwho { color: var(--acc); }
+.term .findfilt { align-items: center; flex-wrap: wrap; padding-bottom: calc(var(--u) * 3); }
 .term .find .tbadge { justify-self: start; }
 .term .find .fmid { min-width: 0; }
 .term .find .fmid > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -440,8 +453,9 @@ html.touchmode .term .hangar { touch-action: pan-y; }
   .term .ttabs { column-gap: calc(var(--u) * 3.5); }
   .term .thead { flex-wrap: wrap; row-gap: calc(var(--u) * 2); }
   .term .tright { order: 3; width: 100%; justify-content: flex-start; }
-  .term .find { grid-template-columns: minmax(0, 1fr) auto; }
-  .term .find .tbadge { grid-column: 1 / -1; }
+  .term .find { grid-template-columns: calc(var(--u) * 40) minmax(0, 1fr); }
+  .term .find .facts { grid-column: 1 / -1; justify-content: flex-start; }
+  .term .find .fshot { width: calc(var(--u) * 64); }
   .term .cols { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .term .grid { max-height: 30vh; }
   /* the seekers page, held upright: it scrolls as one, so a seeker's page (and its BRING

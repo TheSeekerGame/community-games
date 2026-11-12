@@ -48,13 +48,18 @@ const INFO = {
 const ADJ = ['Patient', 'Quiet', 'Forgotten', 'Silent', 'Second', 'Old', 'Curious', 'Unlikely', 'Mossy', 'Unlisted', 'Lost', 'Folded', 'Calibrated', 'Dormant'];
 const OF = ['of the Damp', 'of the Long Fog', 'of the First Survey', 'of Low Branches', 'of the Quiet Hour', 'of Nobody’s Records', 'of the Underbrush', 'of an Earlier Visit'];
 
+// the set a clearing's things come from: the forest's, or a reach's own
+let FOREST = null;
+const setOf = (reach) => (reach && REACH_CURIOS[reach]) || FOREST || (FOREST = { CURIOS, INFO, KINDS });
+
 export function describeCurio(d, move, R1, R3) {
   const depth = d.depth, st = depth ? stratum(depth) : SURFACE;
+  const S = setOf(move.reach);
   // (what it is, by how much lies in it: the same thing for every pilot, seen as far as each is attuned)
-  const open = CURIOS.filter(([, m]) => m <= Math.max(depth, d.res || 0)).map(([k]) => k);
-  const kind = move.kind && INFO[move.kind] ? (R1(), move.kind) : R1.pick(open);
-  const [code, cls, nouns, text] = INFO[kind];
-  const P = { kind, n: R1.int(5, 11), hue: R1() };
+  const open = S.CURIOS.filter(([, m]) => m <= Math.max(depth, d.res || 0)).map(([k]) => k);
+  const kind = move.kind && S.INFO[move.kind] ? (R1(), move.kind) : R1.pick(open);
+  const [code, cls, nouns, text] = S.INFO[kind];
+  const P = { kind, n: R1.int(5, 11), hue: R1(), reach: move.reach && REACH_CURIOS[move.reach] ? move.reach : null };
   d.family = 'curio';
   d.curio = kind;
   d.plus = !!move.plus;
@@ -69,62 +74,13 @@ export function describeCurio(d, move, R1, R3) {
   d.code = `${code}-${(move.seed || move.tx).slice(2, 6).toUpperCase()}`;
   d.cls = cls;
   d.structure = text(P);
-  d.origin = `Found on foot, in the forest about a clearing${depth ? `, of ${st.title}` : ''}${d.plus ? ': one of the marked' : ''}. It lies there for whoever lands.`;
+  const about = move.reach === 'desert' ? 'out on the sand about a clearing in the Grey Waste' : move.reach === 'greatlake' ? 'on an island of the Great Lake, about a clearing' : 'in the forest about a clearing';
+  d.origin = `Found on foot, ${about}${depth ? `, of ${st.title}` : ''}${d.plus ? ': one of the marked' : ''}. It lies there for whoever lands.`;
 }
 
 // ------------------------------------------------------------------ building
-const BARK = 0x3a3530, MOSS = 0x49573d, MOSS2 = 0x5b6e3e, METAL = 0x8a9198;
-
-function lightMesh(geo, fx, opacity) {
-  const m = glowMaterial({ opacity, fog: 0.6, side: THREE.DoubleSide });
-  const mesh = new THREE.Mesh(geo, m);
-  mesh.layers.set(LAYER_FX);
-  mesh.frustumCulled = false;
-  fx.push([m, opacity]);
-  return mesh;
-}
-
-// a part: what is lit like the world, what glows on the pulse, and pure light
-class Part {
-  constructor(parent, x = 0, y = 0, z = 0) {
-    this.group = new THREE.Group();
-    this.group.position.set(x, y, z);
-    parent.add(this.group);
-    this.body = new Builder();
-    this.lit = new Builder();
-    this.glow = new Builder();
-  }
-  finish(mats, fx, opacity = 0.7) {
-    if (!this.body.empty) this.group.add(new THREE.Mesh(this.body.build(), mats.body));
-    if (!this.lit.empty) this.group.add(new THREE.Mesh(this.lit.build(), mats.glow));
-    if (!this.glow.empty) this.group.add(lightMesh(this.glow.build(), fx, opacity));
-  }
-}
-
-// motes that move (steam, rain, snow): points, their places written each frame
-function motes(parent, n, color, size, fx, opacity = 0.8) {
-  const g = new THREE.BufferGeometry(), pos = new Float32Array(n * 3);
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(n).fill(1), 1));
-  g.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(n).fill(1), 1));
-  const m = pointsMaterial({ color, size, additive: true, opacity });
-  const p = new THREE.Points(g, m);
-  p.layers.set(LAYER_FX);
-  p.frustumCulled = false;
-  parent.add(p);
-  fx.push([m, opacity]);
-  return { pos, alpha: g.attributes.aAlpha.array, commit() { g.attributes.position.needsUpdate = true; g.attributes.aAlpha.needsUpdate = true; } };
-}
-
-const rock = (r, seed, amount = 0.3, detail = 0) => { const g = new THREE.IcosahedronGeometry(r, detail); roughen(g, r * amount, seed); return g; };
-const curve = (b, pts, r, color, em = 0) => b.tube(pts.map((p) => new THREE.Vector3(...p)), r, 5, color, em);
-// a stump to stand something on
-function stump(b, r, h, R) { b.cyl(r, r * 1.15, h, 8, mat(0, h / 2 - 0.1, 0), BARK); b.cyl(r * 0.92, r * 0.92, 0.02, 8, mat(0, h - 0.09, 0), 0x8a6a4a); for (let i = 0; i < 4; i++) { const a = i * 1.7 + R(); curve(b, [[Math.cos(a) * r, 0.2, Math.sin(a) * r], [Math.cos(a) * r * 1.8, -0.1, Math.sin(a) * r * 1.8]], 0.12 * r / 0.4, BARK); } }
-// a bed of moss and ferns at its foot
-function moss(b, r, R, n = 6) {
-  for (let i = 0; i < n; i++) { const a = R() * TAU, d = r * (0.3 + R() * 0.8); b.add(rock(0.35 + R() * 0.3, i + 7, 0.25), mat(Math.cos(a) * d, -0.05, Math.sin(a) * d, 0, 0, 0, 1.4, 0.35, 1.4), i % 2 ? MOSS : MOSS2, 0, { flat: true }); }
-}
-function fern(b, x, z, s, R) { for (let i = 0; i < 7; i++) { const a = (i / 7) * TAU + R() * 0.4; b.cone(0.05 * s, 0.7 * s, 3, mat(x + Math.cos(a) * 0.12 * s, 0.3 * s, z + Math.sin(a) * 0.12 * s, Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9), i % 2 ? MOSS : MOSS2); } }
+import { BARK, MOSS, MOSS2, METAL, lightMesh, Part, motes, rock, curve, stump, moss, fern } from './curiokit.js';
+import { REACH_CURIOS } from './curios_reaches.js';
 
 const KINDS = {
   probe(k, pal, P, R) {
@@ -422,7 +378,7 @@ export function buildCurio(d, A, mats) {
   group.add(inner);
   const k = new Part(inner);
   k.parts = [];
-  const info = KINDS[P.kind](k, pal, P, R, fx);
+  const info = setOf(P.reach).KINDS[P.kind](k, pal, P, R, fx);
   k.finish(mats, fx);
   for (const p of k.parts) p.finish(mats, fx);
   // marked: a ring of light on the ground about it, and motes rising

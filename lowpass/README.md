@@ -122,7 +122,7 @@ to it and press E.
   plain ground); some rivers have one more down their course, and a few one on the lake
   they end in. About four sites in a hundred square kilometers: few enough that each is
   worth the flight, and no hurry.
-- **Teleporting.** A TELEPORTER KIT from the SHOP (3,000 DATA, three jumps) puts
+- **Teleporting.** A TELEPORTER KIT from the SHOP (1,000 DATA, three jumps) puts
   TELEPORT beside every place you can set a course to (the LOG, the MAP, the BOARD's
   posts and FINDS). Pressed twice (the second time to be sure), it takes you out to the
   ship's view: rings of light close about the ship and spin up, the view stretches, a
@@ -198,8 +198,19 @@ to it and press E.
     the air and need no ground.
   These are the COMMON and UNCOMMON (below); about one in seven is **grand**: larger,
   with a column of its own light over it.
-  Now and then a site holds something else: life (below), a creature that flees, or,
-  for a pilot attuned to III or further, lanterns in a clearing to land in.
+  Now and then a site holds something else: life (below), a creature that flees, or a
+  **CLEARING** to land in.
+- **Clearings.** As common as an UNCOMMON artifact: lanterns in a ring in the forest,
+  named on the strip in lantern orange (CLEARING). Hold the scanner on it and the ship comes down;
+  walk out, and fourteen to twenty things stand about it, found only on foot, the same
+  for everyone who lands (their places about the clearing differ from one landing to
+  the next). All of them together are worth twice an UNCOMMON artifact's scan at your
+  attunement, shared out among them. Every one is recorded, told and found as the
+  clearing (its place is the clearing's), so the first pilot to a clearing shares in
+  everyone who comes after, and FINDS and the MAP show it as a CLEARING. It stays on the
+  strip until everything about it is recorded. Out in the Grey Waste a clearing is on
+  the sand, its things the Waste's own; on the Great Lake, on an island, its things the
+  island's own.
 - **Rarity.** Every artifact site has a **tier**, the same for every ship, and each tier
   has its own art at the surface and its own true forms below:
   - **COMMON** (about two in three): the forest's first families;
@@ -417,13 +428,18 @@ name or address once linked, else LINK WALLET), which opens your seekers.
   ring), and what other pilots found or named on the BOARD, in their tiers' colors. The
   rest stays to be found.
   Choose one, or anywhere, and SET COURSE; or type a place code and FLY THERE.
-- **BOARD**, three pages: POSTS, FINDS and LEADERS.
-  **FINDS**: who found what in the last week, rarest first: each with its tier, what a
-  scan of it would bring you (exactly: every site can be worked out from where it is,
-  and you would see as far into it as you are attuned; RECORDED, or + MORE, if you have
-  been), its place, how far, how many have been, and SET COURSE; and what your own finds have
+- **BOARD**, three pages: CHAT, FINDS and LEADERS.
+  **FINDS**: everything found and shared, one row a thing: every scan shared on the board
+  (with its photograph) and every find told to the relays, gathered by what they are of
+  (a site's artifact; a clearing's things all under the clearing; a witnessed seeker),
+  newest first (ALL, RARE AND UP, CLEARINGS, WITNESSED). Each row: the photograph of the
+  first who shared one, its tier, what a scan of it would bring you (exactly: every site
+  can be worked out from where it is, and you would see as far into it as you are
+  attuned; RECORDED, or + MORE, if you have been), who found it first, how many pilots
+  and photographs, its place, how far, SET COURSE; open it for everyone's photographs of
+  it in a row to scroll, each with who and when and their words; and what your own finds have
   brought you as finder's shares.
-  **POSTS**: the seekers' board, on six free public Nostr relays (relay.damus.io, nos.lol,
+  **CHAT**: words only (shared scans are on FINDS): the seekers' board, on six free public Nostr relays (relay.damus.io, nos.lol,
   relay.primal.net, offchain.pub, nostr.mom, relay.nostr.net; no account). Anyone can read
   it, in the game or in any Nostr client (kind 1 notes tagged `#lowpasscodex`). Holders
   post scans and words (text only, no links), take a **name** (shown instead of their

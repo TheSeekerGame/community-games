@@ -149,7 +149,7 @@ no site move, only what it holds, so sites are still placed on the ground as it 
 
 ### Teleporting
 
-A dear shortcut for the long flights rarity asks for: a kit of three jumps (3,000 DATA)
+A dear shortcut for the long flights rarity asks for: a kit of three jumps (1,000 DATA)
 puts TELEPORT beside every place one can set a course to. It is a spectacle on purpose
 (the ship gathered up in rings of light, the view stretched, a flash) and lands the ship
 short of the place, facing it, so the arrival is still seeing the thing come out of the
@@ -222,9 +222,15 @@ nothing of creatures at all, not in the HUD, the shop or this game's README: one
 flies off one day, and the rest is for players to find out (a rush of air when it bolts,
 two falling notes when its scan is lost, are all the help there is).
 
-Landing is the other secret, and the larger one. Once a pilot is attuned to III (nothing
-says so), a few sites turn out to be clearings: lanterns in a ring, a column of light,
-there all along for those who could see them. Held in the scanner, it is landed in: a short scene in still shots,
+Landing was the other secret: clearings were seen only once attuned to III. The owner
+asked for them to be part of the shared world instead: a **CLEARING** is a site as common
+as an UNCOMMON artifact (every old clearing site, and about half the artifacts out on
+plain ground already flat enough to come down on, none of them moved), seen by
+everyone, named on the strip, the MAP and FINDS in lantern orange. All its things
+together are worth twice an UNCOMMON's scan (each a share), each is told as the clearing, and the first to land
+there shares in the later ones, as for any find. A clearing in a reach has the reach's
+own things (the Grey Waste's on the sand, the Great Lake's on an island). Lanterns in a
+ring, a column of light. Held in the scanner, it is landed in: a short scene in still shots,
 each ship coming in its own way (the Seed on a wide curve, the Heron on a long glide, the
 Moth spiraling down, the Kestrel fast with a hard flare, the Ark slowly from high up),
 its legs coming down, a breath of dust, its ramp folding down from the door on the right

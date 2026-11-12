@@ -311,7 +311,7 @@ export class Hud {
     const mir = !ground && g.ship.flip > 0.5 ? -1 : 1;
     const at = (b) => `${(1 - (0.5 + Math.max(-1, Math.min(1, (b * mir) / 1.2)) * 0.5)) * 100}%`;
     // in sight: an artifact built and within what the fog lets one see (a yellow ring)
-    const vis = flying ? f.visibility() : 0;
+    const vis = flying && !ground && f.visibility ? f.visibility() : 0;
     const inSight = (x) => { const a = x.a; return !!(a && a.model && !a.building && a.dist < vis); };
     const far = (d) => (d >= 1000 ? `${(d / 1000).toFixed(d >= 10000 ? 0 : 1)}` : `${Math.round(d / 50) * 50}m`);
     if (ground) {
@@ -336,7 +336,7 @@ export class Hud {
       // (a course set leads, unless something has risen for the ship)
       const course = g.course && g.course.on ? { course: true, dist: g.course.dist(), bearing: g.course.bearing() } : null;
       // (a rare one heard leads, the rarest: it is what the pilot would fly to; tiers.js)
-      const tierOfX = (x) => (x.site && x.site.kind === 'artifact' ? x.site.tier || 0 : 0);
+      const tierOfX = (x) => (x.site && (x.site.kind === 'artifact' || x.site.kind === 'landing') ? x.site.tier || 0 : 0);
       const rare = rest.filter((x) => tierOfX(x) >= 2 && !x.faint).sort((p, q) => tierOfX(q) - tierOfX(p) || p.dist - q.dist)[0];
       const lead = rest.find((x) => x.gold) || course || (held ? null : (t && rest.find((x) => x.a === t)) || rare || rest[0] || null);
       if (course && lead !== course) rest.unshift(course);
@@ -392,7 +392,7 @@ export class Hud {
       if (!clash) taken.push(pos);
       mk.classList.toggle('gold', !!a.gold);
       mk.classList.toggle('course', !!a.course);
-      const T = a.site && a.site.kind === 'artifact' ? a.site.tier || 0 : 0;
+      const T = a.site && (a.site.kind === 'artifact' || a.site.kind === 'landing') ? a.site.tier || 0 : 0;
       mk.classList.toggle('tiered', T >= 1);
       if (T >= 1) mk.style.setProperty('--tc', TIERS[T].color);
     });

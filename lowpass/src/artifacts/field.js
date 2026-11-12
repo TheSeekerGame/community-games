@@ -12,7 +12,6 @@ import { SPECIES } from './species.js';
 import { sitesNear, HEAR, FAINT } from '../world/sites.js';
 import { tierOf, TIERS } from './tiers.js';
 import { Beacons } from './beacons.js';
-import { LANDING_DEPTH } from '../core/progress.js';
 
 // The artifacts in the forest: where each stands, the clearing it makes, its light in
 // the fog and on the trees, its pulse, the scanner's lock and hold.
@@ -104,7 +103,7 @@ export class Field {
   // attuned far enough; an owl by night; a creature recorded has flown)
   _there(site) {
     const g = this.game;
-    if (site.kind === 'landing') return g.progress.depth >= LANDING_DEPTH;
+    if (site.kind === 'landing') return true;     // (any pilot sees a clearing's lanterns now)
     if (site.night) return g.atmo.night > 0.5;
     if (site.kind === 'creature') return !this.record(site.seed);
     return true;
@@ -112,7 +111,12 @@ export class Field {
 
   // still to record: never recorded, or recorded less far in than is seen now
   _open(site) {
-    if (site.kind === 'landing') return true;
+    // a clearing: until every thing about it is recorded (how many there are is known
+    // once one has landed there: afoot.js)
+    if (site.kind === 'landing') {
+      const n = this.game.clearings[site.key];
+      return n === undefined || this.game.codex.filter((e) => e.site === site.key && e.ground).length < n;
+    }
     const e = this.record(site.seed);
     return !e || (e.depth || 0) < this.seenOf(site);
   }
@@ -134,7 +138,7 @@ export class Field {
         const d = Math.hypot(site.x - ship.x, site.z - ship.z), a = this.sites.get(site.key) || null;
         if (d < BUILD_R && !a && d < nd && !(this.cool.get(site.key) > g.time)) { next = site; nd = d; }
         const inRange = d < hear * tierOf(site.tier).hear;
-        if (inRange && site.tier >= 2) lit.push({ key: site.key, x: site.x, z: site.z, y: site.y ?? (site.y = height(site.x, site.z)), tier: site.tier, d, done: !this._open(site) });
+        if (inRange && site.tier >= 2 && site.tier <= 5) lit.push({ key: site.key, x: site.x, z: site.z, y: site.y ?? (site.y = height(site.x, site.z)), tier: site.tier, d, done: !this._open(site) });
         if (inRange && this._open(site) && !(a && a.scanned)) {
           sig.push({ site, key: site.key, a, dist: d, bearing: 0 });
           if (!this.heard.has(site.key)) { this.heard.add(site.key); if (this.onSignal && g.mode !== 'title') this.onSignal(sig[sig.length - 1]); }
@@ -172,7 +176,7 @@ export class Field {
     return {
       tx: site.seed, wild: true, site: site.key, res: site.res || 0, depth: this.seenOf(site),
       mountain: site.place === 'mountain', autumn: site.place === 'autumn', river: site.place === 'river', lake: site.place === 'lake', desert: site.place === 'desert', greatlake: site.place === 'greatlake',
-      tier: site.tier || 0, plus: !!site.plus, trace: !!site.trace, creature: site.kind === 'creature', landing: site.kind === 'landing', life: site.kind === 'life' ? site.species : null,
+      tier: site.kind === 'artifact' || site.kind === 'landing' ? site.tier || 0 : 0, place: site.place, plus: !!site.plus, trace: !!site.trace, creature: site.kind === 'creature', landing: site.kind === 'landing', life: site.kind === 'life' ? site.species : null,
     };
   }
 

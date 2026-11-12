@@ -27,7 +27,11 @@ export const TIERS = [
   { id: 'epic', name: 'EPIC', p: 0.02, value: 15, hear: 1.9, least: 3, deeper: 0.7, color: '#b48cff', hex: 0xb48cff },
   { id: 'legendary', name: 'LEGENDARY', p: 0.0025, value: 60, hear: 2.7, least: 4, deeper: 0.74, color: '#ffd27a', hex: 0xffd27a },
   { id: 'mythic', name: 'MYTHIC', p: 0.00025, value: 400, hear: 4, least: 5, deeper: 0.8, color: '#ff9be6', hex: 0xff9be6 },
+  // (not an artifact's: a clearing to land in, as common as an UNCOMMON, with its own
+  // name and lantern color; never drawn, sites.js says which sites are clearings)
+  { id: 'clearing', name: 'CLEARING', p: 0, value: 2, hear: 1.15, least: 0, deeper: 0, color: '#ffb36b', hex: 0xffb36b },
 ];
+export const CLEARING = 6;
 export const tierOf = (n) => TIERS[Math.max(0, Math.min(TIERS.length - 1, n | 0))];
 
 // a tier from a uniform draw u in [0, 1): the rarest first

@@ -1,7 +1,7 @@
 import { rng, clamp, TAU } from '../core/math.js';
 // (placed on the ground as it was before the reaches: heightBase; terrain.js)
-import { heightBase as height, WATER, mountainEnv, autumn, riverAt, riverOf, RCELL, RN, desertEnv, lakeEnv } from './terrain.js';
-import { drawTier, tierOf } from '../artifacts/tiers.js';
+import { heightBase as height, height as heightNow, WATER, mountainEnv, autumn, riverAt, riverOf, RCELL, RN, desertEnv, lakeEnv } from './terrain.js';
+import { drawTier, tierOf, CLEARING } from '../artifacts/tiers.js';
 
 // The sites: where the artifacts stand. Nothing is spawned for anyone: every artifact has
 // its place, a pure function of the world's seed and its coordinates, the same for every
@@ -108,7 +108,8 @@ function fill(site, R) {
   if (p === 'any' && r < P_LANDING) {
     site.kind = 'landing';
     [site.x, site.z] = flat(site.x, site.z);
-    return site;
+    // (a clearing, as common as an UNCOMMON artifact: clearing())
+    return clearing(site);
   }
   if ((p === 'any' || p === 'autumn') && r < P_LANDING + P_CREATURE) {
     site.kind = 'creature';
@@ -140,11 +141,19 @@ function fill(site, R) {
 // A site laid over since by one of the reaches (terrain.js: the Grey Waste, the Great
 // Lake) stands where it stood, and is now that reach's own: an artifact of the reach's
 // families, whatever it held before (its tier and layers kept, if it was an artifact).
+// (a clearing stays one: out in the Waste on the sand as it is; on the Great Lake, on
+// the nearest island with flat ground enough to come down on, if there is one near)
 function reach(s) {
   if (!s) return s;
   const de = desertEnv(s.x, s.z), le = lakeEnv(s.x, s.z);
   if (de < 0.5 && le < 0.5) return s;
   s.place = de >= 0.5 ? 'desert' : 'greatlake';
+  if (s.kind === 'landing') {
+    // (on the Waste's edge, where the forest still stands, it is the forest's clearing)
+    if (s.place === 'desert') { if (de < 0.9) s.place = 'any'; return s; }
+    const at = islandNear(s.x, s.z);
+    if (at) { [s.x, s.z] = at; return s; }
+  }
   if (s.kind !== 'artifact') {
     const R = rng(hash64(`${WORLD}|${s.key}|reach`)[0]);
     s.kind = 'artifact';
@@ -155,6 +164,44 @@ function reach(s) {
     s.res = resonance(R, T.least, T.deeper);
   }
   return s;
+}
+
+// Clearings: as common as UNCOMMON artifacts (tiers.js: CLEARING). Every site whose seed
+// made it one is one; and besides, now and then an artifact out on plain ground, where the
+// ground is flat enough to come down on as it is (none of them moved), is a clearing
+// instead (more()).
+const KEEP_CLEARING = 1, MORE_CLEARINGS = 0.55;
+function clearing(s) {
+  const R = rng(hash64(`${WORLD}|${s.key}|clearing`)[0]);
+  if (R() < KEEP_CLEARING) { s.tier = CLEARING; s.res = 0; return s; }
+  s.kind = 'artifact';
+  s.tier = drawTier(R());
+  const T = tierOf(s.tier);
+  s.res = resonance(R, T.least, T.deeper);
+  return s;
+}
+function more(s) {
+  if (!s || s.kind !== 'artifact' || s.place !== 'any') return s;
+  // (not where the Great Lake lies over it now: it would have to move to an island)
+  if (lakeEnv(s.x, s.z) >= 0.5) return s;
+  const R = rng(hash64(`${WORLD}|${s.key}|more`)[0]);
+  if (R() >= MORE_CLEARINGS) return s;
+  const hs = [[0, 0], [24, 0], [-24, 0], [0, 24], [0, -24], [17, 17], [-17, -17]].map(([dx, dz]) => height(s.x + dx, s.z + dz));
+  if (Math.min(...hs) < WATER + 1.5 || Math.max(...hs) - Math.min(...hs) > 6) return s;
+  s.kind = 'landing';
+  s.tier = CLEARING;
+  s.res = 0;
+  return s;
+}
+// flat dry ground on an island of the Great Lake near (x, z) (the ground as it is now,
+// the lake laid over it), or null
+function islandNear(x, z) {
+  for (let r = 0; r <= 1600; r += 80) for (let i = 0; i < (r ? Math.ceil(r / 40) : 1); i++) {
+    const a = (i / Math.max(1, Math.ceil(r / 40))) * TAU, px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+    const hs = [[0, 0], [30, 0], [-30, 0], [0, 30], [0, -30], [21, 21], [-21, -21]].map(([dx, dz]) => heightNow(px + dx, pz + dz));
+    if (Math.min(...hs) > WATER + 2 && Math.max(...hs) - Math.min(...hs) < 5) return [px, pz];
+  }
+  return null;
 }
 
 // The site of a grid cell, or null: a few places in it are looked at, and the first of
@@ -177,7 +224,7 @@ function gridSite(cx, cz) {
   }
   const at = special && (R() < (special.place === 'lake' ? 0.3 : 0.85) || !plain) ? special : plain;
   if (!at) return null;
-  return reach(fill({ key, seed: seedOf(key), ...at }, rng(b ^ 0x9e3779b9)));
+  return reach(more(fill({ key, seed: seedOf(key), ...at }, rng(b ^ 0x9e3779b9))));
 }
 
 // The sites of a river (of the rivers' grid cell): down its course, and on its lake.

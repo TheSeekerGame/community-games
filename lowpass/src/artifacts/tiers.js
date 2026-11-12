@@ -18,6 +18,7 @@
 
 import { BASE_EXTRA as EXTRA } from './sets/index.js';
 import { TIER_SETS, TIER_FORMS } from './sets/tiered.js';
+import { REACH_SETS } from './sets/reaches.js';
 
 export const TIERS = [
   { id: 'common', name: 'COMMON', p: 0, value: 1, hear: 1, least: 0, deeper: 0.6, color: '#aebdc4', hex: 0xaebdc4 },
@@ -52,6 +53,15 @@ export const LEGENDARY_FORMS = ['tree', 'vortex', 'mobius', 'menger', 'whale'];
 // The families a site of a tier may hold, at a place. base: generate.js's own pools by
 // place ({ any, mountain, autumn, river, lake } of the first families, and FLOATERS).
 export function familiesFor(tier, place, base) {
+  // the reaches (terrain.js): their own, of the tier (or the nearest tier below that has
+  // any); without any, what the forest at large or a lake would hold
+  if (place === 'desert' || place === 'greatlake') {
+    for (let t = tier; t >= 0; t--) {
+      const own = Object.keys(REACH_SETS).filter((k) => REACH_SETS[k].place === place && (REACH_SETS[k].tier | 0) === t);
+      if (own.length) return own;
+    }
+    return familiesFor(tier, place === 'desert' ? 'any' : 'lake', base);
+  }
   const extra = (pl) => Object.keys(EXTRA).filter((k) => EXTRA[k].place === pl && !RARE_ALL.has(k));
   if (tier === 0) {
     const list = (place === 'lake' ? base.floaters : base[place] || base.any).filter((f) => !RARE_ALL.has(f));

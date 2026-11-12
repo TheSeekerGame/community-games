@@ -19,6 +19,7 @@ export class Hud {
     this.sigMark = el('div', 'mark', this.signal);
     this.sigLabel = el('div', 'label', this.signal);
     this.sigOthers = [];
+    this.sigDists = [];
     this.bracket = el('div', 'bracket', this.root);
     for (const c of ['tl', 'tr', 'bl', 'br']) el('i', c, this.bracket);
     this.brLabel = el('div', 'blabel', this.bracket);
@@ -187,6 +188,9 @@ export class Hud {
   }
 
   // marks over things worth finding: [{ id, x, y, label, edge }]
+  // a mark off the strip's end (behind, to one side) is an arrow pointing round
+  _edge(mk, b) { mk.classList.toggle('edgeL', b > 1.2); mk.classList.toggle('edgeR', b < -1.2); }
+
   setMarks(list) {
     while (this.marks.length < list.length) {
       const m = el('div', 'mk', this.root);
@@ -306,6 +310,10 @@ export class Hud {
     // (rolled over by an inversion, the view is mirrored, and so is the strip)
     const mir = !ground && g.ship.flip > 0.5 ? -1 : 1;
     const at = (b) => `${(1 - (0.5 + Math.max(-1, Math.min(1, (b * mir) / 1.2)) * 0.5)) * 100}%`;
+    // in sight: an artifact built and within what the fog lets one see (a yellow ring)
+    const vis = flying ? f.visibility() : 0;
+    const inSight = (x) => { const a = x.a; return !!(a && a.model && !a.building && a.dist < vis); };
+    const far = (d) => (d >= 1000 ? `${(d / 1000).toFixed(d >= 10000 ? 0 : 1)}` : `${Math.round(d / 50) * 50}m`);
     if (ground) {
       // on foot: the ship's way, once it is a little way off
       const sh = g.afoot.ship();
@@ -339,6 +347,8 @@ export class Hud {
         this.sigMark.style.display = '';
         this.sigMark.style.left = at(lead.bearing);
         this.sigMark.classList.toggle('edge', Math.abs(lead.bearing) > 1.2);
+        this._edge(this.sigMark, lead.bearing * mir);
+        this.sigMark.classList.toggle('insight', inSight(lead));
         const m = lead.dist >= 1000 ? `${(lead.dist / 1000).toFixed(1)} km` : `${Math.round(lead.dist / 10) * 10} m`;
         const n = rest.length;
         const gold = rest.filter((x) => x.gold).length;
@@ -361,12 +371,25 @@ export class Hud {
     if (ground) this.sigMark.style.display = '';
     const others = this.signal.classList.contains('on') && !ground ? marks : [];
     while (this.sigOthers.length < others.length) this.sigOthers.push(el('div', 'mark other', this.signal));
+    while (this.sigDists.length < others.length) this.sigDists.push(el('div', 'mdist', this.signal));
+    // each one's distance under it (km; meters close by), nearer ones larger; where two
+    // would overlap, the nearer keeps its number
+    const taken = [];
     this.sigOthers.forEach((mk, i) => {
-      const a = others[i];
+      const a = others[i], dl = this.sigDists[i];
       mk.style.display = a ? '' : 'none';
+      dl.style.display = a ? '' : 'none';
       if (!a) return;
       mk.style.left = at(a.bearing);
       mk.classList.toggle('edge', Math.abs(a.bearing) > 1.2);
+      this._edge(mk, a.bearing * mir);
+      mk.classList.toggle('insight', inSight(a));
+      mk.style.setProperty('--s', Math.max(0.75, Math.min(1.6, 1.7 - a.dist / 3500)).toFixed(2));
+      const pos = parseFloat(at(a.bearing));
+      const clash = taken.some((p) => Math.abs(p - pos) < 7);
+      dl.style.left = `${pos}%`;
+      dl.textContent = clash ? '' : far(a.dist);
+      if (!clash) taken.push(pos);
       mk.classList.toggle('gold', !!a.gold);
       mk.classList.toggle('course', !!a.course);
       const T = a.site && a.site.kind === 'artifact' ? a.site.tier || 0 : 0;

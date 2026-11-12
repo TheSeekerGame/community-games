@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "9193bc5e"; }
+:root { --build: "19a2e0f9"; }
 
 :root {
   --u: 3px;
@@ -59,7 +59,7 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 .kc { display: inline-block; min-width: calc(var(--u) * 9); height: calc(var(--u) * 10); padding: 0 calc(var(--u) * 2); margin-right: calc(var(--u) * 2); background: #1b2029; border-bottom: var(--u) solid #0b0d13; color: var(--text); text-align: center; line-height: calc(var(--u) * 9); clip-path: var(--cut1); text-shadow: none; font-size: var(--px); vertical-align: middle; }
 
 /* ---------------------------------------------------------------- HUD */
-.hud { position: absolute; inset: 0; transition: opacity 0.4s; }
+.hud { position: absolute; inset: 0; transition: opacity 0.4s; --acc: #9ed8ee; }
 /* hidden, the interface keeps only what is needed to act: notices, the prompt to use
    something, the brackets of a scan */
 .hud.hidden .signal, .hud.hidden .alert, .hud.hidden .fuel, .hud.hidden .status, .hud.hidden .card, .hud.hidden .bottom > .tip, .hud.hidden .bottom > .keys, .hud.hidden .mk { visibility: hidden; }
@@ -74,10 +74,19 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 .hud .signal.tiered:not(.course) .mark:not(.other) { background: var(--tc); box-shadow: 0 0 calc(var(--u) * 5) var(--tc); }
 .hud .signal.tiered:not(.course) .label { color: var(--tc); }
 .hud .signal .mark.other.tiered { background: var(--tc); opacity: 1; }
+/* nearer, larger; each one's distance under it; in sight, a yellow ring; off the strip's
+   ends, an arrow pointing round */
+.hud .signal .mark.other { transform: rotate(45deg) scale(var(--s, 1)); }
+.hud .signal .mdist { position: absolute; top: calc(var(--u) * 17); transform: translateX(-50%); color: var(--muted); white-space: nowrap; opacity: 0.85; }
+.hud .signal .mark.insight { outline: var(--u) solid #ffd84a; outline-offset: calc(var(--u) * 1.5); }
+.hud .signal .mark.edgeL, .hud .signal .mark.edgeR, .hud .signal.course .mark.edgeL:not(.other), .hud .signal.course .mark.edgeR:not(.other) { background: transparent; box-shadow: none; animation: none; border: 0 solid var(--tc, var(--glow2)); opacity: 1; }
+.hud .signal .mark.edgeL { border-left-width: calc(var(--u) * 1.2); border-bottom-width: calc(var(--u) * 1.2); }
+.hud .signal .mark.edgeR { border-top-width: calc(var(--u) * 1.2); border-right-width: calc(var(--u) * 1.2); }
+.hud .signal.course .mark.edgeL:not(.other), .hud .signal.course .mark.edgeR:not(.other), .hud .signal .mark.other.course.edgeL, .hud .signal .mark.other.course.edgeR { border-color: var(--acc); }
 .hud .signal.course .mark:not(.other), .hud .signal .mark.other.course { background: transparent; border: var(--u) solid var(--acc); box-shadow: none; animation: none; opacity: 1; }
 .hud .signal.course .label { color: var(--acc); }
 /* (a narrow screen: the strip under the status line, not across it) */
-@media (max-width: 640px) { .hud .signal { top: calc(var(--u) * 22); } }
+@media (max-width: 640px) { .hud .signal { top: calc(var(--u) * 22); } .hud .notice { top: calc(var(--u) * 54); } }
 .term .uwhat { color: var(--muted); }
 /* seekers moved while you are inside: over everything, even the Codex */
 .alarm { position: absolute; left: 0; right: 0; margin: 0 auto; top: calc(var(--u) * 8 + var(--st)); width: min(calc(100vw - var(--u) * 16), calc(var(--u) * 190)); z-index: 30; display: grid; grid-template-columns: auto 1fr; column-gap: calc(var(--u) * 5); row-gap: calc(var(--u) * 2); align-items: center; padding: calc(var(--u) * 4) calc(var(--u) * 6); background: rgba(4, 6, 10, 0.94); border: var(--u) solid var(--gold); clip-path: var(--cut2); opacity: 0; transform: translateY(calc(var(--u) * -6)); transition: opacity 0.3s, transform 0.3s steps(3); pointer-events: none; }
@@ -152,7 +161,7 @@ html.touchmode .hud .alert.fuel { left: calc(var(--u) * 30 + var(--sl)); top: ca
 .hud .anoms .an i { width: calc(var(--u) * 3); height: calc(var(--u) * 3); background: var(--a); transform: rotate(45deg); box-shadow: 0 0 calc(var(--u) * 3) var(--a); animation: beat 1.333s steps(2) infinite; }
 html.touchmode .hud .anoms { left: calc(var(--u) * 8 + var(--sl)); right: auto; top: calc(var(--u) * 44 + var(--st)); align-items: flex-start; }
 .hud.hidden .anoms { visibility: hidden; }
-.hud .notice { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 80vw; top: calc(var(--u) * 28); text-align: center; opacity: 0; transition: opacity 0.6s; }
+.hud .notice { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; max-width: 80vw; top: calc(var(--u) * 40); text-align: center; opacity: 0; transition: opacity 0.6s; }
 .hud .notice.on { opacity: 1; }
 .hud .notice .t { letter-spacing: var(--u); }
 .hud .card { position: absolute; right: calc(var(--u) * 8 + var(--sr)); bottom: calc(var(--u) * 8 + var(--sb)); width: calc(var(--u) * 104); padding: calc(var(--u) * 4); opacity: 0; transform: translateY(calc(var(--u) * 6)); transition: opacity 0.5s, transform 0.5s steps(3); }
@@ -300,6 +309,19 @@ html.touchmode #ui .hud .fx { padding: calc(var(--u) * 4) calc(var(--u) * 6); }
 .term .find .fmid { min-width: 0; }
 .term .find .fmid > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .term .namebox { flex: none; padding-bottom: calc(var(--u) * 3); }
+/* a course set: said on the button and along the bottom; a teleport, in its own color */
+#ui .term .done { color: var(--pos); border-color: var(--pos); }
+#ui .term .tele { color: #c9b8ff; border-color: #8f7ad8; }
+#ui .term .tele.armed { color: #0b0d12; background: #c9b8ff; border-color: #c9b8ff; }
+/* what a place would bring: its tier, and DATA */
+.term .worth { display: inline-flex; align-items: center; gap: calc(var(--u) * 2); white-space: nowrap; }
+.term .wline { margin-top: var(--u); }
+.term .facts { display: flex; gap: calc(var(--u) * 2); flex-wrap: wrap; justify-content: flex-end; }
+.term .mapsel .acts { margin-top: calc(var(--u) * 2); }
+.term .win { position: relative; }
+.term .tnote { position: absolute; left: calc(var(--u) * 6); right: calc(var(--u) * 6); bottom: calc(var(--u) * 17); padding: calc(var(--u) * 2) calc(var(--u) * 4); background: #141a22; border-left: var(--u) solid var(--pos); color: var(--text); opacity: 0; transform: translateY(calc(var(--u) * 2)); transition: opacity 0.2s, transform 0.2s; pointer-events: none; }
+.term .tnote.on { opacity: 1; transform: none; }
+html.touchmode .term .tnote { bottom: calc(var(--u) * 4); }
 .term .posts { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 3); padding-right: calc(var(--u) * 2); }
 /* few posts sit at the bottom, against the box where new ones are written */
 .term .posts > :first-child { margin-top: auto; }
@@ -511,7 +533,7 @@ html.touchmode .hud .alert { left: calc(var(--u) * 30 + var(--sl)); top: calc(va
 html.touchmode .hud .card { left: calc(var(--u) * 8 + var(--sl)); top: calc(var(--u) * 46 + var(--st)); right: auto; bottom: auto; width: min(calc(var(--u) * 170), calc(100vw - var(--u) * 16)); display: grid; grid-template-columns: calc(var(--u) * 56) minmax(0, 1fr); column-gap: calc(var(--u) * 4); align-content: start; }
 html.touchmode .hud .card .k { grid-column: 1 / -1; }
 html.touchmode .hud .card .photo { grid-row: span 3; margin: var(--u) 0 0; }
-html.touchmode .hud .notice { top: calc(var(--u) * 30 + var(--st)); max-width: calc(100vw - var(--u) * 140); }
+html.touchmode .hud .notice { top: calc(var(--u) * 42 + var(--st)); max-width: calc(100vw - var(--u) * 140); }
 html.touchmode .hud .bottom { bottom: calc(var(--u) * 10 + var(--sb)); max-width: calc(100vw - var(--u) * 150); }
 html.touchmode .hud .speech { pointer-events: auto; }
 html.touchmode .hud .tip .kc { background: rgba(4, 6, 10, 0.6); border: var(--u) solid var(--line); border-bottom-width: var(--u); height: auto; line-height: calc(var(--u) * 10); padding: 0 calc(var(--u) * 3); letter-spacing: calc(var(--u) * 0.5); }

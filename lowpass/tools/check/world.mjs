@@ -12,7 +12,7 @@ const count = (f) => { const m = {}; for (const x of all) { const k = f(x); m[k]
 console.log(`${all.length} sites within ${R / 1000} km (${(all.length / (Math.PI * (R / 1000) ** 2)).toFixed(3)} per km2)`);
 console.log(' kinds', count((x) => x.kind), '\n places', count((x) => x.place), '\n resonance', count((x) => x.res ?? '-'));
 console.log(' families', Object.entries(ALL_FAMILIES).map(([k, v]) => `${k} ${v.length}`).join(', '));
-const moveOf = (site, att) => ({ tx: site.seed, wild: true, site: site.key, res: site.res || 0, depth: Math.min(att, site.res || 0), mountain: site.place === 'mountain', autumn: site.place === 'autumn', river: site.place === 'river', lake: site.place === 'lake', tier: site.tier || 0, plus: !!site.plus, trace: !!site.trace, creature: site.kind === 'creature', landing: site.kind === 'landing', life: site.kind === 'life' ? site.species : null });
+const moveOf = (site, att) => ({ tx: site.seed, wild: true, site: site.key, res: site.res || 0, depth: Math.min(att, site.res || 0), mountain: site.place === 'mountain', autumn: site.place === 'autumn', river: site.place === 'river', lake: site.place === 'lake', desert: site.place === 'desert', greatlake: site.place === 'greatlake', tier: site.tier || 0, plus: !!site.plus, trace: !!site.trace, creature: site.kind === 'creature', landing: site.kind === 'landing', life: site.kind === 'life' ? site.species : null });
 let n = 0, fails = 0, worst = 0, worstOf = '';
 const fams = new Set(), forms = new Set(), t0 = performance.now();
 for (const site of all) for (const att of [0, 1, 2, 4, 9, 30]) {

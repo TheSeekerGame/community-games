@@ -138,6 +138,23 @@ Why this shape:
   their true form stands on the ground beside them, larger than any. They reward the
   pilot who looks at a small thing twice.
 
+### Two reaches, laid over the forest
+
+The Grey Waste (a pale desert) and the Great Lake (water to the horizon) are rare and
+wide (src/world/terrain.js: each about a third as common as the mountains, three times
+the size of a turned stand), each with families of its own for every tier, so a pilot who
+finds one has found a new set of things. They came after the sites: the owner asked that
+no site move, only what it holds, so sites are still placed on the ground as it was
+(heightBase), and a site a reach now lies over becomes that reach's own.
+
+### Teleporting
+
+A dear shortcut for the long flights rarity asks for: a kit of three jumps (3,000 DATA)
+puts TELEPORT beside every place one can set a course to. It is a spectacle on purpose
+(the ship gathered up in rings of light, the view stretched, a flash) and lands the ship
+short of the place, facing it, so the arrival is still seeing the thing come out of the
+fog rather than appearing on top of it.
+
 ### Telling one another where
 
 A place code (`N5G-E3K`: north or south, east or west of the origin, in tens of meters,

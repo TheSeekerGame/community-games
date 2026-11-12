@@ -1,5 +1,6 @@
 import { rng, clamp, TAU } from '../core/math.js';
-import { height, WATER, mountainEnv, autumn, riverAt, riverOf, RCELL, RN } from './terrain.js';
+// (placed on the ground as it was before the reaches: heightBase; terrain.js)
+import { heightBase as height, WATER, mountainEnv, autumn, riverAt, riverOf, RCELL, RN, desertEnv, lakeEnv } from './terrain.js';
 import { drawTier, tierOf } from '../artifacts/tiers.js';
 
 // The sites: where the artifacts stand. Nothing is spawned for anyone: every artifact has
@@ -136,6 +137,26 @@ function fill(site, R) {
   return site;
 }
 
+// A site laid over since by one of the reaches (terrain.js: the Grey Waste, the Great
+// Lake) stands where it stood, and is now that reach's own: an artifact of the reach's
+// families, whatever it held before (its tier and layers kept, if it was an artifact).
+function reach(s) {
+  if (!s) return s;
+  const de = desertEnv(s.x, s.z), le = lakeEnv(s.x, s.z);
+  if (de < 0.5 && le < 0.5) return s;
+  s.place = de >= 0.5 ? 'desert' : 'greatlake';
+  if (s.kind !== 'artifact') {
+    const R = rng(hash64(`${WORLD}|${s.key}|reach`)[0]);
+    s.kind = 'artifact';
+    s.species = undefined;
+    s.night = undefined;
+    s.tier = drawTier(R());
+    const T = tierOf(s.tier);
+    s.res = resonance(R, T.least, T.deeper);
+  }
+  return s;
+}
+
 // The site of a grid cell, or null: a few places in it are looked at, and the first of
 // them that is somewhere (a summit, a stand, a lake) is mostly preferred to plain forest.
 function gridSite(cx, cz) {
@@ -156,7 +177,7 @@ function gridSite(cx, cz) {
   }
   const at = special && (R() < (special.place === 'lake' ? 0.3 : 0.85) || !plain) ? special : plain;
   if (!at) return null;
-  return fill({ key, seed: seedOf(key), ...at }, rng(b ^ 0x9e3779b9));
+  return reach(fill({ key, seed: seedOf(key), ...at }, rng(b ^ 0x9e3779b9)));
 }
 
 // The sites of a river (of the rivers' grid cell): down its course, and on its lake.
@@ -169,12 +190,12 @@ function riverSites(cx, cz) {
     const t = 0.2 + 0.66 * ((i + 0.25 + 0.5 * R()) / n), f = t * RN, k = Math.min(RN - 1, Math.floor(f)), u = f - k;
     const key = `r${cx},${cz}:${i}`;
     const s = fill({ key, seed: seedOf(key), place: 'river', x: rv.xs[k] + (rv.xs[k + 1] - rv.xs[k]) * u, z: rv.zs[k] + (rv.zs[k + 1] - rv.zs[k]) * u }, rng(hash64(key)[1]));
-    if (s) out.push(s);
+    if (s) out.push(reach(s));
   }
   // the lake it ends in
   if (R() < LAKE_P && open(rv.lake.x, rv.lake.z, 45)) {
     const key = `l${cx},${cz}`, s = fill({ key, seed: seedOf(key), place: 'lake', x: rv.lake.x, z: rv.lake.z }, rng(hash64(key)[1]));
-    if (s) { s.kind = 'artifact'; if (s.res === undefined) s.res = 1; if (s.tier === undefined) s.tier = 0; s.species = undefined; s.place = 'lake'; out.push(s); }
+    if (s) { s.kind = 'artifact'; if (s.res === undefined) s.res = 1; if (s.tier === undefined) s.tier = 0; s.species = undefined; s.place = 'lake'; out.push(reach(s)); }
   }
   return out;
 }

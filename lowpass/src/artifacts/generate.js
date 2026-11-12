@@ -152,6 +152,16 @@ const WITNESS_FLAVOR = ['It faces the way the seeker moved.', 'Every ship in the
   'The seeker’s picture hangs over it, in light.', 'Its light is the color of the seeker that moved.'];
 const GRAND = ['A grand one: few as large are ever found.', 'A grand one: its light stands over it in a column.', 'Larger than any the Codex has on record nearby.'];
 // (every one stands at its place, for every ship that comes there: sites.js)
+const DESERT_ORIGIN = [
+  'It stands out in the Grey Waste, where the forest gives out; the dunes come and go about it and leave it where it was.',
+  'Found in the Grey Waste. The sand round it is glazed, as if something very hot once stood here a moment.',
+  'Out in the Grey Waste, half buried. Every ship that comes here finds it as you did.',
+];
+const GREATLAKE_ORIGIN = [
+  'It stands on the Great Lake, out where the far shore is only fog; every ship that comes this far finds it.',
+  'Found on the Great Lake. The water about it is stiller than water should be.',
+  'Out on the Great Lake, among the islands. It has stood there longer than the islands have had trees.',
+];
 const WILD_ORIGIN = [
   'It stands where it has always stood; any ship that comes here finds it.',
   'Unrecorded by the network. It is here for whoever comes.',
@@ -240,7 +250,7 @@ export function describe(move, seekerInfo, force = null) {
   let family = 'echo';
   if (wild) {
     const r = R0();
-    const place = move.mountain ? 'mountain' : move.river ? 'river' : move.lake ? 'lake' : move.autumn ? 'autumn' : 'any';
+    const place = move.desert ? 'desert' : move.greatlake ? 'greatlake' : move.mountain ? 'mountain' : move.river ? 'river' : move.lake ? 'lake' : move.autumn ? 'autumn' : 'any';
     // a site's: from its tier's own (tiers.js); else (development) from all at the place
     const pool = move.trace ? ['trace'] : move.site && move.tier !== undefined ? familiesFor(move.tier, place, BASE)
       : move.mountain ? ON.mountain : move.river ? ON.river : move.lake ? (ON.lake.length && r < 0.65 ? ON.lake : FLOATERS) : move.autumn ? ON.autumn : GENERAL;
@@ -266,7 +276,7 @@ export function describe(move, seekerInfo, force = null) {
   const d = {
     v: GENERATOR_VERSION, tx: move.tx, key: move.key || move.tx, total: move.total || tokens.length, block: wild ? null : move.block, tokens, lead, family, accent, strength, size, count,
     pool: move.pool || 'dormant', charge, recipients: move.recipients || 0, time: move.time || null,
-    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !special && !!move.mountain, autumn: wild && !special && !move.mountain && !move.river && !!move.autumn, river: wild && !special && !move.mountain && !!move.river, lake: wild && !special && !!move.lake,
+    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !special && !!move.mountain, autumn: wild && !special && !move.mountain && !move.river && !!move.autumn, river: wild && !special && !move.mountain && !!move.river, lake: wild && !special && !!move.lake, desert: wild && !special && !!move.desert, greatlake: wild && !special && !!move.greatlake,
     // (a site's: one of the marked shows its mark once its true form is seen)
     plus: wild && !special && depth >= (move.site ? 2 : 1) && !!move.plus, marked: wild && !special && !!move.plus, trace: wild && !special && family === 'trace',
     site: move.site || null, res: wild ? Math.max(0, Math.floor(move.res || 0)) : 0, tier: special || !wild ? 0 : tier,
@@ -756,7 +766,7 @@ export function describe(move, seekerInfo, force = null) {
   d.code = `${CODE[family]}-${seedHex.slice(2, 6).toUpperCase()}`;
   d.cls = CLASS[family];
   let origin;
-  if (wild) origin = R3.pick(d.mountain ? MOUNTAIN_ORIGIN : d.river ? RIVER_ORIGIN : d.lake ? LAKE_ORIGIN : d.autumn ? AUTUMN_ORIGIN : WILD_ORIGIN);
+  if (wild) origin = R3.pick(d.desert ? DESERT_ORIGIN : d.greatlake ? GREATLAKE_ORIGIN : d.mountain ? MOUNTAIN_ORIGIN : d.river ? RIVER_ORIGIN : d.lake ? LAKE_ORIGIN : d.autumn ? AUTUMN_ORIGIN : WILD_ORIGIN);
   else {
     const total = move.total || tokens.length;
     const who = tokens.length > 1 ? `SEEKER ${tokens.map((t) => '#' + t).join(', ')} moved together` : total > 1 ? `SEEKER #${lead} moved, one of ${total} that moved together` : `SEEKER #${lead} moved`;

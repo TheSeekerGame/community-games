@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Pipeline, FOG, POST } from './render/pipeline.js';
 import { U } from './render/materials.js';
 import { World } from './world/chunks.js';
-import { autumn, mountain, mountainEnv, canopyTop, riverAt, height, WATER } from './world/terrain.js';
+import { autumn, mountain, mountainEnv, canopyTop, riverAt, height, WATER, desertEnv, lakeEnv } from './world/terrain.js';
 import { Atmosphere } from './world/atmosphere.js';
 import { Ship } from './ship/ship.js';
 import { shipById } from './ship/designs.js';
@@ -10,6 +10,7 @@ import { Interior } from './ship/interior.js';
 import { Seeker } from './ship/seeker.js';
 import { CoffeeScene } from './ship/coffee.js';
 import { Plasma } from './ship/plasma.js';
+import { Teleport } from './ship/teleport.js';
 import { Cameras } from './ship/camera.js';
 import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
@@ -17,7 +18,8 @@ import { load, save, codexAll, codexPut } from './core/store.js';
 import { clamp, damp, angleDelta, formatInt } from './core/math.js';
 import { Progress, valueOf } from './core/progress.js';
 import { tierOf } from './artifacts/tiers.js';
-import { sitesNear } from './world/sites.js';
+import { sitesNear, siteByKey } from './world/sites.js';
+import { worthOf, worthWords } from './ui/worth.js';
 import { Course } from './ship/course.js';
 import { SPECIES } from './artifacts/species.js';
 import { stratum } from './artifacts/strata.js';
@@ -138,6 +140,7 @@ export class Game {
     else this.moves.status = 'offline';
     art.loadMeta().then(() => { this.artReady = true; }).catch(() => {});
     this.field = new Field(this);
+    this.teleport = new Teleport(this);
     this.shot = new Shot(this.scene);
     // anomalies bought in the SHOP (anomaly.js): how fast the world's time runs, how fast
     // the core gathers plasma back, while they last
@@ -269,12 +272,27 @@ export class Game {
     if (!new URLSearchParams(location.search).has('nonet')) setTimeout(() => { try { this.terminal.ensureBoard(); } catch (e) { console.warn('board', e); } }, 4000);
   }
 
+  // Into one of the two reaches (terrain.js): said once on the way in.
+  _reach(dt) {
+    this._rt = (this._rt || 0) - dt;
+    if (this._rt > 0 || this.mode === 'title') return;
+    this._rt = 1;
+    const s = this.ship, de = desertEnv(s.x, s.z), le = lakeEnv(s.x, s.z);
+    const now = de > 0.6 ? 'desert' : le > 0.6 ? 'greatlake' : de < 0.2 && le < 0.2 ? null : this._inReach;
+    if (now === this._inReach) return;
+    this._inReach = now;
+    if (!now || this.terminal.open) return;
+    if (now === 'desert') this.hud.say('THE GREY WASTE', 'the forest gives out · what stands out here is the Waste’s own', 5);
+    else this.hud.say('THE GREAT LAKE', 'water to the horizon · what stands out here is the Lake’s own', 5);
+  }
+
   // One of the rarest found lately by another pilot: told, with the way there.
   rareFound(f) {
     const T = tierOf(f.tier), km = Math.hypot(f.x - this.ship.x, f.z - this.ship.z) / 1000;
     this.audio.play('witness', {});
     this.atmo.networkPulse(f.tier >= 5 ? 1.6 : 1.1);
-    this.hud.toast(`${T.name} FOUND`, `${f.name || 'Something rare'} · ${f.place} · ${km < 10 ? km.toFixed(1) : Math.round(km)} km from here. Fly there: every pilot who comes after the first gives the first a share.`, 40,
+    const w = worthOf(this, siteByKey(f.key));
+    this.hud.toast(`${T.name} FOUND`, `${f.name || 'Something rare'} · ${f.place} · ${km < 10 ? km.toFixed(1) : Math.round(km)} km from here${w ? ` · worth ${worthWords(w, formatInt).toLowerCase()} to you` : ''}. Every pilot who comes after the first gives the first a share.`, 40,
       { label: 'SET COURSE', color: T.color, run: () => this.course.set(f.x, f.z, f.name) });
   }
 
@@ -784,7 +802,7 @@ export class Game {
     // the boost burns plasma; spent, it waits until the core has gathered some back
     if (this.plasmaLeft <= 0) this._spent = true;
     else if (this._spent && this.plasmaLeft >= RELIGHT) this._spent = false;
-    const boosting = !overlay && !this._spent && (this.mode === 'fly' || this.mode === 'seat') && input.boostHeld();
+    const boosting = !overlay && !this._spent && !this.teleport.active && (this.mode === 'fly' || this.mode === 'seat') && input.boostHeld();
     // (the burn fades in with its own sound; letting go has a soft fall)
     if (boosting !== this._boosting) {
       if (!boosting && this.ship.boost > 0.4) this.audio.play('release');
@@ -792,8 +810,11 @@ export class Game {
     }
     if (boosting) { this._boosted = (this._boosted || 0) + dt; if (this._boosted > 1) this.tips.learn('boost'); }
     this._alertness(dt);
+    this._reach(dt);
     this.anomalies.update(dt);
+    if (this.teleport.active) steer = 0;
     this.ship.update(dt, steer, boosting);
+    this.teleport.update(dt);
     const tank = this.tankSecs;
     if (boosting) this.plasmaLeft = Math.max(0, this.plasmaLeft - (dt * this.ship.boost) / tank);
     else if (this.mode !== 'title') this.plasmaLeft = Math.min(1, this.plasmaLeft + (dt * this.progress.refill * this.refillBoost) / tank);
@@ -825,7 +846,7 @@ export class Game {
         }
       }
     }
-    const canScan = !overlay && (this.mode === 'fly' || this.mode === 'seat');
+    const canScan = !overlay && !this.teleport.active && (this.mode === 'fly' || this.mode === 'seat');
     const prevState = this.field.state;
     this.field.update(dt, canScan && input.scanHeld());
     if (this.field.state === 'lock' && prevState !== 'lock') { this.audio.play('lock'); this.buzz(10); }
@@ -1204,6 +1225,15 @@ export class Game {
         const h = Math.atan2(s.x - this.ship.x, s.z - this.ship.z);
         this.ship.place(s.x - Math.sin(h) * back, s.z - Math.cos(h) * back, h);
         return { key: s.key, tier: s.tier, res: s.res, x: Math.round(s.x), z: Math.round(s.z), of: all.length };
+      },
+      // the nearest point well inside a reach ('desert' or 'greatlake'), the ship put there
+      reach: (which = 'desert', max = 400000) => {
+        const f = which === 'desert' ? desertEnv : lakeEnv;
+        for (let r = 0; r < max; r += 3000) for (let i = 0; i < Math.max(1, Math.round(r / 2000)); i++) {
+          const a = (i / Math.max(1, Math.round(r / 2000))) * Math.PI * 2, x = this.ship.x + Math.cos(a) * r, z = this.ship.z + Math.sin(a) * r;
+          if (f(x, z) > 0.95) { this.ship.place(x, z, this.ship.heading); return [Math.round(x), Math.round(z)]; }
+        }
+        return null;
       },
       att: (n) => { this.progress.depth = n; this.progress.save(); this.field.reattune(); return n; },
       goto: (x, z, heading) => { this.ship.place(x, z, heading ?? this.ship.heading); return [x, z]; },

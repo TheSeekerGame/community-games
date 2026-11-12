@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { hash2, fbm2, smoothstep, clamp } from '../core/math.js';
 import { mixHex } from '../core/palette.js';
-import { height, forestDensity, treeKind, autumn, mountainEnv, canyonAt, WATER } from './terrain.js';
+import { height, forestDensity, treeKind, autumn, mountainEnv, canyonAt, desertEnv, WATER } from './terrain.js';
 import { treeGeometries, BIRCH, BIRCH_SHAPES, WALK } from './trees.js';
 import { worldMaterial, treeMaterial, COMMON, U, TREES, MAX_CLEARINGS, STRANGE } from '../render/materials.js';
 
@@ -85,6 +85,19 @@ function groundColor(x, z, h, steep, dens) {
   if (au > 0.01) {
     const litter = dens > 0.45 ? (n < 0.4 ? 0x3a2c25 : n < 0.75 ? 0x4a3524 : 0x5c4129) : (n < 0.35 ? 0x6b4a2c : n < 0.7 ? 0x7d5a31 : 0x8c6a3a);
     c = mixHex(c, litter, au * 0.8 * (1 - frost * 0.5));
+  }
+  // the Grey Waste: pale grey sand, a breath of violet in it, darker in the dunes' lee and
+  // in long streaks the wind has laid
+  const de = desertEnv(x, z);
+  if (de > 0.01) {
+    const streak = fbm2(x * 0.004 + z * 0.0015, z * 0.004 - x * 0.0011, 2);
+    const glaze = fbm2(x * 0.0013 - 41.3, z * 0.0013 + 17.9, 3);
+    const sand = n < 0.3 ? 0x6f6c76 : n < 0.65 ? 0x7b7882 : 0x86828d;
+    let sd = mixHex(sand, 0x4f4b5c, smoothstep(0.5, 0.75, streak) * 0.65);
+    // (here and there a pan of glazed grey-green, as if something burned the sand to glass)
+    sd = mixHex(sd, n < 0.5 ? 0x46545a : 0x50625f, smoothstep(0.66, 0.74, glaze) * 0.75);
+    sd = mixHex(sd, 0x3f3c48, smoothstep(0.25, 0.7, steep) * 0.7);
+    c = mixHex(c, sd, smoothstep(0, 1, de));
   }
   // the mountains: bare rock up their flanks and on every steep face, and snow above a
   // ragged line, thinning (not ending at once) as the faces steepen

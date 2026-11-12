@@ -1014,6 +1014,19 @@ export class Audio {
         this.glide(pitch(1), pitch(10), { wave: 'soft', dur: 4, gain: 0.024, release: 2, verb: 0.8 });
         this.hiss({ type: 'bandpass', freq: 300, q: 1, to: 1400, attack: 1, hold: 2, release: 2.5, gain: 0.05, pink: true, verb: 0.6 });
         break;
+      case 'teleport':
+        // the kit gathering the ship up: a rising sweep, a shimmer climbing over it, and
+        // at the end the rush of the jump
+        this.glide(pitch(1), pitch(22), { wave: 'soft', dur: 1.9, gain: 0.03, release: 0.6, verb: 0.9 });
+        [8, 12, 15, 19, 24].forEach((d, i) => this.note(pitch(d), { wave: 'warm', when: t + 0.2 + i * 0.3, attack: 0.01, release: 1.4, gain: 0.014, cutoff: 5200, verb: 0.9 }));
+        this.hiss({ type: 'bandpass', freq: 500, q: 1, to: 5200, attack: 1.6, hold: 0.1, release: 0.5, gain: 0.06, pink: true, verb: 0.7 });
+        break;
+      case 'arrive':
+        // out the other side: a low bloom, and the air settling
+        this.note(R, { wave: 'sub', attack: 0.01, release: 1.6, gain: 0.06, cutoff: 220 });
+        [12, 16, 19].forEach((d, i) => this.note(pitch(d), { wave: 'warm', when: t + i * 0.05, attack: 0.005, release: 2.4, gain: 0.016, cutoff: 4000, verb: 1 }));
+        this.hiss({ type: 'lowpass', freq: 3000, to: 300, attack: 0.01, release: 1.8, gain: 0.05, pink: true, verb: 0.6 });
+        break;
       case 'lost':
         // the scan let go: two soft notes falling
         [10, 6].forEach((d, i) => this.note(pitch(d), { wave: 'soft', when: t + i * 0.12, attack: 0.01, release: 0.5, gain: 0.02, cutoff: 900, dest: S }));

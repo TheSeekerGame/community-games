@@ -124,6 +124,8 @@ export class Cameras {
     cam.lookAt(this.target);
     // the boost widens the view: speed
     fov += ship.boost * 9;
+    // (a teleport stretches it wide: teleport.js)
+    fov += (ship.warp || 0) * 42;
     if (Math.abs(cam.fov - fov) > 0.01) {
       cam.fov = damp(cam.fov, fov, 2, dt);
       cam.updateProjectionMatrix();

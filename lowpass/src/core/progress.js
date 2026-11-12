@@ -50,6 +50,8 @@ export const LANDING_DEPTH = 3;    // a clearing's lanterns are seen once attune
 export const CURIO_VALUE = 2;      // a thing found on foot about a clearing (curios.js)
 
 export const TANK = [5, 7, 9, 11, 13, 15];
+// the teleporter kit: three jumps a kit, dear (teleport.js)
+export const KIT_PRICE = 3000, KIT_JUMPS = 3;
 export const REFILL = [0.24, 0.32, 0.4, 0.48, 0.56, 0.64];
 // what each level of the capped ones costs (the first entry buys level one)
 const COSTS = { tank: [40, 80, 130, 200, 300], gain: [80, 150, 250, 380, 550] };
@@ -76,14 +78,15 @@ export class Progress {
     this.deepest = s.deepest || 0;    // the most layers ever seen in one artifact
     this.tank = s.tank || 0;          // the plasma tank's level
     this.gain = s.gain || 0;          // the signal gain's level
-    this.royalties = s.royalties || 0; // all DATA ever received as a finder's share (finds.js)
+    this.royalties = s.royalties || 0;
+    this.jumps = s.jumps || 0;       // teleporter jumps left // all DATA ever received as a finder's share (finds.js)
     this.ships = s.ships || ['seed'];  // the ships bought
     // the effects: uses left of each ever bought ({ id: n }; once, the effects were bought
     // for good: those keep a pack)
     this.fx = Array.isArray(s.fx) ? Object.fromEntries(s.fx.map((id) => [id, PACK])) : s.fx || {};
     this.ship = this.ships.includes(s.ship) ? s.ship : 'seed';   // the one boarded
   }
-  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, royalties: this.royalties, ships: this.ships, ship: this.ship, fx: this.fx }); }
+  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, royalties: this.royalties, jumps: this.jumps, ships: this.ships, ship: this.ship, fx: this.fx }); }
   owns(id) { return this.ships.includes(id); }
   canShip(id) { const d = SHIPS.find((x) => x.id === id); return !!d && !this.owns(id) && this.data >= d.price; }
   buyShip(id) {
@@ -108,6 +111,20 @@ export class Progress {
     if (!this.canFx(id)) return false;
     this.data -= this.fxCost(id);
     this.fx[id] = this.usesOf(id) + PACK;
+    this.save();
+    return true;
+  }
+  canKit() { return this.data >= KIT_PRICE; }
+  buyKit() {
+    if (!this.canKit()) return false;
+    this.data -= KIT_PRICE;
+    this.jumps += KIT_JUMPS;
+    this.save();
+    return true;
+  }
+  useJump() {
+    if (this.jumps < 1) return false;
+    this.jumps--;
     this.save();
     return true;
   }

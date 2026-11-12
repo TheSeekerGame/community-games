@@ -122,20 +122,39 @@ to it and press E.
   plain ground); some rivers have one more down their course, and a few one on the lake
   they end in. About four sites in a hundred square kilometers: few enough that each is
   worth the flight, and no hurry.
+- **Teleporting.** A TELEPORTER KIT from the SHOP (3,000 DATA, three jumps) puts
+  TELEPORT beside every place you can set a course to (the LOG, the MAP, the BOARD's
+  posts and FINDS). Pressed twice (the second time to be sure), it takes you out to the
+  ship's view: rings of light close about the ship and spin up, the view stretches, a
+  white flash, and the ship is somewhere else, about 400 m short of the place and
+  facing it, so what stands there is just ahead in the fog. Not from the ground.
 - **Signals.** The ship's receiver hears the sites you have not recorded (and the ones
   that now hold more than you recorded) out to 2.5 km (to 5, with SIGNAL GAIN from the
-  SHOP): each is a mark on the strip along the top of the view, at its bearing, the
-  nearest one large, with its distance. With nothing in range the nearest one within
+  SHOP): each is a mark on the strip along the top of the view, at its bearing, in its
+  tier's color, the one it leads with large and named (its tier and distance); every
+  other has its distance under it, the nearer ones larger. One behind you, or off to a
+  side past the strip's end, is an arrow at that end pointing round. An artifact within
+  what the fog lets you see has a yellow ring about its mark. The course is a hollow
+  square. With nothing in range the nearest one within
   nine kilometers is still heard, faintly, so there is always a way to fly. Where to go
   is yours to choose. Within about a kilometer a site's artifact is built where it
   stands, coming out of the ordered dither; left far behind, it is put away, and is
   there when you come back. A site recorded stands on as it was. In the LOG every site's
   record carries its **place** (a short code of its coordinates, like `N5G-E3K`), to
   tell another pilot.
+- **Two reaches.** Rarely (each about a third as common as the mountains, and three
+  times the size of a turned stand, a few kilometers across), the forest gives way:
+  - **the Grey Waste**: a pale grey desert of long dunes, glazed pans, nothing growing
+    but a dead snag here and there;
+  - **the Great Lake**: water to the horizon under the fog, wooded islands in it.
+  Each has its own artifacts, every tier of them. (The sites stood where they stand
+  before the reaches came, and stand there still; one that a reach now lies over holds
+  that reach's own.) The HUD says when you come into one.
 - **A course.** Choose a place (on the Codex's MAP, a record in the LOG, a place named on
   the BOARD, or a code typed in) and SET COURSE: the ship turns toward it whenever nobody
   steers and flies there by itself, so you can set one and go make coffee. The strip along
-  the top marks it as a hollow square (COURSE · 3.4 km). Steering takes the controls back
+  the top marks it as a hollow square (COURSE · 3.4 km). Setting one says so at once: the
+  button turns to COURSE SET, and a line along the bottom of the Codex says where and how far. Steering takes the controls back
   while you steer; steering firmly for a moment lets the course go. Arrived with nobody at
   the controls, the ship circles the place (HOLDING) until you come to the controls, then
   turns in toward it and hands them over.
@@ -399,8 +418,10 @@ name or address once linked, else LINK WALLET), which opens your seekers.
   rest stays to be found.
   Choose one, or anywhere, and SET COURSE; or type a place code and FLY THERE.
 - **BOARD**, three pages: POSTS, FINDS and LEADERS.
-  **FINDS**: who found what in the last week, rarest first: each with its tier, its
-  place, how far, how many have been, and SET COURSE; and what your own finds have
+  **FINDS**: who found what in the last week, rarest first: each with its tier, what a
+  scan of it would bring you (exactly: every site can be worked out from where it is,
+  and you would see as far into it as you are attuned; RECORDED, or + MORE, if you have
+  been), its place, how far, how many have been, and SET COURSE; and what your own finds have
   brought you as finder's shares.
   **POSTS**: the seekers' board, on six free public Nostr relays (relay.damus.io, nos.lol,
   relay.primal.net, offchain.pub, nostr.mom, relay.nostr.net; no account). Anyone can read
@@ -412,7 +433,8 @@ name or address once linked, else LINK WALLET), which opens your seekers.
   It reads like a conversation, newest at the bottom. A
   scan's photograph shows as a thumbnail beside its words; a click or touch anywhere on
   the message opens it where it is, and again closes it. A shared scan of a site carries
-  its place, with FLY THERE; any place code written in a post becomes a button that sets
+  its place, with FLY THERE, and its tier and what it would bring you (likewise on the
+  MAP, and in the news of a rare find); any place code written in a post becomes a button that sets
   a course there, and + WHERE I AM writes your own into what you are about to send.
 - **SEEKERS** (the pilot, at the top right): your name on the board, and the seekers an address holds (connect or link your wallet, or type any
   address to view), and, for your own, BRING ABOARD / SEND BACK: live charge, stage,

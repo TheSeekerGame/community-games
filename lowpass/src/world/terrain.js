@@ -24,7 +24,48 @@ function ground(x, z, env) {
 
 export function height(x, z) {
   const env = mountainEnv(x, z);
+  return carve(x, z, biome(x, z, ground(x, z, env)), env);
+}
+// The ground as it was before the two reaches (below) were laid over it: the sites are
+// placed by it (sites.js), so none of them moved when the reaches came; and the rivers
+// are laid out on ground() alone, so none of them did either.
+export function heightBase(x, z) {
+  const env = mountainEnv(x, z);
   return carve(x, z, ground(x, z, env), env);
+}
+
+// Two rare reaches, each about a third as common as the mountains and three times the
+// size of a turned stand (a few kilometers across, its edges turning over a few hundred
+// meters), never in each other (a range where one lies is laid down under it):
+//   - the Grey Waste (desertEnv): the forest gives out to a pale grey desert, flat and
+//     wide, ridged in long dunes, nothing growing but dead snags;
+//   - the Great Lake (lakeEnv): a lake to the horizon, dark and still, islands in it.
+const dfield = (x, z) => fbm2(x * 0.0002 + 911.3, z * 0.0002 - 377.1, 3);
+const lfield = (x, z) => fbm2(x * 0.0002 - 223.9, z * 0.0002 + 641.7, 3);
+export function desertEnv(x, z) {
+  return smoothstep(0.77, 0.81, dfield(x, z));
+}
+export function lakeEnv(x, z) {
+  return smoothstep(0.77, 0.81, lfield(x, z)) * (1 - desertEnv(x, z));
+}
+function biome(x, z, h) {
+  const de = desertEnv(x, z), le = de > 0.999 ? 0 : lakeEnv(x, z);
+  if (de > 0) {
+    // long dunes (ridged, their crests one way), a broad swell, low and dry
+    const swell = (fbm2(x * 0.0009 + 3.1, z * 0.0009 - 8.4, 3) - 0.5) * 46;
+    const dunes = ridged2(x * 0.0042 + z * 0.0016 + 12.9, z * 0.0019 - x * 0.0007 - 5.3, 2) * 24;
+    const ripple = Math.sin(x * 0.09 + z * 0.035 + fbm2(x * 0.01, z * 0.01, 2) * 6) * 0.35;
+    const sand = Math.max(WATER + 9, -6 + swell + dunes + ripple);
+    h += (sand - h) * smoothstep(0, 1, de);
+  }
+  if (le > 0) {
+    // deep water, and islands standing out of it (wooded, a few hundred meters across)
+    const isl = fbm2(x * 0.0024 + 51.7, z * 0.0024 - 19.9, 3);
+    const bed = WATER - 22 + (isl - 0.5) * 30;
+    const lake = isl > 0.66 ? WATER - 4 + smoothstep(0.66, 0.78, isl) * 38 : bed;
+    h += (lake - h) * smoothstep(0, 1, le);
+  }
+  return h;
 }
 
 // Rivers, now and then (about one cell in two of a grid RCELL meters on a side has one):
@@ -166,8 +207,9 @@ const mfield = (x, z) => fbm2(x * 0.0004 - 517.3, z * 0.0004 + 333.9, 3);
 export function mountainEnv(x, z) {
   return smoothstep(0.62, 0.86, mfield(x, z));
 }
+// (a range where a reach lies is laid down under it: biome() above)
 export function mountain(x, z) {
-  return smoothstep(0.77, 0.84, mfield(x, z));
+  return smoothstep(0.77, 0.84, mfield(x, z)) * (1 - Math.max(desertEnv(x, z), lakeEnv(x, z)));
 }
 function lift(x, z, env = mountainEnv(x, z)) {
   if (env <= 0) return 0;
@@ -186,6 +228,9 @@ export function forestDensity(x, z, h) {
   d *= 1 - smoothstep(150, 215, h);
   // a canyon's walls mostly bare: the rock shows its layers, trees keep to its ledges
   if (d > 0 && h > -40) d *= 1 - 0.7 * canyonAt(x, z, h);
+  // the Grey Waste: nothing but a dead snag here and there
+  const de = desertEnv(x, z);
+  if (de > 0) d = d * (1 - de) + 0.006 * de;
   return clamp(d, 0, 1);
 }
 
@@ -199,6 +244,7 @@ export function autumn(x, z) {
 
 // Which kind of tree: 0 spruce, 1 fir, 2 dead snag
 export function treeKind(x, z, r) {
+  if (desertEnv(x, z) > 0.5) return 2;
   const k = fbm2(x * 0.0027 + 77.3, z * 0.0027 - 41.2, 2);
   if (r < 0.022) return 2;
   if (k < 0.4) return 1;

@@ -85,3 +85,27 @@ Tier families stand on any ground ('any'); set `floats: true` on one that hangs 
 with nothing on the ground, so it may stand out on a lake too. Their `kin` may name any
 existing form: the tier's own forms are assigned centrally (src/artifacts/tiers.js).
 Tier forms use set: 'plus' and from: 1.
+
+## The two reaches (biomes): the Grey Waste and the Great Lake
+Rare regions several kilometers across (src/world/terrain.js: desertEnv, lakeEnv). Each
+has families of its own for EVERY tier, in its own set file, each entry carrying
+`tier: 0..5` (0 COMMON, 1 UNCOMMON, 2 RARE, 3 EPIC, 4 LEGENDARY, 5 MYTHIC) and its place:
+- **The Grey Waste** (`place: 'desert'`, sets/desert.js): the dark spruce forest gives
+  out to a pale grey desert, flat and wide, ridged in long dunes, nothing growing but a
+  dead snag here and there, the same fog over it. Alien, quiet, bleached: what is out
+  there was half buried, scoured by wind, glazed, salted, abandoned. Ideas: glass fused
+  where something struck, wind-cut stone pillars that sing, a mirage that stands and
+  wavers, a field of stones that have slid leaving tracks, a buried ring of which an arc
+  shows, salt pans that pattern themselves, a sundial of a whole dune, dust devils held
+  still. The ground is gentle dunes (ctx.ground small slopes); sand is pale grey, so
+  dark masses read well against it.
+- **The Great Lake** (`place: 'greatlake'`, sets/greatlake.js): a lake to the horizon,
+  dark and still, wooded islands in it. Its families stand in or on the water, as the
+  lakes' own in sets/waters.js do (the ground there is the water's surface, y 0; things
+  may rise from below it, float on it, or hang over it). Ideas: a drowned tower with
+  light still in its windows under the surface, a ring of standing waves, a raft of
+  lanterns that drifts and returns, a gate of reeds of light, a lens of water lifted
+  into the air, an island that is a shell, a bridge that ends in the middle of the lake.
+Scale and light by tier as above (COMMON/UNCOMMON 15-40 m, RARE 30-60 m, EPIC 40-80 m
+with violet, LEGENDARY 70-130 m with gold, MYTHIC 120-260 m prismatic, seen from afar).
+Check: `node --import ./tools/check/reg.mjs tools/check/settest.mjs src/artifacts/sets/<file>.js`

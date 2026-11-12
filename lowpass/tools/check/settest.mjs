@@ -14,7 +14,7 @@ const file = path.resolve(process.argv[2]);
 const only = process.argv[3];
 const SET = (await import(pathToFileURL(file).href)).SET;
 if (!SET) { console.error('FAIL: the file must export const SET = { ... }'); process.exit(1); }
-const PLACES = ['any', 'mountain', 'autumn', 'river', 'lake'];
+const PLACES = ['any', 'mountain', 'autumn', 'river', 'lake', 'desert', 'greatlake'];
 const VOICES = ['glass', 'fm', 'grains', 'breath', 'whale', 'chirp', 'glitch'];
 const LIGHTS = [0x91cbde, 0xd6edf5, 0x8ca893, 0x7bacbc, 0x97acb0, 0xcfdde4, 0x8f7aa8, 0xaf634b];
 let fails = 0;
@@ -30,6 +30,7 @@ for (const [id, F] of Object.entries(SET)) {
   if (typeof F.cls !== 'string' || !F.cls) fail(id, 'cls missing');
   if (!Array.isArray(F.nouns) || F.nouns.length !== 6) fail(id, 'nouns must be six');
   if (!PLACES.includes(F.place)) fail(id, `place must be one of ${PLACES}`);
+  if (F.tier !== undefined && !(Number.isInteger(F.tier) && F.tier >= 0 && F.tier <= 5)) fail(id, 'tier, if given, must be 0..5');
   if (!Array.isArray(F.kin) || F.kin.length < 2 || F.kin.some((k) => !DEEP_CODE[k])) fail(id, `kin must be 2-3 of: ${Object.keys(DEEP_CODE).join(' ')}`);
   if (!Array.isArray(F.voice) || F.voice.length !== 2 || F.voice.some((v) => !VOICES.includes(v))) fail(id, `voice must be two of ${VOICES}`);
   if (typeof F.params !== 'function' || typeof F.build !== 'function') { fail(id, 'params and build must be functions'); continue; }
@@ -45,7 +46,7 @@ for (const [id, F] of Object.entries(SET)) {
     texts.add(P.text);
     const d = { seed, params: P, size, accent: LIGHTS[n % LIGHTS.length], strength: 1, family: id, grand, depth: 0, kind: 'wild' };
     const mats = { body: worldMaterial({ unique: true }), glow: worldMaterial({ unique: true }) };
-    const bump = (x, z) => (F.place === 'lake' ? 0 : F.place === 'river' ? Math.max(0, (Math.abs(x) - 30) * 0.5) + Math.sin(z * 0.05) * 0.5 : Math.sin(x * 0.07 + n) * 1.2 + Math.cos(z * 0.05) * 1.2 + (F.place === 'mountain' ? -Math.hypot(x, z) * 0.35 : 0));
+    const bump = (x, z) => (F.place === 'lake' || F.place === 'greatlake' ? 0 : F.place === 'desert' ? Math.sin(x * 0.03 + z * 0.012 + n) * 2.2 + Math.sin(x * 0.09) * 0.3 : F.place === 'river' ? Math.max(0, (Math.abs(x) - 30) * 0.5) + Math.sin(z * 0.05) * 0.5 : Math.sin(x * 0.07 + n) * 1.2 + Math.cos(z * 0.05) * 1.2 + (F.place === 'mountain' ? -Math.hypot(x, z) * 0.35 : 0));
     const ctx = { ground: (x, z) => bump(x, z) - bump(0, 0), ringY: 45, river: F.place === 'river' ? { rw: 26 + (n % 4) * 6 } : null, seeker: null };
     let m;
     const t0 = performance.now();

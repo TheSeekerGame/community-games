@@ -2,10 +2,11 @@ import { el, clear, ago, dateStr, short, key } from './dom.js';
 import { Board, hasLink } from '../net/board.js';
 import { Ranks } from '../net/ranks.js';
 import { load, save, codexPut } from '../core/store.js';
-import { valueOf, owedFor, MAX } from '../core/progress.js';
+import { valueOf, owedFor, MAX, KIT_PRICE, KIT_JUMPS } from '../core/progress.js';
 import { placeCode } from '../world/sites.js';
 import { tierOf } from '../artifacts/tiers.js';
 import { siteId as siteIdOf } from '../net/finds.js';
+import { siteAt, siteOfKey, worthOf, worthWords } from './worth.js';
 import { CodexMap, placesIn } from './map.js';
 import { stratum, harmonicOf } from '../artifacts/strata.js';
 import { discover, connect, connected, disconnect } from '../net/wallet.js';
@@ -242,6 +243,62 @@ export class Terminal {
     this.pilotBtn.classList.toggle('linked', !!link);
   }
 
+  // SET COURSE (or FLY THERE), and with jumps in hand TELEPORT, for a place. What each did
+  // is said at once: the button changes, and a line along the bottom of the Codex says it.
+  // A jump asks once more first (a jump is dear).
+  goButtons(parent, x, z, label = '', o = {}) {
+    const g = this.game, cls = o.cls || 'chip inl';
+    const isSet = () => g.course.on && g.course.to && Math.abs(g.course.to.x - x) < 8 && Math.abs(g.course.to.z - z) < 8;
+    const go = el('button', cls + (isSet() ? ' done' : ''), parent, isSet() ? 'COURSE SET' : o.words || 'FLY THERE');
+    go.onclick = (ev) => {
+      ev.stopPropagation();
+      g.course.set(x, z, label);
+      g.audio.play('ui', { h: 28 });
+      go.textContent = 'COURSE SET';
+      go.classList.add('done');
+      this.notice(`Course set${label ? ` for ${label}` : ''} · ${placeCode(x, z)} · ${km(Math.hypot(x - g.ship.x, z - g.ship.z))} away. The ship flies there by itself whenever nobody steers.`);
+      if (o.after) o.after();
+    };
+    if (g.progress.jumps > 0 && !o.noJump) {
+      const tp = el('button', cls + ' tele', parent, `TELEPORT · ${g.progress.jumps}`);
+      let armed = 0;
+      tp.onclick = (ev) => {
+        ev.stopPropagation();
+        if (!armed || Date.now() - armed > 3000) {
+          armed = Date.now();
+          tp.textContent = 'JUMP NOW?';
+          tp.classList.add('armed');
+          g.audio.play('ui', { h: 31 });
+          this.notice(`Press JUMP NOW? again to teleport${label ? ` to ${label}` : ''}: it uses one of your ${g.progress.jumps} jumps.`);
+          setTimeout(() => { if (tp.isConnected && Date.now() - armed >= 2900) { tp.textContent = `TELEPORT · ${g.progress.jumps}`; tp.classList.remove('armed'); } }, 3000);
+          return;
+        }
+        g.teleport.start(x, z, label);
+      };
+    }
+    return go;
+  }
+
+  // a place's tier and what flying there would bring this pilot (worth.js), as a tag
+  _worthTag(parent, site, badge = true) {
+    const w = worthOf(this.game, site);
+    if (!w) return null;
+    const box = el('span', 'worth', parent);
+    if (badge) { const b = el('span', 'tbadge', box, w.T.name); b.style.setProperty('--tc', w.T.color); }
+    el('span', w.recorded && !w.more ? 'muted' : 'pos', box, `${worthWords(w, formatInt)}${w.recorded && !w.more ? '' : ' FOR YOU'}`);
+    box.title = w.recorded ? (w.more ? 'you recorded it, and would see more of it now' : 'you have recorded it as far as you see') : `a scan of it would bring you about this, attuned as you are (${w.seen} of its ${w.res} layers)`;
+    return w;
+  }
+
+  // a line along the bottom of the Codex, for a few seconds: what was just done
+  notice(text) {
+    if (!this.noteEl) this.noteEl = el('div', 'tnote', this.win);
+    this.noteEl.textContent = text;
+    this.noteEl.classList.add('on');
+    clearTimeout(this._noteT);
+    this._noteT = setTimeout(() => this.noteEl.classList.remove('on'), 4500);
+  }
+
   // POSTS · FINDS · LEADERS: the board's pages
   _boardNav(parent) {
     const nav = el('div', 'subnav', parent);
@@ -275,13 +332,12 @@ export class Terminal {
       el('span', 'tbadge', r, T.name);
       const mid = el('div', 'fmid', r);
       el('div', '', mid, f.name || f.code || 'A find');
+      this._worthTag(el('div', 'wline', mid), siteOfKey(f.key), false);
       const here = g.codex.some((e) => e.site === f.key);
       const dist = Number.isFinite(f.x) ? km(Math.hypot(f.x - g.ship.x, f.z - g.ship.z)) : '';
       el('div', 'fine', mid, [f.place, dist, `${f.count} finder${f.count === 1 ? '' : 's'}`, ago(f.at * 1000), here ? 'you have been' : ''].filter(Boolean).join(' · '));
-      if (Number.isFinite(f.x)) {
-        const go = el('button', 'chip', r, 'SET COURSE');
-        go.onclick = () => { g.course.set(f.x, f.z, f.name); g.audio.play('ui', { h: 28 }); go.textContent = 'COURSE SET'; };
-      }
+      const acts = el('div', 'facts', r);
+      if (Number.isFinite(f.x)) this.goButtons(acts, f.x, f.z, f.name, { cls: 'chip', words: 'SET COURSE' });
     }
   }
 
@@ -340,8 +396,7 @@ export class Terminal {
     // what to do with it
     const acts = el('div', 'acts', d);
     if (e.site && e.x !== undefined) {
-      const go = el('button', 'btn', acts, g.course.on && g.course.to && g.course.to.x === Math.round(e.x) && g.course.to.z === Math.round(e.z) ? 'COURSE SET' : 'SET COURSE');
-      go.onclick = () => { g.course.set(e.x, e.z, e.name); g.audio.play('ui', { h: 28 }); this.render(); };
+      this.goButtons(acts, e.x, e.z, e.name, { cls: 'btn', words: 'SET COURSE' });
     }
     if (e.shared) el('span', 'pos fine', acts, `SHARED ${ago(e.shared.at).toUpperCase()}`);
     else if (this.board && this.board.link) {
@@ -414,7 +469,13 @@ export class Terminal {
       if (q.index > at) parent.append(document.createTextNode(text.slice(at, q.index)));
       const b = el('button', 'chip inl place', parent, q.code);
       b.title = 'set a course there';
-      b.onclick = (ev) => { ev.stopPropagation(); this.game.course.set(q.x, q.z, ''); this.game.audio.play('ui', { h: 28 }); };
+      b.onclick = (ev) => {
+        ev.stopPropagation();
+        this.game.course.set(q.x, q.z, '');
+        this.game.audio.play('ui', { h: 28 });
+        b.classList.add('done');
+        this.notice(`Course set · ${q.code} · ${km(Math.hypot(q.x - this.game.ship.x, q.z - this.game.ship.z))} away. The ship flies there by itself whenever nobody steers.`);
+      };
       at = q.index + q.code.length;
     }
     if (at < text.length) parent.append(document.createTextNode(text.slice(at)));
@@ -464,7 +525,7 @@ export class Terminal {
   _shopItems() {
     const g = this.game;
     const shelf = this.shelf === 'ships' ? SHIPS.map((d) => d.id) : this.shelf === 'fx' ? EFFECTS.map((e) => e.id) : this.shelf === 'anomalies' ? ANOMALIES.map((a) => a.id) : ['depth', 'tank', 'gain'];
-    return shelf;
+    return this.shelf === 'ships' || this.shelf === 'fx' || this.shelf === 'anomalies' ? shelf : [...shelf, 'kit'];
   }
 
   _shop() {
@@ -507,6 +568,21 @@ export class Terminal {
     card('depth', 'ATTUNEMENT', 'ATTUNE FURTHER', 'how far into every artifact you see · each layer makes its scan worth more');
     card('tank', 'PLASMA TANK', 'UPGRADE', 'more boost, and it comes back faster');
     card('gain', 'SIGNAL GAIN', 'UPGRADE', 'how far off the ship hears a site');
+    // the teleporter kit: three jumps to anywhere (teleport.js)
+    {
+      const c = el('div', 'upg' + (sel === 'kit' ? ' sel' : ''), wrap);
+      const head = el('div', 'uhead', c);
+      el('div', 'uname', head, 'TELEPORTER KIT');
+      el('div', 'ucur', head, pr.jumps ? `${pr.jumps} JUMP${pr.jumps === 1 ? '' : 'S'} LEFT` : 'NONE');
+      el('div', 'fine uwhat', c, `${KIT_JUMPS} jumps to anywhere: TELEPORT appears beside every place you can set a course to`);
+      const row = el('div', 'ubuy', c);
+      const bar = el('div', 'ubar', row);
+      el('i', '', bar).style.width = `${Math.min(100, (pr.data / KIT_PRICE) * 100)}%`;
+      const b = el('button', 'btn', row, `BUY · ${formatInt(KIT_PRICE)}`);
+      b.disabled = !pr.canKit();
+      b.onclick = () => this._buy('kit');
+      if (this._shopMsg && this._shopMsg.kind === 'kit') { el('div', 'msg', c, this._shopMsg.text).style.color = 'var(--acc)'; this._shopMsg = null; }
+    }
   }
 
   // the emitters: a card each, its color, what it does, BUY or OWNED; and once, how
@@ -703,6 +779,13 @@ export class Terminal {
 
   _buy(kind) {
     const g = this.game, pr = g.progress;
+    if (kind === 'kit') {
+      if (!pr.buyKit()) { g.audio.play('error'); return; }
+      g.audio.play('buy', {});
+      this._shopMsg = { kind, text: `${pr.jumps} jumps ready. TELEPORT is beside every place now: the LOG, the MAP, the BOARD.` };
+      this.render();
+      return;
+    }
     if (!pr.buy(kind)) { g.audio.play('error'); return; }
     g.audio.play('buy', kind === 'depth' ? { harm: harmonicOf(pr.depth) } : {});
     if (kind === 'depth') g.field.reattune();
@@ -822,8 +905,8 @@ export class Terminal {
         el('div', 'muted', t, `${p.scan.code}${p.scan.kind === 'wild' ? `${p.scan.depth ? ` · SEEN TO ${stratum(p.scan.depth).numeral}${p.scan.plus ? '+' : ''}` : ''} · WILD` : p.scan.tokens.length ? ` · ${p.scan.kind === 'witnessed' ? 'WITNESSED · ' : ''}SEEKER #${p.scan.tokens[0]}` : ''}`);
         if (p.scan.place) {
           const pl = el('div', 'muted', t, `${p.scan.place.code} · ${km(Math.hypot(p.scan.place.x - this.game.ship.x, p.scan.place.z - this.game.ship.z))} `);
-          const go = el('button', 'chip inl', pl, 'FLY THERE');
-          go.onclick = (ev) => { ev.stopPropagation(); this.game.course.set(p.scan.place.x, p.scan.place.z, p.scan.name); this.game.audio.play('ui', { h: 28 }); };
+          this.goButtons(pl, p.scan.place.x, p.scan.place.z, p.scan.name);
+          if (p.scan.kind === 'wild') this._worthTag(el('div', 'wline', t), siteAt(p.scan.place.x, p.scan.place.z, p.scan.tx));
         }
         if (p.note) this._words(el('div', '', t), p.note);
         const known = this.game.codex.find((e) => (e.hash || e.tx) === p.scan.tx && (e.kind === 'wild' || !p.scan.tokens.length || e.lead === p.scan.tokens[0]));

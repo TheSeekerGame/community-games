@@ -1,9 +1,10 @@
 import { tierOf } from '../artifacts/tiers.js';
 import { el, clear } from './dom.js';
-import { height, autumn, mountainEnv, riverOf, WATER, RCELL, RN } from '../world/terrain.js';
+import { height, autumn, mountainEnv, riverOf, WATER, RCELL, RN, desertEnv } from '../world/terrain.js';
 import { placeCode, placeOf } from '../world/sites.js';
 import { stratum } from '../artifacts/strata.js';
-import { clamp, TAU } from '../core/math.js';
+import { clamp, TAU, formatInt } from '../core/math.js';
+import { siteAt, worthOf, worthWords } from './worth.js';
 
 // The Codex's MAP: the forest about the ship, north up, drawn from the same terrain the ship
 // flies over (lakes, rivers, mountains, the turned stands), and on it only what this pilot
@@ -34,6 +35,9 @@ function shade(x, z, step) {
   let r = 30 + 22 * up, g = 37 + 22 * up, b = 36 + 24 * up;
   if (m > 0.3) { const k = clamp((m - 0.3) / 0.4, 0, 1), snow = clamp((h - 160) / 70, 0, 1); r += (88 - r) * k + 100 * snow; g += (94 - g) * k + 104 * snow; b += (104 - b) * k + 108 * snow; }
   if (a > 0.3) { const k = clamp((a - 0.3) / 0.4, 0, 1) * 0.8; r += (112 - r) * k; g += (80 - g) * k; b += (38 - b) * k; }
+  // (the Grey Waste: pale grey, a little violet)
+  const de = desertEnv(x, z);
+  if (de > 0.05) { const k = de * 0.9; r += (118 - r) * k; g += (114 - g) * k; b += (126 - b) * k; }
   return [r * light, g * light, b * light];
 }
 
@@ -124,14 +128,17 @@ export class CodexMap {
       const r2 = (k, v, cls) => { const r = el('div', 'row', rows); el('span', 'k', r, k); return el('span', 'v ' + (cls || ''), r, v); };
       r2('PLACE', placeCode(s.x, s.z));
       r2('DISTANCE', km(Math.hypot(s.x - g.ship.x, s.z - g.ship.z)));
+      // its tier and what it would bring you (worth.js): a place found or heard
+      const w = s.kind === 'point' ? null : worthOf(g, siteAt(s.x, s.z));
+      if (w) { const v = r2(w.T.name, worthWords(w, formatInt), w.recorded && !w.more ? 'muted' : 'pos'); v.previousSibling.style.color = w.T.color; }
       if (s.e) {
         const e = s.e;
         r2('RESONANCE', !e.res ? 'none' : `${stratum(e.res).numeral} · seen ${(e.depth || 0) >= e.res ? 'whole' : e.depth ? `to ${stratum(e.depth).numeral}` : 'not at all'}`);
         if (s.more) r2('', 'more to see there now', 'pos');
       }
       if (s.by) r2('NAMED BY', s.by);
-      const b = el('button', 'btn', box, 'SET COURSE');
-      b.onclick = () => this.go(s);
+      const acts = el('div', 'acts', box);
+      this.t.goButtons(acts, s.x, s.z, s.label && s.kind !== 'sig' ? s.label : '', { cls: 'btn', words: 'SET COURSE', after: () => { this._panel(); this.draw(); } });
     } else el('div', 'muted', p, 'Choose a place on the map, or name one:');
     // a place code, typed
     const line = el('div', 'nameRow', p);
@@ -153,7 +160,10 @@ export class CodexMap {
   }
 
   go(s) {
-    this.game.course.set(s.x, s.z, s.label && s.kind !== 'sig' ? s.label : '');
+    const g = this.game;
+    g.course.set(s.x, s.z, s.label && s.kind !== 'sig' ? s.label : '');
+    g.audio.play('ui', { h: 28 });
+    this.t.notice(`Course set · ${placeCode(s.x, s.z)} · ${km(Math.hypot(s.x - g.ship.x, s.z - g.ship.z))} away. The ship flies there by itself whenever nobody steers.`);
     this._panel();
     this.draw();
   }

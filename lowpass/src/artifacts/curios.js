@@ -50,7 +50,8 @@ const OF = ['of the Damp', 'of the Long Fog', 'of the First Survey', 'of Low Bra
 
 export function describeCurio(d, move, R1, R3) {
   const depth = d.depth, st = depth ? stratum(depth) : SURFACE;
-  const open = CURIOS.filter(([, m]) => m <= depth).map(([k]) => k);
+  // (what it is, by how much lies in it: the same thing for every pilot, seen as far as each is attuned)
+  const open = CURIOS.filter(([, m]) => m <= Math.max(depth, d.res || 0)).map(([k]) => k);
   const kind = move.kind && INFO[move.kind] ? (R1(), move.kind) : R1.pick(open);
   const [code, cls, nouns, text] = INFO[kind];
   const P = { kind, n: R1.int(5, 11), hue: R1() };
@@ -64,10 +65,11 @@ export function describeCurio(d, move, R1, R3) {
   d.grand = false;
   const noun = R3.pick(nouns), r = R3();
   d.name = (r < 0.45 ? `The ${R3.pick(ADJ)} ${noun}` : r < 0.75 ? `The ${noun} ${R3.pick(OF)}` : `${R3.pick(ADJ)} ${noun} ${R3.pick(OF)}`) + (d.plus ? '+' : '');
-  d.code = `${depth ? `D${depth}${d.plus ? '+' : ''}-` : ''}${code}-${(move.seed || move.tx).slice(2, 6).toUpperCase()}`;
+  // (a thing's code is its own, however far into it is seen)
+  d.code = `${code}-${(move.seed || move.tx).slice(2, 6).toUpperCase()}`;
   d.cls = cls;
   d.structure = text(P);
-  d.origin = `Found on foot, in the forest about a clearing${depth ? `, of ${st.title}` : ''}${d.plus ? ': one of the marked' : ''}. No other ship will find it.`;
+  d.origin = `Found on foot, in the forest about a clearing${depth ? `, of ${st.title}` : ''}${d.plus ? ': one of the marked' : ''}. It lies there for whoever lands.`;
 }
 
 // ------------------------------------------------------------------ building

@@ -5,24 +5,26 @@ import { ANOMALY_VALUE } from '../world/anomaly.js';
 import { LIFE_VALUE } from '../artifacts/life.js';
 import { RIVER_VALUE, THREADED_VALUE } from '../artifacts/river.js';
 
-// Progress: DATA, and what it buys: how deep the scanner reaches (without end), how much
-// plasma the tank holds and how often signals are picked up out of the fog (five levels
-// each; each starts below where it once stood and ends a little above).
+// Progress: DATA, and what it buys: how far into every artifact the pilot sees
+// (attunement, without end), how much plasma the tank holds and how far off the ship
+// hears a site (five levels each).
 //
 // Every scan in the Codex can be transmitted once, for DATA; it stays in the Codex (and on
-// the leaderboard) either way. A wild scan is worth BASE, and BASE more for every depth it
-// came from (linear); a witnessed one, WITNESSED. DATA buys depth: the first costs
-// FIRST (twelve plain scans), each next one twice the last, without end.
+// the leaderboard) either way. A wild scan is worth BASE, and BASE more for every layer of
+// the artifact that was seen when it was scanned (linear); a witnessed one, WITNESSED.
+// DATA buys attunement: the first level costs FIRST (twelve plain scans), each next one
+// twice the last, without end.
 //
-// Depth decides what the wild artifacts are. Each one starts at the surface and goes one
-// depth deeper with STEP's chance, as far as the scanner reaches: so the newest depth is
-// the most common right after it is bought (three in four, at the first), and rarer with
-// every one after (the top of a deep scanner is the rarest thing it finds). Now and then
-// (GLIMPSE) one comes from beyond the scanner's reach: one depth deeper, sometimes two.
-// Rarer still (PLUS), a deep one is one of the marked: a form of its own, larger, its name
-// with a +, worth PLUS_VALUE times what its depth's are. And now and then (CREATURE), at
-// any depth, a wild one is a creature that flees: hard to scan, worth CREATURE_VALUE
-// times its depth's.
+// Attunement decides how much of each artifact there is to see. The artifacts stand at
+// their sites, the same for every ship (sites.js); each holds layers under what stands at
+// the surface, as many as its resonance (most a few, each one more rarer, without end:
+// deep.js). A pilot attuned to n sees the first n of them: so every level adds something
+// to most artifacts already found, which can be scanned again for the difference (what
+// was transmitted for one before is not paid twice: owedFor), and the deepest ones are
+// places worth telling another pilot of.
+// A few sites hold one of the marked (+): its true form the rarest there is, larger, its
+// name with a +, worth PLUS_VALUE times as much once that form is seen. A creature that
+// flees is worth CREATURE_VALUE times its layers'.
 // Witnessed seekers are never touched by any of it.
 //
 // Ships (designs.js): bought once with DATA, then boarded whenever one likes; the Seed is
@@ -32,27 +34,19 @@ import { RIVER_VALUE, THREADED_VALUE } from '../artifacts/river.js';
 // at an artifact; a scan is worth FX_VALUE times more for every one it took.
 //
 // The plasma tank: seconds of a full boost (TANK, by level); the core gathers it back at
-// REFILL seconds' worth a second, so a small tank fills sooner. Signal gain: the seconds
-// between wild artifacts, once the last is behind (GAIN, by level).
+// REFILL seconds' worth a second, so a small tank fills sooner. Signal gain: how far the
+// ship's receiver hears a site not yet recorded (sites.js: HEAR, by level).
 
 export const BASE = 10;
 export const WITNESSED = 40;
 export const FIRST = 120;
-export const STEP = 0.75;
-export const GLIMPSE = 0.04;
-export const PLUS = 0.02;          // a deep one is one of the marked (+)
-export const PLUS_VALUE = 10;      // and worth this many times its depth's
-export const CREATURE = 0.08;      // a wild one is a creature that flees (species.js)
-export const CREATURE_VALUE = 4;   // and worth this many times its depth's
-export const LANDING = 0.035;      // a wild one is a clearing to land in (clearing.js)
-export const RECENT = 5;          // no shape comes again within this many wild ones
-export const LIFE_SHARE = 0.25;    // a wild one is, in its place, life in the forest (life.js)
-export const LANDING_DEPTH = 3;    // once the scanner reaches this deep (and nothing says so)
+export const PLUS_VALUE = 10;      // one of the marked (+) is worth this many times its layers'
+export const CREATURE_VALUE = 4;   // a creature that flees (species.js), likewise
+export const LANDING_DEPTH = 3;    // a clearing's lanterns are seen once attuned this far (and nothing says so)
 export const CURIO_VALUE = 2;      // a thing found on foot about a clearing (curios.js)
 
 export const TANK = [5, 7, 9, 11, 13, 15];
 export const REFILL = 0.24;
-export const GAIN = [[100, 170], [88, 150], [78, 132], [68, 118], [60, 104], [52, 92]];
 // what each level of the capped ones costs (the first entry buys level one)
 const COSTS = { tank: [40, 80, 130, 200, 300], gain: [80, 150, 250, 380, 550] };
 export const MAX = { tank: COSTS.tank.length, gain: COSTS.gain.length };
@@ -62,30 +56,25 @@ export const valueOf = (e) => (e.kind === 'wild'
   ? Math.round(BASE * (1 + (e.depth || 0)) * (e.plus ? PLUS_VALUE : 1) * (e.creature ? CREATURE_VALUE : e.ground ? CURIO_VALUE : e.life ? LIFE_VALUE : 1) * Math.pow(FX_VALUE, (e.fx || []).length) * Math.pow(ANOMALY_VALUE, (e.anomalies || []).length) * (e.river ? RIVER_VALUE : 1) * (e.family === 'naturalbridge' && e.passes > 0 ? THREADED_VALUE : 1))
   : e.special ? WITNESSED : BASE);
 
-export function rollDepth(reach, rand = Math.random) {
-  if (rand() < GLIMPSE) return reach + (rand() < 0.15 ? 2 : 1);
-  let d = 0;
-  while (d < reach && rand() < STEP) d++;
-  return d;
-}
+// what transmitting a scan brings now: its worth, less what was paid for it before
+export const owedFor = (e) => Math.max(0, valueOf(e) - (e.paid || 0));
 
 export class Progress {
   constructor() {
     const s = load('progress', {});
     this.data = s.data || 0;          // DATA in hand
-    this.depth = s.depth || 0;        // how deep the scanner reaches
+    this.depth = s.depth || 0;        // attunement: how many layers of an artifact the pilot sees
     this.earned = s.earned || 0;      // all DATA ever received
-    this.deepest = s.deepest || 0;    // the deepest artifact ever met
+    this.deepest = s.deepest || 0;    // the most layers ever seen in one artifact
     this.tank = s.tank || 0;          // the plasma tank's level
     this.gain = s.gain || 0;          // the signal gain's level
     this.ships = s.ships || ['seed'];  // the ships bought
-    this.seen = s.seen || [];         // the shapes of the last wild ones met, oldest first
     // the effects: uses left of each ever bought ({ id: n }; once, the effects were bought
     // for good: those keep a pack)
     this.fx = Array.isArray(s.fx) ? Object.fromEntries(s.fx.map((id) => [id, PACK])) : s.fx || {};
     this.ship = this.ships.includes(s.ship) ? s.ship : 'seed';   // the one boarded
   }
-  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, ships: this.ships, ship: this.ship, seen: this.seen, fx: this.fx }); }
+  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, ships: this.ships, ship: this.ship, fx: this.fx }); }
   owns(id) { return this.ships.includes(id); }
   canShip(id) { const d = SHIPS.find((x) => x.id === id); return !!d && !this.owns(id) && this.data >= d.price; }
   buyShip(id) {
@@ -97,7 +86,6 @@ export class Progress {
   }
   board(id) { if (!this.owns(id) || this.ship === id) return false; this.ship = id; this.save(); return true; }
   get tankSecs() { return TANK[Math.min(this.tank, TANK.length - 1)]; }
-  get gap() { return GAIN[Math.min(this.gain, GAIN.length - 1)]; }
   // what the next step of an upgrade costs (null: at its last level)
   cost(kind) { return kind === 'depth' ? costOf(this.depth + 1) : COSTS[kind][this[kind]] ?? null; }
   can(kind) { const c = this.cost(kind); return c !== null && this.data >= c; }
@@ -120,9 +108,10 @@ export class Progress {
     return true;
   }
   // the scans not yet transmitted, and what they are worth together
+  // (one scanned again further in is owed only what it is worth more than before)
   unsent(codex) {
     const list = codex.filter((e) => !e.sent);
-    return { list, value: list.reduce((s, e) => s + valueOf(e), 0) };
+    return { list, value: list.reduce((s, e) => s + owedFor(e), 0) };
   }
   credit(n) { this.data += n; this.earned += n; this.save(); }
   buy(kind) {
@@ -133,6 +122,4 @@ export class Progress {
     return true;
   }
   met(depth) { if (depth > this.deepest) { this.deepest = depth; this.save(); } }
-  // a wild one of this shape was met: none of the last RECENT comes again before it must
-  see(shape) { this.seen = [...this.seen.filter((k) => k !== shape), shape].slice(-RECENT); this.save(); }
 }

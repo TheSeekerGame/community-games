@@ -5,10 +5,14 @@ the warmth under the ice keeps a forest alive and the steam it breathes never li
 3D, single player, in the browser, from a fully static website.
 
 You fly low over the canopy and steer left and right; the ship keeps its own height.
-Now and then a light shows in the fog: an artifact, grown for you alone. But when a
-SEEKER NET seeker moves on chain while you fly, that seeker itself rises out of the fog,
-giant: witnessed, the same for every ship in the fog at that moment. Steer to it and
-hold the scanner on it, and the visor photographs it into your Codex. Inside the ship
+Artifacts stand in the forest, each at a place of its own, the same for every ship:
+nothing is spawned for you, and nothing is lost by staying in the cabin a while. The
+ship hears the ones you have not recorded, and a mark along the top of the view shows
+the way. Each holds more than stands at the surface, and how much of it you see is your
+attunement. And when a SEEKER NET seeker moves on chain while you fly, that seeker
+itself rises out of the fog, giant: witnessed, the same for every ship in the fog at
+that moment. Steer to one and hold the scanner on it, and the visor photographs it into
+your Codex. Inside the ship
 there is room to walk, a coffee machine (you will need it: alertness runs down), the
 Codex computer, where your records are, where holders share scans on a public board,
 rank on a leaderboard and see their seekers' charge, live, and room for one of your own
@@ -108,88 +112,135 @@ to it and press E.
   seconds ahead, foresees the curve of a turn, starts a climb sooner at speed, and never
   goes into the ground; the camera keeps over the trees and never has a ridge between it
   and the ship.
-- **Artifacts.** Every two minutes or so (sooner, with SIGNAL GAIN from the SHOP), a
-  **wild** one: grown from a seed your own browser draws, so no one else will ever meet
-  the same one. Twenty-nine families: standing stones, monoliths, ringed orbs,
-  cellular-automaton arrays, shells, crystal blooms, tethers, luminous groves, gates to
-  fly through, nested polyhedra, geoglyphs, harmonic chimes, lighthouses whose beams
-  turn through the fog, orreries that keep Kepler's law, helices whose lit rungs spell a
-  number, the shadows of four-dimensional solids, derelict hulls, stairs to a door that
-  opens on fog, pale elder trees, level pools under a hanging stone, cloaked sentinels
-  whose eyes follow the ship, swarms on a torus knot, cradles of bone round a cracked
-  egg, lanterns hung on nothing, listening dishes, a pendulum drawing a flower of light
-  on the floor under it as its plane turns, an hourglass of light that turns itself over,
-  a mobile of balanced arms, and a lens burning a point of light into the ground; most
-  of them turn to track you. No shape comes again within five wild finds of the last
-  time it was met.
-  About one in seven is **grand**: larger, with a column of its own light over it. A
-  lone artifact appears just past what the fog lets you see, nearly dead ahead, and
-  keeps ahead of you until you have seen it. Once you have come near one and lost it
-  from sight (or left one far behind), it dissolves back into the fog: there is no
-  turning back for it. On a mountain, a wild artifact is one of the mountains' own,
-  found nowhere else and set on the summit: cairns marching up the slope, wind lines of
-  banners, an old relay mast whose light blinks and waits, a door cut into the rock,
-  a stone arch hung with threads of light, an observatory following a star, a harp
-  strung with light that shivers on the rhythm, a frozen fall of ice. In a turned stand,
-  among the gold birches, one of the stands' own: a column of leaves held turning in
-  the air, a bare birch hung with swaying lanterns, a great drop of amber with something
-  dark in it, a ring of white birches with leaves falling only inside it, a cold fire of
-  pale gold, a leaf of gold as tall as the trees. On a river or in a canyon (follow one
-  to find them), one of the rivers' own, worth two and a half times as much: water
-  falling from a shelf of rock with a bow of light in its mist, a bridge of stone across
-  the river high enough to fly under (threaded, worth half as much again), a wheel of
-  stone turning in the current, a ferry drifting down the river with nobody aboard, a
-  colonnade standing in the water to its waist.
-- **The deep.** A wild artifact may come from below the surface, from a **depth**: the
-  deeper the scanner is tuned (in the Codex's SHOP), the more of them do. Each starts at
-  the surface and goes one depth deeper three times in four, as far as the scanner
-  reaches, so right after a depth is bought most finds come from it, and with every
-  depth after, the deepest grow rarer; one in twenty-five comes from beyond the
-  scanner's reach (a depth or two deeper), as a glimpse. Each depth is a **stratum** of
-  its own colors (Gilt, Nacre, Ember, Aurora, Ultraviolet, Solar, Abyssal, Prism, then
-  others without end), and what grows there is larger the deeper it is (a depth-six
-  spire stands two hundred meters and more; the ship climbs over what is in its way and
-  flies under what floats high), drawn from seventeen forms the strata open one by one:
-  corollas that open as the ship nears, spines of turning crowns, nested solids,
-  armillaries, choirs of monoliths, geodes, corals that flower at their tips, knots and
-  linked rings, nautilus shells, horns and galaxies, floating archipelagos with falls of
-  light, strange attractors traced by thousands of motes, medusae trailing arms of light,
-  star engines with plates on their orbits, eyes that follow the ship, chandeliers of
-  turning rings, stairs winding about a column of light with a wave of light climbing
-  them, prisms fanning a white beam into the stratum's colors. The mountains
-  have seven of their own, for every depth: crystal spires, sky temples with stairs of
-  light, stone halos hung with shards, aurora looms, storm crowns throwing lightning,
-  wind serpents, ice cathedrals; the turned stands four: a tree whose crown is a sphere
-  of leaves of light, a pyre of stilled flames, a seed opening and closing under an arch
-  of boughs, a disc pouring a fall of leaves of light into a pool; the rivers two: a
-  lotus floating among its pads, two towers on the banks with a curtain of light between
-  them across the water. Deeper, one form
-  crowns another, a court of small ones stands about it, and ornaments gather: rings,
-  figures of light on the ground, beams, pillars, rain of light, aurora veils, its double hanging
-  upside down in the sky, its echoes a moment behind it. Each sings (below). Rarest of
-  all, about one deep find in fifty is **marked**: its name ends in a **+**, it stands a
-  quarter larger under a column of light, and it is one of the marked ones' own forms,
-  at every depth (a tree of light dropping leaves of light, a maelstrom turning in a
-  standing ring, a band with one side, a Menger sponge of four hundred cubes breathing
-  apart, a whale of the under-sky swimming circles over the trees; on a mountain, the
-  mountains' own, crowned and courted). A marked scan is worth ten times its depth's.
+- **Sites.** Every wild artifact stands at a **site**: a place that is a pure function of
+  the world's seed and its coordinates, the same for every ship, today or in a year.
+  Nothing appears for anyone and nothing dissolves behind you: fly past one, stay inside
+  over coffee, come back tomorrow, and it is where it was. The forest at large is a grid
+  of cells 2.2 km on a side, about half of them holding one site, set where the cell is
+  most itself (on a summit if it has mountains, in a turned stand, out on a lake, else on
+  plain ground); every river has one or two more down its course and often one on the
+  lake it ends in. About one site to every six or seven square kilometers: a minute or
+  two of flying between neighbors, and no hurry.
+- **Signals.** The ship's receiver hears the sites you have not recorded (and the ones
+  that now hold more than you recorded) out to 2.5 km (to 5, with SIGNAL GAIN from the
+  SHOP): each is a mark on the strip along the top of the view, at its bearing, the
+  nearest one large, with its distance. With nothing in range the nearest one within
+  nine kilometers is still heard, faintly, so there is always a way to fly. Where to go
+  is yours to choose. Within about a kilometer a site's artifact is built where it
+  stands, coming out of the ordered dither; left far behind, it is put away, and is
+  there when you come back. A site recorded stands on as it was. In the LOG every site's
+  record carries its **place** (a short code of its coordinates, like `N5G-E3K`), to
+  tell another pilot.
+- **A course.** Choose a place (on the Codex's MAP, a record in the LOG, a place named on
+  the BOARD, or a code typed in) and SET COURSE: the ship turns toward it whenever nobody
+  steers and flies there by itself, so you can set one and go make coffee. The strip along
+  the top marks it as a hollow square (COURSE · 3.4 km). Steering takes the controls back
+  while you steer; steering firmly for a moment lets the course go. Arrived with nobody at
+  the controls, the ship circles the place (HOLDING) until you come to the controls, then
+  turns in toward it and hands them over.
+- **What stands there.** Mostly an artifact, of one of eighty-two families, by the place:
+  - in the forest at large, forty-six: standing stones, monoliths, ringed orbs,
+    cellular-automaton arrays, shells, crystal blooms, tethers, luminous groves, gates to
+    fly through, nested polyhedra, geoglyphs, harmonic chimes, lighthouses whose beams
+    turn through the fog, orreries that keep Kepler's law, helices whose lit rungs spell a
+    number, the shadows of four-dimensional solids, derelict hulls, stairs to a door that
+    opens on fog, pale elder trees, level pools under a hanging stone, cloaked sentinels
+    whose eyes follow the ship, swarms on a torus knot, cradles of bone round a cracked
+    egg, lanterns hung on nothing, listening dishes, a pendulum drawing a flower of light,
+    an hourglass of light that turns itself over, a mobile of balanced arms, a lens
+    burning a point into the ground; instruments of signal and measure: a sundial whose
+    shadow is a blade of light, tuning forks in the harmonic series, a field of mirrors
+    burning the tip of a tower, a grove of aerials passing lights along their wires, a
+    seismograph writing a helix of light, weathervanes that turn to the ship, a carillon,
+    an abacus counting without end; and places somebody built and left: a labyrinth with a
+    light walking its one path, a well lights rise out of, an archive of scored tablets
+    read row by row, an amphitheatre of seated lights, a broken aqueduct pouring light, a
+    garden of raked stone, bell jars each keeping a small flame, a tensegrity mast;
+  - on a mountain, set on the summit, thirteen: cairns marching up the slope, wind lines
+    of banners, an old relay mast, a door cut into the rock, a stone arch hung with
+    threads of light, an observatory following a star, a wind harp, a frozen fall of ice,
+    a wall of prayer wheels, a bivouac with one lit window, a horn pointing out over the
+    valley, an eyrie with eggs of light, a derelict cable car swinging over the drop;
+  - in a turned stand, among the gold birches, ten: a column of leaves held turning in
+    the air, a bare birch hung with lanterns, a drop of amber with something dark in it,
+    a ring of white birches, a cold fire, a leaf of gold as tall as the trees, sheaves
+    stood in stooks, a swing swinging by itself, a ring of amber mushrooms, a tree hung
+    with chrysalides of amber glass;
+  - on a river or in a canyon (follow one to find them), worth two and a half times as
+    much, eight: water falling from a shelf of rock, a bridge of stone high enough to fly
+    under (threaded, worth half as much again), a wheel of stone turning in the current,
+    a ferry with nobody aboard, a colonnade standing in the water, a gauge reading the
+    river's level in lights, a flotilla of lantern boats drifting down without end, a
+    fish ladder lights leap up;
+  - out on a lake, five of the lakes' own (buoys passing a light from one to the next, a
+    hut on stilts with one lit window, a ring of giant reeds, the crown of a sunken bell
+    with rings going out from it, glass floats in a net), or one of the few that hang in
+    the air and need no ground.
+  About one in seven is **grand**: larger, with a column of its own light over it. And
+  about one site in twenty of the forest's holds a **trace**: next to nothing at the
+  surface (one small stone with a seam of light, a ring of pebbles, a thin post, a cup
+  of light in a flat stone, a crack with light in it), and a great deal under it.
+  Now and then a site holds something else: life (below), a creature that flees, or,
+  for a pilot attuned to III or further, lanterns in a clearing to land in.
+- **Attunement and resonance.** What stands at a site is the same for everyone; what
+  differs is how far into it you see. Under its surface an artifact holds **layers**, as
+  many as its **resonance**: about one in six has none, most have one to three, and each
+  one more is rarer than the last, without end. Your **attunement** (bought in the
+  Codex's SHOP, without end) is how many of them you see:
+  - **I**: its echo: its own shape again in light, larger, standing about it, a ring of
+    that light on the ground;
+  - **II**: its true form, what it is at heart: one of the deep's forty-three forms, the
+    one its family is kin to (a shell's is a nautilus, standing stones' an armillary or a
+    choir of monoliths, a wreck's an archipelago of floating islands), hanging in the air
+    over it, a thread of light between them;
+  - **III and further**: what gathers about that, one thing more with every layer: rings
+    of light, a figure drawn on the ground, orbiting bodies, a pillar, sweeping beams,
+    hanging shards, rain of light, an aurora veil, a second form crowning it, a court of
+    small ones about it, its double hanging upside down in the sky, a ring in the sky,
+    its own echoes; and everything of it larger and richer with every layer.
+  All of it is drawn in the colors of the **stratum** you see to (I Gilt, II Nacre, III
+  Ember, IV Aurora, V Ultraviolet, VI Solar, VII Abyssal, VIII Prism, then others without
+  end), and it sings in that stratum's harmonics (below). So the same artifact, at the
+  same coordinates, is a ring of stones to one pilot and a burning armillary turning
+  over it to another; and every level you attune changes most of the places you have
+  already been: a site that now holds more than you recorded is heard again (MORE TO
+  SEE), and scanning it again is worth the difference. Where more lies in one than you
+  see, small lights flicker over it, one for each layer still hidden (six at most), each
+  in the color of the stratum it waits in; the brackets say how far you see into it and
+  how far it goes (III/VI). A trace's true form does not hang over it: it stands on the
+  ground beside the little there is, larger than any. About one resonant site in thirty
+  is **marked**: its true form is one of the marked ones' own (a tree of light dropping
+  leaves of light, a maelstrom turning in a standing ring, a band with one side, a Menger
+  sponge of four hundred cubes breathing apart, a whale of the under-sky swimming circles
+  over the trees), a quarter larger, its name ends in a **+** once that form is seen, and
+  its scan is then worth ten times as much. The forms: corollas that open as the ship
+  nears, spines of turning crowns, nested solids, armillaries, choirs of monoliths,
+  geodes, corals, knots and linked rings, nautilus shells, floating archipelagos with
+  falls of light, strange attractors traced by thousands of motes, medusae, star engines,
+  eyes that follow the ship, chandeliers, stairs winding about a column of light, prisms;
+  a clock with no face, its wheels meshed in the air; a fountain of light falling from
+  basin to basin; a radiolarian's lattice; a plate whose grains of light gather on the
+  figures it rings in; a ringed planet; a dandelion letting its seeds go; a storm of
+  pages; the mountains' crystal spires, sky temples, stone halos, aurora looms, storm
+  crowns, wind serpents and ice cathedrals; the turned stands' tree of leaves of light,
+  pyre, seed, leaf-fall and great moth; the rivers' lotus and tide-gate.
   Witnessed seekers are never touched by any of it.
 - **Effects.** Bought in the SHOP three uses at a time (and bought again), fired at
   whatever the scanner holds, in flight or on foot: **GLITCH** tears it
   into bands of broken signal, **CHAOS** sets it running like water, **VOXEL** sets it in
   blocks the way the seekers themselves are drawn, **SHATTER** breaks it into its faces,
-  hanging in the air. Any number on one artifact, in any order, on anything wild at any
-  depth (never a witnessed seeker); the scan records it as it is then, and is worth half
+  hanging in the air. Any number on one artifact, in any order, on anything wild, however
+  far into it you see (never a witnessed seeker); the scan records it as it is then, and is worth half
   as much again for every effect it took.
-- **Anomalies.** The world itself changed for four minutes, from the SHOP: what rises
-  wears the anomaly's mark, and every scan made in one is worth half as much again. **INVERSION** rolls the ship over into a stranger world (a pale
+- **Anomalies.** The world itself changed for four minutes, from the SHOP: every
+  artifact not yet recorded wears the anomaly's mark while it lasts, and every scan made in one is worth half as much again. **INVERSION** rolls the ship over into a stranger world (a pale
   forest hanging overhead, drawn out and twisting, the ground a negative of itself
-  ringed with lines of light, an abyss of violet below), and what rises is its own
-  negative; **SLOW TIME** slows everything but the ship, and what rises is a burst
-  stopped in time; **LONG NIGHT** holds midnight with the aurora at its full, and what
-  rises burns with its own light; **DISCHARGE** sends lightning walking through the
-  forest and fills the core faster, and what rises crackles with charge. Any of them at
-  once: then what rises wears every mark, and the mark of where they meet besides (waves
+  ringed with lines of light, an abyss of violet below), and what stands unrecorded is its own
+  negative; **SLOW TIME** slows everything but the ship, and it is a burst
+  stopped in time; **LONG NIGHT** holds midnight with the aurora at its full, and it
+  burns with its own light; **DISCHARGE** sends lightning walking through the
+  forest and fills the core faster, and it crackles with charge. Any of them at
+  once: then it wears every mark, and the mark of where they meet besides (waves
   rolling through it, bands, rings or a spiral of their colors, the same for the same
   combination and its own for each), and the music changes with each of them together
   (an inversion turns the chord upside down and makes its notes swell in backward, slow
@@ -200,15 +251,16 @@ to it and press E.
   DISCHARGE answer only to a pilot whose
   wallet holds a seeker of the right kind: one with the Nightfall background, one that
   has discharged (read from Robinhood Chain, nothing written).
-- **Life in the forest.** Now and then, in place of a wild artifact, something living,
-  suited to the place and the hour: a flock turning over the canopy that lifts and streams away when
-  the ship comes near (slower than the ship: it can be followed and held in the
-  sights), a herd grazing at a lake's shore that bolts for the trees, an owl at night on
-  a dead spruce turning its head to keep the ship in sight, a shoal leaping on a lake.
-  Each can be scanned (for half of what a wild artifact is worth), and takes effects and
-  marks like anything else; once the scanner reaches below, now and then their kin from
-  a depth: birds of glass, stags with antlers of light, owls with lantern eyes, fish of
-  light.
+- **Life in the forest.** Some sites hold something living, and it keeps to its place: a
+  flock turning over the canopy that lifts and streams away when the ship comes near
+  (slower than the ship: it can be followed and held in the sights), a herd grazing at a
+  lake's shore that bolts for the trees, an owl on a dead spruce turning its head to
+  keep the ship in sight (met by night only), a shoal leaping on a lake. Each can be
+  scanned (for half of what an artifact is worth), and takes effects and marks like
+  anything else; some have layers too, and to a pilot attuned they are their kin of the
+  strata: birds of glass, stags with antlers of light, owls with lantern eyes, fish of
+  light. A creature that flees keeps to its site until it is recorded, and is gone for
+  that pilot after.
 - **Witnessed seekers.** When a SEEKER NET seeker moves on Robinhood Chain while you
   fly, that seeker itself rises out of the fog, giant: its voxel model built from its own
   collection art as it is on the chain now (dormant ones dark by their stage, their
@@ -224,12 +276,11 @@ to it and press E.
   not replayed. Inside the ship, at the Codex or over coffee, an alert says so over
   everything, with the way out (GO OUTSIDE, or V; NOT NOW waves it off until the next
   move), and they rise farther off to give you time.
-- **The cabin's call.** Anywhere aboard (walking, at the controls, over coffee, at the
-  Codex) the ship calls when something rises ahead: two soft notes for a wild artifact,
-  and for witnessed seekers a golden rising call, twice, over a low swell. Away from the
-  ship's view, a wild one also gets a small note over everything (WILD ARTIFACT NEARBY,
-  with the way out) that goes by itself; a deep one names its depth and stratum (DEPTH
-  III · EMBER, or FROM BEYOND YOUR REACH), and its marks on the HUD are in its light.
+- **The cabin's call.** Nothing wild calls you out of the cabin: it will be there. A
+  site heard for the first time is a low swell from its side; one come into sight says
+  what it is (RESONANCE III · EMBER, and whether it goes deeper than you are attuned).
+  Only witnessed seekers call: anywhere aboard, a golden rising call, twice, over a low
+  swell.
 - **Their voices.** Every artifact has a voice of its own, from its seed and family
   (src/core/voices.js), and unlike the music: where the score holds long notes, an
   artifact pulses in time with its own light. A soft bed (breath through drifting
@@ -240,11 +291,11 @@ to it and press E.
   Quiet, in the game's tuning; heard from the ship (the nearest four at a time, under
   the EFFECTS volume, nearly dry, so it sits where it is): nearer is louder and
   brighter, farther is darker and a little wetter, panned by where it lies from the
-  nose, quieter behind. You hear one before you see it. One from the deep sings instead,
-  on a chord of the root's harmonics: the palette's own, and one more for every depth
-  down to its own (a pure third, then the eleventh, the thirteenth, the seventeenth...),
-  so the deeper, the stranger its intervals; in layers its depth opens, more of them the
-  deeper (struck bells, a slow chord, high twinkling, a figure on its steps, a resonator
+  nose, quieter behind. You hear one before you see it. One whose layers you see sings
+  instead, on a chord of the root's harmonics: the palette's own, and one more for every
+  layer seen (a pure third, then the eleventh, the thirteenth, the seventeenth...),
+  so the further in, the stranger its intervals; in layers that open with it, more of
+  them the further (struck bells, a slow chord, high twinkling, a figure on its steps, a resonator
   struck by noise, overtone song, a second rhythm against the first, swells that stop, a
   voice moving from vowel to vowel, a drifting cluster, falling cascades). It arrives
   with a call of its own, its chord struck upward like bells. Every artifact's voice
@@ -299,8 +350,14 @@ minute as a WAV file.
 ## The Codex computer
 
 - **LOG**: every artifact you recorded, its photograph, where it came from (wild: its
-  seed, yours alone; witnessed: the seeker, the block, the transaction, linked to the
+  place, with SET COURSE to fly back to it, its resonance and how far into it you saw; witnessed: the seeker, the block, the transaction, linked to the
   explorer, tagged in gold), and the notes. Share to the board.
+- **MAP**: the forest about the ship, north up (3, 8 or 20 km to its edge; Z), drawn from
+  the terrain itself: lakes, rivers, mountains and their snow, the turned stands. On it,
+  only what you know of: what you recorded (in the color you saw it to, ringed where
+  there is more to see now), the signals the receiver hears (its reach is the dashed
+  ring), and the places other pilots named on the BOARD. The rest stays to be found.
+  Choose one, or anywhere, and SET COURSE; or type a place code and FLY THERE.
 - **BOARD**: the seekers' board, on six free public Nostr relays (relay.damus.io, nos.lol,
   relay.primal.net, offchain.pub, nostr.mom, relay.nostr.net; no account). Anyone can read
   it, in the game or in any Nostr client (kind 1 notes tagged `#lowpasscodex`). Holders
@@ -310,7 +367,9 @@ minute as a WAV file.
   the relays that honor deletions). One post every 20 seconds (the button counts down).
   It reads like a conversation, newest at the bottom; ALL, SCANS and WORDS filter it. A
   scan's photograph shows as a thumbnail beside its words; a click or touch anywhere on
-  the message opens it where it is, and again closes it.
+  the message opens it where it is, and again closes it. A shared scan of a site carries
+  its place, with FLY THERE; any place code written in a post becomes a button that sets
+  a course there, and + WHERE I AM writes your own into what you are about to send.
 - **SEEKERS**: the seekers an address holds (connect or link your wallet, or type any
   address to view), and, for your own, BRING ABOARD / SEND BACK: live charge, stage,
   status, Discharge, Uplink, shares received since the last move, when it last moved, the
@@ -326,22 +385,23 @@ minute as a WAV file.
   board's. Each holder's scans open in a gallery (a click on their row, or ENTER).
 - **SHOP**: **DATA**, and what it buys. TRANSMIT sends every scan not yet sent for DATA
   (they stay in the LOG and on the leaderboard; each counts once): a wild scan is worth
-  10, and 10 more for every depth it came from (ten times that, if marked +); a
+  10, and 10 more for every layer of it that was seen (ten times that, if marked +); a
+  site scanned again further in brings only the difference; a
   witnessed one 40; an effect or an anomaly makes a scan worth half as much again, each.
   Four shelves, UPGRADES, EFFECTS, ANOMALIES and SHIPS (left and right). Three upgrades:
-  - **SCANNER DEPTH**, without end: the first depth costs 120 (twelve plain scans), each
-    next one twice the last; what a scan is worth grows only by its depth, so every
-    depth is harder to reach than the last.
+  - **ATTUNEMENT**, without end: the first level costs 120 (twelve plain scans), each
+    next one twice the last. Every level shows you one layer more of every artifact
+    that has it, and makes those scans worth more.
   - **PLASMA TANK**, five levels (40, 80, 130, 200, 300): seconds of a full boost, from
     5 to 15 (7, 9, 11, 13 between). The core gathers back about a quarter of a second's
     burn every second, so a small tank fills sooner; the PLASMA meter is as long as the
     tank is large.
-  - **SIGNAL GAIN**, five levels (80, 150, 250, 380, 550): how soon the next wild
-    artifact comes once the last is behind, from 100 to 170 seconds down to 52 to 92.
+  - **SIGNAL GAIN**, five levels (80, 150, 250, 380, 550): how far off the ship hears a
+    site, from 2.5 km to 5 (2.9, 3.3, 3.8, 4.4 between).
   The effects: three uses of GLITCH for 9 DATA, CHAOS 15, VOXEL 21, SHATTER 30, times
-  one more than the depth the scanner reaches (bought again when they run out). The
+  one more than your attunement (bought again when they run out). The
   anomalies:
-  60 DATA for every depth the scanner reaches and one more, each time one is started;
+  60 DATA for every level of attunement and one more, each time one is started;
   a keyed one says which seeker opens it, and CONNECT TO CHECK asks the wallet for its
   address only.
   And the hangar: five ships, each with its portrait, its pips (speed, turn, plasma,
@@ -459,7 +519,10 @@ and this file are not needed at runtime.
 ## Development
 
 - `?dev` adds `window.__lp`: `look('orb')` to orbit a fresh artifact of a family,
-  `deep(4, 'medusa')` one from a depth (a form, if named),
+  `layer('ring', 3, 6)` one as a pilot attuned to III sees it, holding six layers
+  (`sitesOff(false)` brings the sites back after), `att(4)` to attune, `sites()` what is
+  heard and built, `goto(x, z)`,
+  `deep(4, 'medusa')` a form of the deep standing alone,
   `fake('orb', 300, witness)` one ahead, `witness(token)` as if a seeker moved this
   moment, `sweep(7)` as if seven moved in one transaction, `clear()` to take them all
   away, `coffeeAt(seconds)` the coffee scene frozen at a moment, `freeze()`, `spawn(i)`
@@ -467,7 +530,7 @@ and this file are not needed at runtime.
   browser's frames, `mockWallet(testKeyHex)` a stand-in wallet with a throwaway key.
   `?stats` shows frame numbers (F3 toggles them). `?play` skips the title, `?t=0.3`
   starts at an hour of the day, `?x=&z=` at a place.
-- `?offline` skips the chain: every artifact is wild.
+- `?offline` skips the chain: no witnessed seekers rise.
 - `node tools/relay.mjs 7777` runs a tiny Nostr relay in memory; open the game with
   `?dev&relay=ws://localhost:7777` to try the board without writing to public relays
   (the `relay` option works only with `?dev`, and only for a relay on this machine).
@@ -487,8 +550,9 @@ src/main.js, src/game.js  start-up (and the stylesheet check, src/build.js), the
                           the frame
 src/render/               the pipeline (opaque, fog and sky, glows, grade and dither),
                           materials, the geometry builder
-src/world/                terrain, trees, chunks with a floating origin, the canopy map
-                          for light shafts, day, night and fog, the anomalies
+src/world/                terrain, the sites (where every artifact stands), trees, chunks
+                          with a floating origin, the canopy map for light shafts, day,
+                          night and fog, the anomalies
 src/ground/               what happens off the ship
 src/ship/                 the ships (their designs and hulls) and their flight, cameras,
                           the cabins and their books, the Seeker, the coffee scene, the
@@ -499,14 +563,15 @@ src/artifacts/            from a seed or a move to an artifact: generation, mode
                           mountains' own, the turned stands' own, the rivers' own, the
                           instruments; life in
                           the forest; a few more (the field flies them); the effects
-                          (fx.js); the deep: its strata, its descriptions, its forms
+                          (fx.js); the deep: its strata, its descriptions, its forms and
+                          their kit, the layers of a site; more families (sets/)
 src/companion/            a seeker aboard: its voxel model (after Soundings, also the
                           witnessed giants'), its lines, its hovering and talking
 src/chain/                Robinhood Chain reads, the move watcher, the block clock, the
                           seekers' art
 src/net/                  BIP-340 Schnorr, Nostr, the wallet link, the board, the leaderboard
 src/core/                 math, palette, input, storage, keccak, the score, the artifacts'
-                          voices, the foley, progress (DATA, depth, upgrades, ships)
+                          voices, the foley, progress (DATA, attunement, upgrades, ships)
 src/ui/                   HUD, the Codex computer, menus, reading, touch
 assets/                   fonts, SEEKER NET art atlas and metadata, shipped moves
 vendor/                   three.js r170, noble-secp256k1

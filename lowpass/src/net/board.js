@@ -1,3 +1,4 @@
+import { placeCode, placeOf } from '../world/sites.js';
 import { Pool, RELAYS, boardKey, checkEvent, signEvent } from './nostr.js';
 import { checkLink, savedLink, link as linkWallet, forget } from './wallet.js';
 import { load, save, boardAll, boardKeep } from '../core/store.js';
@@ -278,7 +279,9 @@ export class Board {
       const s = tag(ev, 'lp-scan');
       if (!s || !/^0x[0-9a-f]{64}$/i.test(s[1] || '')) return;
       post.scan = { tx: s[1].toLowerCase(), block: Number(s[2]) || null, tokens: String(s[3] || '').split(',').map(Number).filter((n) => n >= 1 && n <= 2222).slice(0, 40), name: String(s[4] || '').slice(0, 60), code: String(s[5] || '').slice(0, 14), family: String(s[6] || '').slice(0, 12), kind: s[7] === 'wild' ? 'wild' : s[7] === 'witnessed' ? 'witnessed' : 'move', depth: Math.max(0, Math.min(999, parseInt(s[8], 10) || 0)) };
-      post.scan.plus = /^D\d+\+/.test(post.scan.code);
+      post.scan.plus = /^D\d+\+/.test(post.scan.code) || /\+$/.test(post.scan.name);
+      const pl = tag(ev, 'lp-place'), q = pl ? placeOf(pl[1]) : null;
+      if (q) post.scan.place = { ...q, code: placeCode(q.x, q.z) };
       if (post.scan.kind === 'wild') post.scan.tokens = [];
       const ph = tag(ev, 'lp-photo');
       if (ph && typeof ph[1] === 'string' && ph[1].length <= MAX_PHOTO && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(ph[1])) post.photo = ph[1];
@@ -364,7 +367,10 @@ export class Board {
       const kind = entry.kind || 'move';
       tags.push(['lp-scan', entry.hash || entry.tx, String(entry.block || ''), entry.tokens.join(','), entry.name, entry.code, entry.family, kind, String(entry.depth || 0)]);
       tags.push(['lp-photo', entry.photo]);
-      const origin = kind === 'wild' ? 'A wild one: no other ship will find it.' : kind === 'witnessed' ? `Witnessed: it rose when SEEKER #${entry.lead} moved, for every ship flying then.` : `It appeared when SEEKER #${entry.lead} moved.`;
+      // where it stands, for anyone to fly to (a site's)
+      const place = entry.site && Number.isFinite(entry.x) ? placeCode(entry.x, entry.z) : null;
+      if (place) tags.push(['lp-place', place]);
+      const origin = kind === 'wild' ? (place ? `A wild one; it stands at ${place}, for any ship.` : 'A wild one: no other ship will find it.') : kind === 'witnessed' ? `Witnessed: it rose when SEEKER #${entry.lead} moved, for every ship flying then.` : `It appeared when SEEKER #${entry.lead} moved.`;
       content = `${entry.name} (${entry.code}), scanned over the Fog Belt in Low Pass. ${origin}${text ? `\n\n${text}` : ''}`;
     }
     const ev = await signEvent({ kind: 1, tags, content }, this.key);

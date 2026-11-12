@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "71e21c89"; }
+:root { --build: "b4664840"; }
 
 :root {
   --u: 3px;
@@ -68,8 +68,14 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 .hud .signal .mark { position: absolute; bottom: calc(var(--u) * -3); width: calc(var(--u) * 5); height: calc(var(--u) * 5); margin-left: calc(var(--u) * -2.5); background: var(--glow2); transform: rotate(45deg); box-shadow: 0 0 calc(var(--u) * 4) var(--glow); animation: beat 0.667s steps(2) infinite; }
 .hud .signal .mark.edge { background: var(--muted); box-shadow: none; }
 .hud .signal .mark.other { width: calc(var(--u) * 3); height: calc(var(--u) * 3); margin-left: calc(var(--u) * -1.5); bottom: calc(var(--u) * -2); opacity: 0.75; animation: none; box-shadow: none; }
-.hud .signal.special .mark.other { background: var(--gold); }
+.hud .signal .mark.other.gold { background: var(--gold); opacity: 1; }
 .hud .signal .mark.other.edge { opacity: 0.4; }
+.hud .signal.faint .mark { opacity: 0.55; box-shadow: none; }
+.hud .signal.course .mark:not(.other), .hud .signal .mark.other.course { background: transparent; border: var(--u) solid var(--acc); box-shadow: none; animation: none; opacity: 1; }
+.hud .signal.course .label { color: var(--acc); }
+/* (a narrow screen: the strip under the status line, not across it) */
+@media (max-width: 640px) { .hud .signal { top: calc(var(--u) * 22); } }
+.term .uwhat { color: var(--muted); }
 /* seekers moved while you are inside: over everything, even the Codex */
 .alarm { position: absolute; left: 0; right: 0; margin: 0 auto; top: calc(var(--u) * 8 + var(--st)); width: min(calc(100vw - var(--u) * 16), calc(var(--u) * 190)); z-index: 30; display: grid; grid-template-columns: auto 1fr; column-gap: calc(var(--u) * 5); row-gap: calc(var(--u) * 2); align-items: center; padding: calc(var(--u) * 4) calc(var(--u) * 6); background: rgba(4, 6, 10, 0.94); border: var(--u) solid var(--gold); clip-path: var(--cut2); opacity: 0; transform: translateY(calc(var(--u) * -6)); transition: opacity 0.3s, transform 0.3s steps(3); pointer-events: none; }
 .alarm.on { opacity: 1; transform: none; pointer-events: auto; animation: alarm 1.333s steps(2) infinite; }
@@ -93,12 +99,12 @@ html.touchmode .alarm .arow .muted { display: none; }
 .hud .bracket.special > i { border-color: var(--gold); }
 .hud .bracket.special .bbar i { background: var(--gold); }
 .hud .bracket.special .blabel { color: var(--gold); }
-.hud .signal.special .mark { background: var(--gold); box-shadow: 0 0 calc(var(--u) * 5) var(--gold); }
+.hud .signal.special .mark:not(.other) { background: var(--gold); box-shadow: 0 0 calc(var(--u) * 5) var(--gold); }
 /* a deep one's marks, in its stratum's light */
 .hud .bracket.deep > i { border-color: var(--deep); }
 .hud .bracket.deep .bbar i { background: var(--deep); }
 .hud .bracket.deep .blabel { color: var(--deep); }
-.hud .signal.deep .mark { background: var(--deep); box-shadow: 0 0 calc(var(--u) * 5) var(--deep); }
+.hud .signal.deep .mark:not(.other) { background: var(--deep); box-shadow: 0 0 calc(var(--u) * 5) var(--deep); }
 .term .well.witnessed { border-color: var(--gold); }
 .term .well .wtag { position: absolute; left: var(--u); bottom: var(--u); padding: 0 var(--u); background: rgba(4, 6, 10, 0.75); color: var(--gold); font-size: var(--px); line-height: calc(var(--u) * 10); }
 #ui .gold { color: var(--gold); }
@@ -334,6 +340,22 @@ html.touchmode .term .hangar { touch-action: pan-y; }
 .term .shipc .srow { display: flex; justify-content: space-between; align-items: center; gap: calc(var(--u) * 3); }
 .term .shipc .pips i { width: calc(var(--u) * 3); height: calc(var(--u) * 3); }
 .term .shipc .pips i.on { background: var(--core); border-color: var(--core); }
+/* the MAP: the forest about the ship beside what is chosen */
+.term .mapwrap { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: calc(var(--u) * 8); }
+.term .mapleft { display: flex; flex-direction: column; gap: calc(var(--u) * 3); min-height: 0; align-items: center; }
+.term .mapcv { width: 100%; max-width: min(100%, 62vh); aspect-ratio: 1; border: var(--u) solid var(--line); image-rendering: pixelated; cursor: crosshair; display: block; }
+.term .mapzoom { justify-content: center; }
+.term .maplegend { display: flex; gap: calc(var(--u) * 5); flex-wrap: wrap; justify-content: center; }
+.term .maplegend span { display: inline-flex; align-items: center; gap: calc(var(--u) * 2); }
+.term .maplegend .lg { width: calc(var(--u) * 3); height: calc(var(--u) * 3); display: inline-block; }
+.term .maplegend .lg.rec { background: #cfd6dc; border-radius: 50%; }
+.term .maplegend .lg.sig { border: var(--u) solid var(--glow2); transform: rotate(45deg); }
+.term .maplegend .lg.shared { background: var(--gold); }
+.term .mappanel { overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 4); }
+.term .mapsel { display: flex; flex-direction: column; gap: calc(var(--u) * 3); border-top: var(--u) solid var(--line); padding-top: calc(var(--u) * 3); }
+#ui .chip.inl { padding: 0 calc(var(--u) * 2); margin-left: calc(var(--u) * 1); color: var(--amber); border-color: rgba(201, 162, 107, 0.5); }
+#ui .chip.inl.place { margin: 0 calc(var(--u) * 1); }
+@media (max-width: 700px), (orientation: portrait) { .term .mapwrap { grid-template-columns: minmax(0, 1fr); overflow-y: auto; } .term .mapcv { max-width: 100%; } .term .mappanel { overflow: visible; } }
 @media (max-width: 700px), (orientation: portrait) { .term .shipc { grid-template-columns: minmax(0, 1fr); } .term .shipc .sport { max-width: calc(var(--u) * 150); } }
 .term .rsubmit { display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--u) * 2) calc(var(--u) * 4); padding-top: calc(var(--u) * 3); border-top: var(--u) solid var(--line); }
 .term .rsubmit > .muted:first-child { flex: 1 1 calc(var(--u) * 120); }

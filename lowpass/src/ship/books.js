@@ -39,7 +39,7 @@ export const BOOKS = {
       'Day 9. A signal over the black lake. Missed it, turned too late. Learned that turning back is not a thing out here. Made coffee about it.',
       'Day 23. The fog came up through the birches like steam off a cup. I flew low and slow through a turned stand and did not scan anything at all. Best day so far.',
       'Day 40. A seeker moved on the chain while I was asleep at the controls. Woke to the alarm and went out just in time. It was enormous. It turned its head to watch me go. I waved. I do not know why.',
-      'Day 61. Bought the deeper scanner. Everything is stranger now, and larger, and sings. I keep the volume low and the window open.',
+      'Day 61. Attuned further. Everything is stranger now, and larger, and sings. I keep the volume low and the window open.',
       'Day 88. Leaving this log on the shelf for whoever flies her next. She still pulls to the left. Let her.',
     ],
   },

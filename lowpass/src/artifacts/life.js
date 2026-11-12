@@ -46,16 +46,16 @@ export function describeLife(d, move, R1, R3) {
   d.grand = false;
   const noun = R3.pick(S.nouns), r = R3();
   d.name = st ? `The ${st.name} ${noun}` : r < 0.55 ? `The ${R3.pick(ADJ)} ${noun}` : `${R3.pick(ADJ)} ${noun} ${R3.pick(OF)}`;
-  d.code = `${depth ? `D${depth}-` : ''}${S.code}-${(move.seed || move.tx).slice(2, 6).toUpperCase()}`;
+  d.code = `${S.code}-${(move.seed || move.tx).slice(2, 6).toUpperCase()}`;
   d.cls = S.cls;
-  d.structure = st ? `Out of Depth ${roman(depth)}: ${S.deep}, in the colors of ${st.title}.` : {
+  d.structure = st ? `Seen to ${roman(depth)}: ${S.deep}, in the colors of ${st.title}.` : {
     flock: `${P.n} birds turning over the canopy; come near, and they lift and stream away.`,
     deer: `${P.n} deer at the edge of the trees, grazing; one of them carries antlers.`,
     owl: 'An owl on a dead spruce, over the forest; it turns its head to keep the ship in sight.',
     fish: `A shoal under the lake's skin, leaping one at a time; ${P.n} of them.`,
   }[sp];
   d.hint = { flock: 'Held in the sights while it streams away.', deer: 'Scanned from far enough off, before they bolt.', owl: 'Only at night.', fish: 'Only over the lakes.' }[sp];
-  d.origin = st ? `From Depth ${roman(depth)}: life from below, found by this ship alone.` : 'Life of the fog belt, met by this ship alone.';
+  d.origin = st ? `Life of the fog belt, as one attuned to ${roman(depth)} sees it; it keeps to this place.` : 'Life of the fog belt; it keeps to this place.';
 }
 
 // ------------------------------------------------------------------ the bodies

@@ -2,7 +2,9 @@ import { el, clear, ago, dateStr, short, key } from './dom.js';
 import { Board, hasLink } from '../net/board.js';
 import { Ranks } from '../net/ranks.js';
 import { load, save, codexPut } from '../core/store.js';
-import { valueOf, MAX } from '../core/progress.js';
+import { valueOf, owedFor, MAX } from '../core/progress.js';
+import { placeCode } from '../world/sites.js';
+import { CodexMap, placesIn } from './map.js';
 import { stratum, harmonicOf } from '../artifacts/strata.js';
 import { discover, connect, connected, disconnect } from '../net/wallet.js';
 import * as art from '../chain/art.js';
@@ -15,22 +17,23 @@ import { ANOMALIES, ANOMALY_SECS, AT_ONCE, anomalyCost, readKeys } from '../worl
 const SHELVES = [['upgrades', 'UPGRADES'], ['fx', 'EFFECTS'], ['anomalies', 'ANOMALIES'], ['ships', 'SHIPS']];
 import { portrait } from '../ship/portrait.js';
 
-// The Codex computer. Five tabs:
+// The Codex computer. Six tabs:
 //   LOG      what you have recorded: each photograph, its name, where it came from, the
-//            Codex's notes; share it to the board.
+//            Codex's notes; share it to the board; set course back to it.
+//   MAP      the forest about the ship, and what you know of it (map.js): set a course.
 //   BOARD    the seekers' board on Nostr: scans and words from holders, readable by all.
 //   SEEKERS  your SEEKER NET devices: charge, stage, Discharge, Uplink, shares, traits,
 //            and when each should activate; and the wallet link that lets you post.
 //   LEADERS  the holders who submitted their scans, witnessed ones first (ranks.js), each
 //            with a gallery of what they recorded; and your own submission.
 //   SHOP     DATA: transmit your scans for it (they stay in the Codex), and spend it on
-//            the scanner's depth, the plasma tank and the signal gain (progress.js), or
+//            attunement, the plasma tank and the signal gain (progress.js), or
 //            on ships (designs.js), boarded from here.
 // Keys: TAB changes tab, arrows move, ENTER chooses, ESC closes. Text fields take the keys
 // while they have focus.
 
-const TABS = ['log', 'board', 'seekers', 'ranks', 'shop'];
-const NAMES = { log: 'LOG', board: 'BOARD', seekers: 'SEEKERS', ranks: 'LEADERS', shop: 'SHOP' };
+const TABS = ['log', 'map', 'board', 'seekers', 'ranks', 'shop'];
+const NAMES = { log: 'LOG', map: 'MAP', board: 'BOARD', seekers: 'SEEKERS', ranks: 'LEADERS', shop: 'SHOP' };
 const hexCss = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0');
 const depthColor = (d) => (d ? hexCss(stratum(d).light) : 'var(--muted)');
 const DAY = 86400000;
@@ -65,6 +68,7 @@ export class Terminal {
     this.board = null;
     this.seekers = { address: null, ids: null, state: new Map(), loading: false, err: '', sel: 0, view: null, net: null };
     this._tick = 0;
+    this.map = new CodexMap(this);
   }
 
   show(tab) {
@@ -138,6 +142,7 @@ export class Terminal {
       return;
     }
     if (this.tab === 'ranks') { this._rankKeys(input); return; }
+    if (this.tab === 'map') { this.map.keys(input); return; }
     if (this.tab === 'shop') { this._shopKeys(input); return; }
     const n = this.tab === 'log' ? this.game.codex.length : this.tab === 'seekers' ? (this.seekers.ids || []).length : 0;
     if (!n) return;
@@ -161,6 +166,7 @@ export class Terminal {
     if (this._tick > 0.5) {
       this._tick = 0;
       if (this.tab === 'seekers' && this._chargeEl) this._renderCharge();
+      if (this.tab === 'map') this.map.update();
     }
   }
 
@@ -173,6 +179,7 @@ export class Terminal {
     if (this.tab === 'board') save('board.seen', Date.now());
     if (this.tab === 'log') this._log();
     else if (this.tab === 'board') this._board();
+    else if (this.tab === 'map') this.map.render(this.body);
     else if (this.tab === 'ranks') this._ranks();
     else if (this.tab === 'shop') this._shop();
     else this._seekersTab();
@@ -180,6 +187,7 @@ export class Terminal {
     const k = (cap, what) => { const s = el('span', 'kr', f); key(s, cap); el('span', '', s, what); };
     k('TAB', 'tab');
     if (this.tab === 'ranks') k(this.gallery ? '←→' : '↑↓', 'choose');
+    else if (this.tab === 'map') { k('←→', 'choose'); k('ENTER', 'set course'); k('Z', 'zoom'); }
     else if (this.tab !== 'board' && this.tab !== 'shop') k('←→', 'choose');
     if (this.tab === 'ranks' && !this.gallery) k('ENTER', 'their scans');
     if (this.tab === 'shop') { k('←→', 'shelves'); k('↑↓', 'choose'); k('ENTER', 'select'); }
@@ -194,7 +202,7 @@ export class Terminal {
     if (!list.length) {
       const e = el('div', 'empty', this.body);
       el('div', 'big', e, 'NOTHING RECORDED YET');
-      el('div', 'muted', e, `Lights in the fog are artifacts. Most grow for you alone: nobody else will ever find the same one. But when a SEEKER NET seeker moves on chain while you fly, that seeker itself rises out of the fog, giant: witnessed, the same for every ship flying then. Steer toward a light, and hold ${g.input.touchMode ? 'SCAN' : 'SPACE'} while it is in your sights.`);
+      el('div', 'muted', e, `Artifacts stand in the forest, each at its own place, the same for every ship. The mark along the top of the view points to the nearest one you have not recorded. Fly to it, and hold ${g.input.touchMode ? 'SCAN' : 'SPACE'} while it is in your sights. When a SEEKER NET seeker moves on chain while you fly, that seeker itself rises out of the fog, giant: witnessed, the same for every ship flying then.`);
       if (g.moves.waiting) el('div', 'muted', e, `${g.moves.waiting} witnessed move${g.moves.waiting === 1 ? '' : 's'} waiting in the fog.`);
       return;
     }
@@ -208,7 +216,7 @@ export class Terminal {
       img.src = e.photo;
       img.alt = e.name;
       if (e.special) el('span', 'wtag', w, 'WITNESSED');
-      else if (e.depth) { const tg = el('span', 'wtag', w, `DEPTH ${stratum(e.depth).numeral}${e.plus ? '+' : ''}`); tg.style.color = depthColor(e.depth); w.style.borderColor = depthColor(e.depth); }
+      else if (e.depth) { const tg = el('span', 'wtag', w, `${stratum(e.depth).numeral}${e.plus ? '+' : ''} · ${stratum(e.depth).name.toUpperCase()}`); tg.style.color = depthColor(e.depth); w.style.borderColor = depthColor(e.depth); }
       w.onclick = () => { this.sel = i; this.render(); this.game.audio.play('ui', { h: 24 }); };
     });
     const e = list[this.sel];
@@ -221,8 +229,18 @@ export class Terminal {
     const o = el('div', 'rows', d);
     const row = (k, v, cls) => { const r = el('div', 'row', o); el('span', 'k', r, k); return el('span', 'v ' + (cls || ''), r, v); };
     if (e.kind === 'wild') {
-      row('ORIGIN', e.mountain ? 'WILD · on the mountain · found by this ship alone' : e.river ? 'WILD · on the river · found by this ship alone' : e.autumn ? 'WILD · among the gold birches · found by this ship alone' : 'WILD · found by this ship alone');
-      if (e.depth) row('DEPTH', `${stratum(e.depth).numeral}${e.plus ? '+ · MARKED' : ''} · ${stratum(e.depth).title}`).style.color = depthColor(e.depth);
+      const where = e.mountain ? ' · on the mountain' : e.river ? ' · on the river' : e.autumn ? ' · among the gold birches' : '';
+      // (a site's: it stands there for any ship; before the survey, they grew for one ship alone)
+      row('ORIGIN', e.site ? `WILD${where} · it stands there for every ship` : `WILD${where} · found by this ship alone`);
+      if (e.site && e.x !== undefined) {
+        const v = row('PLACE', `${placeCode(e.x, e.z)} · ${km(Math.hypot(e.x - g.ship.x, e.z - g.ship.z))} `);
+        const go = el('button', 'chip inl', v, 'SET COURSE');
+        go.onclick = () => { g.course.set(e.x, e.z, e.name); this.render(); };
+      }
+      if (e.site) {
+        const r = row('RESONANCE', !e.res ? 'none: all of it is at the surface' : `${stratum(e.res).numeral} · seen ${(e.depth || 0) >= e.res ? 'whole' : e.depth ? `to ${stratum(e.depth).numeral}${e.plus ? '+ · MARKED' : ''}, ${stratum(e.depth).title}` : 'not at all yet'}`);
+        if (e.depth) r.style.color = depthColor(e.depth);
+      } else if (e.depth) row('DEPTH', `${stratum(e.depth).numeral}${e.plus ? '+ · MARKED' : ''} · ${stratum(e.depth).title}`).style.color = depthColor(e.depth);
       if (e.fx && e.fx.length) row('EFFECTS', e.fx.map((id) => DONE[id] || id).join(', '));
       row('SEED', `${e.tx.slice(0, 10)}…${e.tx.slice(-6)}`, 'muted');
     } else {
@@ -238,7 +256,7 @@ export class Terminal {
       a.rel = 'noopener noreferrer';
     }
     row('RECORDED', `${dateStr(e.scannedAt)} · ${e.clock} on the planet`);
-    row('DATA', `${valueOf(e)}${e.sent ? ' · transmitted' : ' · not transmitted yet'}`, e.sent ? 'muted' : 'pos');
+    row('DATA', `${valueOf(e)}${e.sent ? ' · transmitted' : e.paid ? ` · ${owedFor(e)} more to transmit` : ' · not transmitted yet'}`, e.sent ? 'muted' : 'pos');
     const notes = el('div', 'notes', d);
     for (const n of e.notes) el('div', '', notes, n);
     // share
@@ -274,6 +292,19 @@ export class Terminal {
       const b = el('button', 'btn ghost', share, 'LINK A WALLET TO SHARE');
       b.onclick = () => this._toLink();
     }
+  }
+
+  // a post's words, with any place codes in them made buttons that set a course there
+  _words(parent, text) {
+    let at = 0;
+    for (const q of placesIn(text)) {
+      if (q.index > at) parent.append(document.createTextNode(text.slice(at, q.index)));
+      const b = el('button', 'chip inl place', parent, q.code);
+      b.title = 'set a course there';
+      b.onclick = (ev) => { ev.stopPropagation(); this.game.course.set(q.x, q.z, ''); this.game.audio.play('ui', { h: 28 }); };
+      at = q.index + q.code.length;
+    }
+    if (at < text.length) parent.append(document.createTextNode(text.slice(at)));
   }
 
   _textField(parent, placeholder, max) {
@@ -349,12 +380,13 @@ export class Terminal {
     if (this.shelf === 'ships') { this._ships(wrap, sel); return; }
     if (this.shelf === 'fx') { this._effects(wrap, sel); return; }
     if (this.shelf === 'anomalies') { this._anomalies(wrap, sel); return; }
-    const card = (kind, name, verb) => {
+    const card = (kind, name, verb, what = '') => {
       const c = el('div', 'upg' + (sel === kind ? ' sel' : ''), wrap);
       const head = el('div', 'uhead', c);
       el('div', 'uname', head, name);
+      if (what) el('div', 'fine uwhat', c, what);
       if (kind === 'depth') {
-        const cur = el('div', 'ucur', head, pr.depth ? `${stratum(pr.depth).numeral} · ${stratum(pr.depth).name.toUpperCase()}` : 'SURFACE');
+        const cur = el('div', 'ucur', head, pr.depth ? `${stratum(pr.depth).numeral} · ${stratum(pr.depth).name.toUpperCase()}` : 'UNATTUNED');
         cur.style.color = depthColor(pr.depth);
       } else {
         const pips = el('div', 'pips', head);
@@ -369,9 +401,9 @@ export class Terminal {
       b.onclick = () => this._buy(kind);
       if (this._shopMsg && this._shopMsg.kind === kind) { const m = el('div', 'msg', c, this._shopMsg.text); m.style.color = kind === 'depth' ? depthColor(pr.depth) : 'var(--acc)'; this._shopMsg = null; }
     };
-    card('depth', 'SCANNER DEPTH', 'TUNE DEEPER');
+    card('depth', 'ATTUNEMENT', 'ATTUNE FURTHER', 'how far into every artifact you see · each layer makes its scan worth more');
     card('tank', 'PLASMA TANK', 'UPGRADE');
-    card('gain', 'SIGNAL GAIN', 'UPGRADE');
+    card('gain', 'SIGNAL GAIN', 'UPGRADE', 'how far off the ship hears a site');
   }
 
   // the emitters: a card each, its color, what it does, BUY or OWNED; and once, how
@@ -548,7 +580,7 @@ export class Terminal {
     const g = this.game, pr = g.progress;
     const { list, value } = pr.unsent(g.codex);
     if (!list.length) return;
-    for (const e of list) { e.sent = true; const { img, ...stored } = e; codexPut(stored); }
+    for (const e of list) { e.paid = valueOf(e); e.sent = true; const { img, ...stored } = e; codexPut(stored); }
     const from = pr.data;
     pr.credit(value);
     g.audio.play('transmit', { n: list.length });
@@ -568,7 +600,8 @@ export class Terminal {
     const g = this.game, pr = g.progress;
     if (!pr.buy(kind)) { g.audio.play('error'); return; }
     g.audio.play('buy', kind === 'depth' ? { harm: harmonicOf(pr.depth) } : {});
-    const text = kind === 'depth' ? `Depth ${stratum(pr.depth).numeral} reached.` : kind === 'tank' ? (pr.tank >= MAX.tank ? 'The tank is as large as it gets.' : 'A larger tank.') : (pr.gain >= MAX.gain ? 'The gain is as high as it goes.' : 'More signals in the fog.');
+    if (kind === 'depth') g.field.reattune();
+    const text = kind === 'depth' ? `Attuned to ${stratum(pr.depth).numeral}, ${stratum(pr.depth).title}. Every artifact shows you more.` : kind === 'tank' ? (pr.tank >= MAX.tank ? 'The tank is as large as it gets.' : 'A larger tank.') : (pr.gain >= MAX.gain ? 'The gain is as high as it goes.' : 'The ship hears farther.');
     this._shopMsg = { kind, text };
     this.render();
   }
@@ -629,6 +662,9 @@ export class Terminal {
       };
       this._countdown(nameBtn, 'SAVE', 'SAVE IN', () => b.nameWait);
       const input = this._textField(comp, 'Words for the board: text only, no links (280)', 280);
+      // where you are, in words anyone can fly to
+      const here = el('button', 'chip', comp, '+ WHERE I AM');
+      here.onclick = () => { const c = placeCode(this.game.ship.x, this.game.ship.z); input.value = `${input.value.trim()}${input.value.trim() ? ' ' : ''}${c}`.slice(0, 280); input.focus(); };
       const send = el('button', 'btn', comp, 'SEND');
       const msg = el('div', 'msg', comp);
       send.onclick = async () => {
@@ -712,12 +748,17 @@ export class Terminal {
         }
         const t = el('div', 'ptext', row);
         el('div', 'name', t, p.scan.name || 'An artifact');
-        el('div', 'muted', t, `${p.scan.code}${p.scan.kind === 'wild' ? `${p.scan.depth ? ` · DEPTH ${stratum(p.scan.depth).numeral}${p.scan.plus ? '+' : ''}` : ''} · WILD, FOUND BY ONE SHIP` : p.scan.tokens.length ? ` · ${p.scan.kind === 'witnessed' ? 'WITNESSED · ' : ''}SEEKER #${p.scan.tokens[0]}` : ''}`);
-        if (p.note) el('div', '', t, p.note);
+        el('div', 'muted', t, `${p.scan.code}${p.scan.kind === 'wild' ? `${p.scan.depth ? ` · SEEN TO ${stratum(p.scan.depth).numeral}${p.scan.plus ? '+' : ''}` : ''} · WILD` : p.scan.tokens.length ? ` · ${p.scan.kind === 'witnessed' ? 'WITNESSED · ' : ''}SEEKER #${p.scan.tokens[0]}` : ''}`);
+        if (p.scan.place) {
+          const pl = el('div', 'muted', t, `${p.scan.place.code} · ${km(Math.hypot(p.scan.place.x - this.game.ship.x, p.scan.place.z - this.game.ship.z))} `);
+          const go = el('button', 'chip inl', pl, 'FLY THERE');
+          go.onclick = (ev) => { ev.stopPropagation(); this.game.course.set(p.scan.place.x, p.scan.place.z, p.scan.name); this.game.audio.play('ui', { h: 28 }); };
+        }
+        if (p.note) this._words(el('div', '', t), p.note);
         const known = this.game.codex.find((e) => (e.hash || e.tx) === p.scan.tx && (e.kind === 'wild' || !p.scan.tokens.length || e.lead === p.scan.tokens[0]));
         if (known) el('div', 'pos', t, 'You recorded this one too.');
       } else {
-        el('div', 'ptext', card, p.text);
+        this._words(el('div', 'ptext', card), p.text);
       }
     }
     if (pinned) { list.scrollTop = list.scrollHeight; requestAnimationFrame(toEnd); }
@@ -1253,3 +1294,5 @@ function lookOf(st) {
   if (st.status === 1 || st.status === 2 || charge > 9000) return { activated: true };
   return { activated: false, stage: Math.min(Math.floor((charge * 6) / 9000), 5) + 1 };
 }
+
+function km(d) { return d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d)} m`; }

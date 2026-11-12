@@ -9,23 +9,32 @@ import { FOG } from '../render/pipeline.js';
 import { WATER, canopyTop, riverAt } from '../world/terrain.js';
 import { angleDelta, clamp, TAU, damp } from '../core/math.js';
 import { SPECIES } from './species.js';
+import { sitesNear, HEAR, FAINT } from '../world/sites.js';
+import { LANDING_DEPTH } from '../core/progress.js';
 
-// The artifacts in the forest: where each appears, the clearing it makes, its light in
-// the fog and on the trees, its pulse, the scanner's lock and hold, and when it is left
-// behind for good.
+// The artifacts in the forest: where each stands, the clearing it makes, its light in
+// the fog and on the trees, its pulse, the scanner's lock and hold.
 //
-// A wild one (unique to this player) every minute or two, or, when seekers have moved
-// while you fly, their witnessed artifacts (the same for everyone flying then;
+// Nothing is spawned for anyone. Every wild artifact has its place (sites.js: a pure
+// function of the world's seed), the same for every ship: the field only builds the ones
+// near enough to be met (BUILD_R), as far into each as this pilot is attuned (its layers:
+// deep.js, layers.js), and puts them away again once they are far behind (DROP_R); they
+// are there when the ship comes back. The ship's receiver hears the sites not yet
+// recorded (or with more to see than was recorded) out to its range (the gain: HEAR),
+// and the HUD marks their bearings: where to fly is the pilot's to choose, and nothing is
+// lost by staying in the cabin a while. A site recorded stands on as it was; attuned
+// further, it shows more, and can be scanned again for the difference.
+//
+// The one thing that still comes to the ship: when seekers move on chain while you fly,
+// their witnessed artifacts rise ahead of the nose (the same for everyone flying then;
 // generate.js): one for each seeker that moved, all at once, so a sweep fills the fog
 // ahead with them, spread out, more than one ship can scan before it has flown past.
-//
-// A lone artifact appears just beyond what the fog lets you see, close and nearly dead
-// ahead, so it always comes out of the fog in front of you. Until you have seen it, it
-// keeps ahead of the nose wherever you turn; once seen, it stays where it stands. Those
-// of a sweep stand where they rose from the first. Everything materializes in the
-// ordered dither, so nothing pops into view. The scanner looks at whichever of them is
-// most nearly ahead. Once you have come near one and lost it from sight (or left one far
-// behind), it goes back into the fog, dissolving the way it came: no turning back for it.
+// A witnessed one appears just beyond what the fog lets you see, close and nearly dead
+// ahead; until you have seen it, it keeps ahead of the nose wherever you turn; once seen,
+// it stays where it stands. Those of a sweep stand where they rose from the first. Once
+// you have come near one and lost it from sight (or left one far behind), it goes back
+// into the fog, dissolving the way it came. Everything materializes in the ordered
+// dither, so nothing pops into view. The scanner looks at whichever is most nearly ahead.
 //
 // A creature (species.js) is otherwise: it hangs in the air until the ship comes near,
 // then flees, swerving, bolting, tiring as it is chased (slower in the end than any
@@ -48,6 +57,8 @@ const FADE_SECS = 2.4;        // going back into the fog
 // creatures: when one notices the ship, how slow it is when spent, how far it lets the
 // ship fall behind before it waits, and its height over the canopy
 const NOTICE = 240, TIRED = 13, LEASH = 400, FLY_Y = 18;
+const BUILD_R = 1150;         // a site this near is built; DROP_R: this far behind, put away
+const DROP_R = 1500;
 const CR_CONE = [0.42, 0.3];  // a creature's sights: this far off the nose, and wider close by
 
 export class Field {
@@ -63,11 +74,129 @@ export class Field {
     this.onGate = null;
     this.onMissed = null;
     this._v = new THREE.Vector3();
+    // the sites: those built (key -> artifact), those heard (not yet recorded, in the
+    // receiver's range, nearest first), what was fired at ones since put away
+    this.sites = new Map();
+    this.signals = [];
+    this.heard = new Set();
+    this.kept = new Map();
+    this.cool = new Map();
+    this._sv = 0;
+    this.record = () => null;   // a site's seed -> its Codex entry, if it was recorded
+    this.onSignal = null;       // a site heard for the first time
+    this.onNear = null;         // a site's artifact come into sight
   }
 
   // (life in the forest comes and goes on its own: it holds nothing back)
   get pending() {
-    return this.active.find((a) => !a.scanned && !a.passed && a.d.family !== 'life') || null;
+    return this.active.find((a) => !a.scanned && !a.passed && a.d.family !== 'life' && (!a.site || a.dist < 600)) || null;
+  }
+
+  // ---------------------------------------------------------------- the sites
+  // how far into a site this pilot sees
+  seenOf(site) { return Math.min(this.game.progress.depth, site.res || 0); }
+
+  // is there anything at it for this pilot, now (lanterns in a clearing are seen once
+  // attuned far enough; an owl by night; a creature recorded has flown)
+  _there(site) {
+    const g = this.game;
+    if (site.kind === 'landing') return g.progress.depth >= LANDING_DEPTH;
+    if (site.night) return g.atmo.night > 0.5;
+    if (site.kind === 'creature') return !this.record(site.seed);
+    return true;
+  }
+
+  // still to record: never recorded, or recorded less far in than is seen now
+  _open(site) {
+    if (site.kind === 'landing') return true;
+    const e = this.record(site.seed);
+    return !e || (e.depth || 0) < this.seenOf(site);
+  }
+
+  // Look around (a few times a second): which sites are heard, which are near enough to
+  // build (one at a time, the nearest first).
+  survey(dt) {
+    const g = this.game, ship = g.ship;
+    this._sv -= dt;
+    if (this._sv <= 0) {
+      this._sv = 0.25;
+      const hear = HEAR[Math.min(g.progress.gain, HEAR.length - 1)];
+      const { sites } = sitesNear(ship.x, ship.z, Math.max(hear, BUILD_R), 8);
+      const sig = [];
+      let next = null, nd = Infinity;
+      for (const site of this.noSites ? [] : sites) {
+        if (!this._there(site)) continue;
+        const d = Math.hypot(site.x - ship.x, site.z - ship.z), a = this.sites.get(site.key) || null;
+        if (d < BUILD_R && !a && d < nd && !(this.cool.get(site.key) > g.time)) { next = site; nd = d; }
+        if (d < hear && this._open(site) && !(a && a.scanned)) {
+          sig.push({ site, key: site.key, a, dist: d, bearing: 0 });
+          if (!this.heard.has(site.key)) { this.heard.add(site.key); if (this.onSignal && g.mode !== 'title') this.onSignal(sig[sig.length - 1]); }
+        }
+      }
+      // nothing in range: the nearest one still to record is heard all the same, faintly
+      // (looked for now and then: it is a wide look), so there is always a way to fly
+      if (!sig.length && !this.noSites) {
+        this._ft = (this._ft || 0) - 0.25;
+        if (this._ft <= 0 || !this._faint) {
+          this._ft = 2;
+          let best = null, bd = Infinity;
+          for (const site of sitesNear(ship.x, ship.z, FAINT, 40).sites) {
+            const d = Math.hypot(site.x - ship.x, site.z - ship.z);
+            if (d < bd && this._there(site) && this._open(site)) { best = site; bd = d; }
+          }
+          this._faint = best;
+        }
+        if (this._faint && this._open(this._faint)) sig.push({ site: this._faint, key: this._faint.key, a: null, dist: 0, bearing: 0, faint: true });
+      } else this._faint = null;
+      this.signals = sig;
+      if (next && !this._raising && !this.noSites) this._raise(next);
+    }
+    for (const s of this.signals) {
+      const x = s.a && s.a.model ? s.a.x : s.site.x, z = s.a && s.a.model ? s.a.z : s.site.z;
+      s.dist = Math.hypot(x - ship.x, z - ship.z);
+      s.bearing = angleDelta(ship.heading, Math.atan2(x - ship.x, z - ship.z));
+    }
+    this.signals.sort((p, q) => p.dist - q.dist);
+  }
+
+  // what a site holds, as a move to describe (generate.js)
+  moveOf(site) {
+    return {
+      tx: site.seed, wild: true, site: site.key, res: site.res || 0, depth: this.seenOf(site),
+      mountain: site.place === 'mountain', autumn: site.place === 'autumn', river: site.place === 'river', lake: site.place === 'lake',
+      plus: !!site.plus, trace: !!site.trace, creature: site.kind === 'creature', landing: site.kind === 'landing', life: site.kind === 'life' ? site.species : null,
+    };
+  }
+
+  // build the artifact of a site, where it stands
+  async _raise(site) {
+    const g = this.game;
+    this._raising = true;
+    try {
+      const a = await this.spawn(this.moveOf(site), { at: { x: site.x, z: site.z }, quiet: true, site });
+      this.sites.set(site.key, a);
+      const e = this.record(site.seed);
+      // recorded as far in as is seen now: it stands on, done with
+      if (e && site.kind !== 'landing' && (e.depth || 0) >= a.d.depth) a.scanned = true;
+      a.again = !!e && !a.scanned;
+      // what was fired at it before it was put away, and what the anomalies running lay on it
+      if (this.kept.has(site.key)) g.refire(a, this.kept.get(site.key));
+      this._marks(a);
+    } catch (err) { console.warn('site', site.key, err); this.cool.set(site.key, g.time + 30); }
+    this._raising = false;
+  }
+
+  // the anomalies running lay their marks on a site's artifact not yet recorded
+  _marks(a) {
+    if (a.scanned || !a.model || a.d.family === 'landing') return;
+    a.marked = a.marked || new Set();
+    for (const m of this.game.anomalies.mark()) if (!a.marked.has(m)) { a.marked.add(m); this.game.markFx(a, m); }
+  }
+
+  // The pilot attuned further: every site built is built again as it is now seen.
+  reattune() {
+    for (const a of [...this.active]) if (a.site && !a.building && this.seenOf(a.site) !== a.d.depth) this.remove(a);
+    this._sv = 0;
   }
 
   // those still to scan: built, not scanned, not left behind
@@ -173,7 +302,7 @@ export class Field {
     const key = move.seed || move.tx;
     const a = {
       d, move, special: !!d.special, scanned: false, passed: false, fading: false, closest: Infinity, wave: !!opts.wave,
-      look: opts.look || null, dist: Infinity, near: 0, clearings: [], pass: 0,
+      look: opts.look || null, dist: Infinity, near: 0, clearings: [], pass: 0, site: opts.site || null,
       revealed: !!opts.ahead || !!opts.at, reveal: 0, born: g.time, movedAt: g.time,
       spawnDist: opts.ahead ?? Math.max(this.spawnDistance(), opts.far || 0), at: opts.at || null,
       latK: d.family === 'gate' ? 0 : ((parseInt(key.slice(10, 14), 16) / 65535) * 2 - 1) * 0.16,
@@ -248,11 +377,13 @@ export class Field {
     if (d.family === 'life' && d.species === 'deer' && !a.at) [x, z] = this._shore(x, z);
     // the rivers' own: on its middle, turned across it
     let river = null;
-    if (d.river && !a.at) { [x, z, river] = this._riverMiddle(x, z); a.riverYaw = Math.atan2(-river.gz, river.gx); }
+    if (d.river && (!a.at || a.site)) { [x, z, river] = this._riverMiddle(x, z); a.riverYaw = Math.atan2(-river.gz, river.gx); }
     if (d.family === 'life' && d.species === 'fish' && !a.at) [x, z] = this._water(x, z) || [x, z];
     const ground = Math.max(g.world.groundAt(x, z), WATER);
     // (a gate lies across the way; a door faces the ship; a creature, away from it)
-    const yaw = d.family === 'gate' || d.family === 'creature' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : d.family === 'life' ? 0 : d.river && a.riverYaw !== undefined ? a.riverYaw : (d.seed[2] / 4294967296) * TAU;
+    // (a site's stands as its seed turned it, whoever comes and from wherever)
+    const fixed = a.site && d.family !== 'creature' ? (d.river && a.riverYaw !== undefined ? a.riverYaw : d.family === 'life' ? 0 : (d.seed[2] / 4294967296) * TAU) : null;
+    const yaw = fixed !== null ? fixed : d.family === 'gate' || d.family === 'creature' ? ship.heading : d.family === 'door' ? ship.heading + Math.PI : d.family === 'life' ? 0 : d.river && a.riverYaw !== undefined ? a.riverYaw : (d.seed[2] / 4294967296) * TAU;
     const c = Math.cos(yaw), s = Math.sin(yaw);
     // a witnessed one: its seeker, giant, built from its art as it is now
     let seeker = null;
@@ -298,6 +429,11 @@ export class Field {
   }
 
   remove(a) {
+    if (a.site) {
+      if (this.sites.get(a.site.key) === a) this.sites.delete(a.site.key);
+      if (a.fx && a.fx.list.length) this.kept.set(a.site.key, [...a.fx.list]);
+      this.cool.set(a.site.key, this.game.time + 1.5);
+    }
     this._dispose(a);
     this.active.splice(this.active.indexOf(a), 1);
     if (this.target === a) this.target = null;
@@ -324,8 +460,13 @@ export class Field {
     // who is where
     const shipR = new THREE.Vector3(ship.x - o.x, ship.y, ship.z - o.z);
     const vis = this.visibility();
+    this.survey(dt);
+    this._mk = (this._mk || 0) - dt;
+    const marks = this._mk <= 0;
+    if (marks) this._mk = 0.5;
     for (const a of [...this.active]) {
       if (a.building) continue;
+      if (marks && a.site) this._marks(a);
       if (a.fly) this._fly(a, dt * g.slow);
       if (a.model.drift) a.model.drift(a, dt * g.slow, g);
       this.place(a);
@@ -347,11 +488,14 @@ export class Field {
       a.closest = Math.min(a.closest, a.dist);
       // (not the one being scanned while the scan goes on)
       const scanningThis = a === this.target && this.scan > 0;
+      // (a site's artifact stands where it stands: far behind, it is only put away)
       const lost = a.fly ? (a.scanned && g.time - a.fly.off > 3) || (!scanningThis && Math.abs(a.bearing) > 1.6 && a.dist > 650)
-        : !scanningThis && Math.abs(a.bearing) > 1.6 && ((a.closest < NEAR && a.dist > 240) || a.dist > 700);
+        : a.site ? false : !scanningThis && Math.abs(a.bearing) > 1.6 && ((a.closest < NEAR && a.dist > 240) || a.dist > 700);
+      if (a.site && !a.fly && a.dist > DROP_R && !scanningThis) { this.remove(a); continue; }
+      if (a.site && !a.met && a.dist < Math.min(vis, 560)) { a.met = true; if (!a.scanned && this.onNear) this.onNear(a); }
       if (lost && !a.passed && !a.scanned) {
         a.passed = true;
-        if (this.onMissed) this.onMissed(a);
+        if (this.onMissed && !a.site) this.onMissed(a);
       }
       if (lost && !a.fading) a.fading = true;
       if (a.fading) {
@@ -538,11 +682,16 @@ export class Field {
   topAt(x, z, cruise) {
     let top = -Infinity;
     for (const a of this.active) {
-      const s = a.model && !a.building && !a.fading && a.model.solid;
-      if (!s || !s.r) continue;
-      if (Math.hypot(x - a.x, z - a.z) > s.r + 14) continue;
-      if (a.y + s.low > cruise + 12) continue;
-      top = Math.max(top, a.y + s.top);
+      if (!a.model || a.building || a.fading) continue;
+      for (const s of a.model.solids || (a.model.solid ? [a.model.solid] : [])) {
+        if (!s || !s.r) continue;
+        // (a mass beside the middle: where it stands, turned as the artifact is)
+        let sx = a.x, sz = a.z;
+        if (s.x || s.z) { const c = Math.cos(a.yaw), si = Math.sin(a.yaw); sx += (s.x || 0) * c + (s.z || 0) * si; sz += -(s.x || 0) * si + (s.z || 0) * c; }
+        if (Math.hypot(x - sx, z - sz) > s.r + 14) continue;
+        if (a.y + (s.low || 0) > cruise + 12) continue;
+        top = Math.max(top, a.y + s.top);
+      }
     }
     return top;
   }

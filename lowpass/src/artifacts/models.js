@@ -16,6 +16,8 @@ import { buildLife } from './life.js';
 import { AUTUMN } from './autumn.js';
 import { INSTRUMENTS } from './instruments.js';
 import { RIVER } from './river.js';
+import { EXTRA } from './sets/index.js';
+import { addLayers, trace } from './layers.js';
 
 // An artifact as geometry: dark masses in the codex's stone and shell ramps, selective
 // pale rims, and one light of the moved seeker's colorway that pulses to its rhythm.
@@ -710,7 +712,8 @@ function echo(d, A, mats, ctx) {
   return out;
 }
 
-const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, ...MOUNTAIN, ...AUTUMN, ...INSTRUMENTS, ...RIVER, deep: buildDeep, creature: buildCreature, landing: buildLanding, curio: buildCurio, life: buildLife };
+const BUILD = { ring, obelisk, orb, lattice, shell, crystal, tether, fungi, gate, solids, glyph, chimes, echo, ...NEWER, ...MOUNTAIN, ...AUTUMN, ...INSTRUMENTS, ...RIVER, deep: buildDeep, creature: buildCreature, landing: buildLanding, curio: buildCurio, life: buildLife, trace,
+  ...Object.fromEntries(Object.entries(EXTRA).map(([k, f]) => [k, f.build])) };
 
 // ctx: { ground(lx, lz) -> local y, ringY, seeker (a witnessed one's SeekerModel, built) }
 export function buildArtifact(d, ctx) {
@@ -718,15 +721,17 @@ export function buildArtifact(d, ctx) {
   const A = d.accent;
   const out = BUILD[d.family](d, A, mats, ctx);
   out.mats = [mats.body, mats.glow, ...(mats.cloth ? [mats.cloth] : []), ...(out.mats || [])];
+  // a site's: what lies in it, as far as this pilot sees, over what stands (layers.js)
+  if (d.site && (d.over || d.res > d.depth) && !['creature', 'life', 'landing', 'curio', 'deep'].includes(d.family)) addLayers(out, d, ctx);
   // motes of its light, for every artifact but those that already have them
-  if (!['fungi', 'solids', 'deep', 'creature', 'life'].includes(d.family)) {
+  if (!['fungi', 'solids', 'deep', 'creature', 'life', 'trace'].includes(d.family)) {
     const m = motes(mixHex(A, 0xffffff, 0.35), 26, Math.max(10, out.span * 0.8), Math.max(10, out.height), d.seed[7], 0.4);
     out.group.add(m);
     const up = out.update;
     out.update = (t, beat, c) => { up(t, beat, c); driftMotes(m, t); };
   }
   // (a creature's softer: it is near, and it is a body, not a lamp)
-  const h = out.life ? halo(A, 4, 0.25 * d.strength) : out.creature ? halo(A, Math.max(5, out.span * 0.35), 0.28 * d.strength) : out.curio ? halo(A, Math.max(2.5, out.span * 0.9), 0.35 * d.strength) : halo(A, Math.max(8, out.span * 0.5) * (d.special ? 1.5 : d.grand ? 1.3 : 1), 0.55 * d.strength);
+  const h = d.trace ? halo(A, 2.5, 0.3) : out.life ? halo(A, 4, 0.25 * d.strength) : out.creature ? halo(A, Math.max(5, out.span * 0.35), 0.28 * d.strength) : out.curio ? halo(A, Math.max(2.5, out.span * 0.9), 0.35 * d.strength) : halo(A, Math.max(8, out.span * 0.5) * (d.special ? 1.5 : d.grand ? 1.3 : 1), 0.55 * d.strength);
   h.position.copy(out.light);
   h.layers.set(LAYER_FX);
   out.group.add(h);

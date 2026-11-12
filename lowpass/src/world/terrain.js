@@ -34,7 +34,8 @@ export function height(x, z) {
 // canyon as deep as the ground is high, its walls stepped in ledges, its head a wall
 // where the cut begins. They keep out of the mountains.
 export const RIVER_BED = WATER - 5;
-const RCELL = 4500, RIVER_P = 0.55, RN = 48;
+export const RCELL = 4500, RN = 48;
+const RIVER_P = 0.55;
 const _rivers = new Map();
 const hashCell = (cx, cz, k) => {
   let h = Math.imul(cx * 374761393 + cz * 668265263 + k * 1274126177, 1103515245) >>> 0;
@@ -43,7 +44,7 @@ const hashCell = (cx, cz, k) => {
 };
 // the river of a cell (or null): its course (points, lengths along it), its width at
 // each, its lake (x, z, r), its bounds
-function riverOf(cx, cz) {
+export function riverOf(cx, cz) {
   const key = cx * 100003 + cz;
   if (_rivers.has(key)) return _rivers.get(key);
   let rv = null;

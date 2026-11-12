@@ -79,7 +79,7 @@ export function describeCreature(d, move, R1, R3) {
   d.grand = false;
   const noun = R3.pick(S.nouns), r = R3();
   d.name = r < 0.45 ? `The ${depth ? st.name : R3.pick(ADJ)} ${noun}` : r < 0.8 ? `The ${R3.pick(ADJ)} ${noun}` : `${R3.pick(ADJ)} ${noun} ${R3.pick(OF)}`;
-  d.code = `${depth ? `D${depth}-` : ''}${S.code}-${(move.seed || move.tx).slice(2, 6).toUpperCase()}`;
+  d.code = `${S.code}-${(move.seed || move.tx).slice(2, 6).toUpperCase()}`;
   d.cls = S.cls;
   d.structure = {
     darter: `A darter as long as the ship, four wings of light humming; it hangs, then is gone sideways.`,
@@ -89,5 +89,5 @@ export function describeCreature(d, move, R1, R3) {
     jelly: `A jelly like a lantern, its bell breathing, its threads of light trailing; it drifts, and then it bolts.`,
   }[sp];
   d.hint = S.hint;
-  d.origin = depth ? `From Depth ${roman(depth)}, ${st.title}: it flew up out of it. No other ship will find it.` : 'Wild: a creature of the fog belt, found by this ship alone.';
+  d.origin = depth ? `A creature of the fog belt, as one attuned to ${roman(depth)} sees it, in the colors of ${st.title}. It keeps to this place until it is recorded.` : 'Wild: a creature of the fog belt. It keeps to this place until it is recorded.';
 }

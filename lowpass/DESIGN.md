@@ -28,10 +28,11 @@ day. Something glowing far ahead that was not there before.
 
 1. **Fly.** The ship flies on by itself at canopy height; you only steer. Nothing hurries
    you and nothing hurts you.
-2. **A light in the fog.** Every minute or two something appears in the forest, grown for
-   you alone. When a SEEKER NET seeker moves on chain while you fly, that seeker itself
-   rises out of the fog, giant: witnessed, the same for every ship in the fog at that
-   moment. You hear each one before you see it, and aboard, the ship calls.
+2. **A signal.** Artifacts stand in the forest at places of their own, the same for
+   every ship; the ship hears the ones not yet recorded and marks their bearings. You
+   choose one and fly to it, or not: it will wait. When a SEEKER NET seeker moves on
+   chain while you fly, that seeker itself rises out of the fog, giant: witnessed, the
+   same for every ship in the fog at that moment (and only these call you out).
 3. **Scan.** Steer it into the brackets and hold. The visor photographs it into the Codex,
    names it, notes it.
 4. **Stay awake.** Alertness runs down; the view closes in, blinks grow long, short sleeps
@@ -39,14 +40,88 @@ day. Something glowing far ahead that was not there before.
 5. **Share.** At the Codex computer, holders put their scans on the board and on the
    leaderboard, and everyone sees what the others found.
 
-## Artifacts: yours alone, and the network's moments
+## Artifacts: a world to find together, and the network's moments
 
-Two kinds. **Wild** artifacts come on a steady cadence, one at a time, a minute or two
-after the last is behind you, each from a seed your own browser draws: nobody else will
-ever meet the same one, so the forest between moves is yours. Twenty-five families, from
-standing stones and monoliths to lighthouses, orreries, the shadows of four-dimensional
-solids, derelict hulls, sentinels and lanterns; about one in seven is grand, larger, with
-a column of its own light over it.
+Two kinds. **Wild** artifacts stand at **sites**: places that are a pure function of the
+world's seed and their coordinates (src/world/sites.js), so the same thing stands at the
+same place for every pilot, for good. This replaced an earlier rule, where a wild
+artifact was grown from a seed the player's own browser drew and rose ahead of the ship
+every minute or two, to be lost if it was not scanned. That rule made the forest feel
+like a feed: things were handed to you, you had to take each one or lose it, and there
+was nothing to tell anybody. Fixed sites turn all three around:
+
+- **Discovery.** Nothing is spawned for anyone. What you find was there; what you pass
+  stays; what is ahead is unknown until you go.
+- **No hurry.** Nothing is lost by staying in the cabin, drinking coffee, reading, or
+  talking on the board. The receiver keeps the bearings; the forest waits.
+- **A shared world.** A place code (N5G-E3K) names a site for everyone. A pilot can say
+  where the deepest thing they know of stands, and another can fly there and see it.
+
+About one site to six or seven square kilometers (a minute or two between neighbors at
+cruise, which is the old pace, but now the pilot's to keep or not): the forest's grid
+gives about half its 2.2 km cells one site, placed where the cell is most itself (a
+summit, a turned stand, a lake, else plain ground), and every river carries one or two
+more, and often one on its lake, so following a river or climbing a range is always
+answered. Eighty-two families by place (forty-six in the forest at large, thirteen on the
+mountains, ten in the turned stands, eight on the rivers, five on the lakes, and the
+traces); about one in seven is grand.
+
+### Attunement and resonance: one world, seen to different depths
+
+The earlier progression ("depth": the scanner reached deeper, and deeper artifacts came
+up for that player) cannot live in a shared world: if what stands at a place depends on
+who looks, a place code means nothing. So the thing at a site is one thing, and
+progression moved from the world into the pilot: **attunement** is how far into every
+artifact you see.
+
+Each artifact holds layers under what stands at the surface, as many as its
+**resonance** (none for about one in six; else one, and each one more with two chances
+in three, without end: so most have a few, and a deep one is rare and worth a journey).
+A pilot attuned to n sees the first n: at I its echo (its own shape again in light,
+larger, about it), at II its true form (one of the deep's forms, the one its family is
+kin to, hanging over it), then one thing more with every layer (rings, figures, beams, a
+crown, a court, its double in the sky...), all in the colors of the stratum seen to, and
+larger and richer with each. The core never changes, so two pilots at the same place are
+looking at the same artifact and can talk about it; what they see of it differs, and
+that difference is the thing to talk about.
+
+Why this shape:
+
+- **Every level is felt everywhere at once.** Buying a level adds something to most of
+  the artifacts already found (three in four have at least one layer). They are heard
+  again (MORE TO SEE), and scanning one again brings the difference in DATA: old places
+  become new, which a world of fixed places needs.
+- **What is hidden is advertised.** Where more lies in an artifact than the pilot sees,
+  small lights flicker over it, one for each layer still hidden, in the colors of the
+  strata they wait in: an unattuned pilot's first artifact already says there is more.
+- **Deep sites are destinations.** A resonance of VIII is one site in fifty; it is the
+  same site for everyone, so its place code is worth passing on, and worth more to those
+  attuned further.
+- **The climb is the old climb.** A scan is worth 10 and 10 more for every layer seen;
+  levels cost 120, 240, 480... The economy of the deep is unchanged; only what it buys
+  reads differently.
+- **Traces.** A few sites show next to nothing (one small stone, a ring of pebbles, a
+  crack with light in it) and are deep (III at least): the least at the surface, the
+  most below, and their true form stands on the ground beside them, larger than any.
+  They reward the pilot who looks at a small thing twice.
+
+The marked ones (+) stay the jackpot: about one resonant site in thirty holds one of the
+marked ones' own forms as its true form, a quarter larger, worth ten times as much once
+that form is seen (attuned to II). Now it is a place, and can be told.
+
+### Telling one another where
+
+A place code (`N5G-E3K`: north or south, east or west of the origin, in tens of meters,
+in base 36) is short enough to say. Everything that names a place lets you go there: a
+shared scan of a site carries its code with FLY THERE, a code written in any board post
+is a button, the LOG sets a course back to anything recorded, and the MAP shows the
+places others named beside what you know yourself (and nothing else: the map fills in as
+you fly and as others talk). A **course** then flies the ship there by itself whenever
+nobody steers, and circles the place on arrival until someone comes to the controls, so
+"go and see what someone found" is a thing to set and then sit back from: the cozy loop is
+set a course, make coffee, read the board, come out when the ship has arrived.
+
+What still comes to the ship, on its own time, is the network: witnessed seekers.
 
 **Witnessed** artifacts are the network's moments, and they are the seekers themselves.
 When a seeker moves on chain while you are flying, it rises out of the fog, giant: its
@@ -71,35 +146,22 @@ drifting resonances, beating glass, an inharmonic warble, a gliding voice, soft 
 its own light's rhythm, and a chord under a witnessed one), in the 42 Hz tuning, heard
 from the ship by distance and bearing, darker and wetter far off, never loud.
 
-### The deep: progression without a ceiling
+### DATA: progression without a ceiling
 
-Every scan can be transmitted once for DATA, and DATA tunes the scanner deeper. A wild
-artifact starts at the surface and goes one depth deeper with three chances in four, as
-far as the scanner reaches; one in twenty-five comes from beyond its reach. So the first
-depth bought is most of what you then find (the reward is immediate), and every depth
-after is a thinner slice at the top (75%, 56%, 42%, 32%...): the deepest thing a scanner
-finds is always its rarest. Costs double (120, 240, 480...) while a scan's worth grows
-only by its depth (10 more a depth), so each depth takes longer than the last, without a
-ceiling. Transmitting never takes a scan away: the Codex is a collection, and the
-leaderboard counts it either way.
+Every scan can be transmitted once for DATA, and DATA attunes the pilot further (above).
+Costs double (120, 240, 480...) while a scan's worth grows only by the layers seen (10
+more a layer), so each level takes longer than the last, without a ceiling. Transmitting
+never takes a scan away: the Codex is a collection, and the leaderboard counts it either
+way. A site scanned again further in is paid only the difference.
 
-Two smaller upgrades have an end. The plasma tank starts at five seconds of boost (well
-under the twelve it once had) and grows to fifteen; the signal gain starts with wild
-artifacts rarer than they once were (100 to 170 seconds apart) and ends a little more
-often (52 to 92). Starting below and ending above is the point: the first purchases are
-felt at once, and the ceiling is a little better than the game ever was. Five levels
-each, priced so that one or two come early, before the first depth, and the last ones
-after a few depths. Witnessed seekers are the network's, and stay exactly
-as they are.
+Two smaller upgrades have an end. The plasma tank starts at five seconds of boost and
+grows to fifteen; the signal gain is how far the receiver hears a site (2.5 km to 5), so
+a pilot with more gain has more bearings to choose from, and none is ever left without
+one (with nothing in range, the nearest is heard faintly). Five levels each. Witnessed
+seekers are the network's, and stay exactly as they are.
 
-The marked ones (+) are the jackpot inside every depth: one deep find in fifty, ten times
-the DATA, a form no other find has (five of them, three from the first depth, more
-deeper), a quarter larger, always under a column and a ring of light, with two more
-layers to their voice. They change nothing about the climb (a depth costs what it did),
-but they make every flight at any depth a lottery worth flying. On a mountain the
-mountains' rule holds: a marked one there is a mountain form, crowned and courted.
-
-Creatures are the chase the forest otherwise lacks: everything else stands still and
+Creatures (a few sites hold one, until it is recorded) are the chase the forest
+otherwise lacks: everything else stands still and
 waits to be flown past. One flees, so the ship's handling finally matters, and the scan
 becomes a skill (close in, line up, hold it there for several seconds while it swerves;
 lose it and start again). Its speed is the world's own, but close by it paces the ship's
@@ -113,9 +175,9 @@ nothing of creatures at all, not in the HUD, the shop or this game's README: one
 flies off one day, and the rest is for players to find out (a rush of air when it bolts,
 two falling notes when its scan is lost, are all the help there is).
 
-Landing is the other secret, and the larger one. Once the scanner reaches the third depth
-(nothing says so), very rarely a wild signal is a clearing instead: lanterns in a ring,
-a column of light. Held in the scanner, it is landed in: a short scene in still shots,
+Landing is the other secret, and the larger one. Once a pilot is attuned to III (nothing
+says so), a few sites turn out to be clearings: lanterns in a ring, a column of light,
+there all along for those who could see them. Held in the scanner, it is landed in: a short scene in still shots,
 each ship coming in its own way (the Seed on a wide curve, the Heron on a long glide, the
 Moth spiraling down, the Kestrel fast with a hard flare, the Ark slowly from high up),
 its legs coming down, a breath of dust, its ramp folding down from the door on the right
@@ -125,8 +187,10 @@ dense to walk in, its spruces' boughs to the ground; so while the camera cuts aw
 the forest about the clearing (320 meters) is rebuilt with fewer trees, their crowns
 lifted up their trunks: a tall, clear wood in the fog, and rebuilt back as the ship
 leaves. Between its trunks stand things found nowhere else: old instruments the forest
-has grown over and things the scanner cannot account for, twenty kinds, more of them the
-deeper the scanner reaches, marked (+) now and then, none of them moving off. They are
+has grown over and things the scanner cannot account for, twenty kinds, the same things
+in the same places for everyone who lands there (all from the site's seed), each with
+layers of its own seen as far as the pilot is attuned, marked (+) now and then, none of
+them moving off. They are
 scanned by looking at them from close by. Aboard again (the ramp), the cabin is the
 same, its controls say take off, and the ship lifts out of the clearing and flies on.
 
@@ -140,25 +204,27 @@ the coffee scene, the seeker aboard and the walking all work unchanged; the bays
 where a larger ship keeps its rooms. The books are short and of the fog belt, there to
 be read slowly while the ship flies on.
 
-What grows below is built to be worth the climb. A depth is a stratum: three colors, a
+What attunement shows is built to be worth the climb. Each level is a stratum: three colors, a
 dark, and a sheen that runs over every shell by angle and place (and, deeper, in time),
 with veins of light wandering through it; drawn by hand for the first eight, made from
-the depth's number after (hues turned by the golden angle) without end. Each stratum
-opens forms (seventeen: corolla, spine, nested solids, armillary, choir, geode, coral,
-chandelier, helicon, prism, knot, nautilus, archipelago, attractor, medusa, star engine,
-watcher) and ornaments, and
-keeps those above it, so the deep gets more varied as it goes, not just bigger: past the
-fifth, a second form crowns the first; past the seventh, a court of small ones stands
-about it; its double hangs inverted in the sky, its echoes trail it. Size grows with the
-logarithm of the depth, forever and more slowly. Every count, symmetry, curve and
-ornament comes from the seed, so no two are alike at any depth. They are built as a few
+the level's number after (hues turned by the golden angle) without end. The true forms
+(forty-three: corolla, spine, nested solids, armillary, choir, geode, coral, chandelier,
+helicon, prism, knot, nautilus, archipelago, attractor, medusa, star engine, watcher,
+clockwork, fountain, radiolarian, Chladni plate, ringed planet, dandelion, pages, and
+the mountains', the turned stands', the rivers' and the marked ones' own) are richer the
+further in they are seen (more whorls, rings, tiers, higher symmetries), and what
+gathers about one comes a layer at a time, in an order drawn from the site's seed: a
+second form crowning it from the fourth layer at the earliest, a court of small ones
+from the fifth, its double hanging inverted in the sky, a ring in the sky, its echoes.
+Size grows with the logarithm of the layers seen, forever and more slowly. Every count, symmetry, curve and
+ornament comes from the seed, so no two are alike. They are built as a few
 merged meshes per moving part (small crowns and courts flattened to a handful), so even a
 deep one costs about what the forest around it does.
 
 The sound follows the same ladder. The palette is harmonics 16, 18, 19, 24 and 28 of the
-root; each depth adds one more (20, 22, 26, 17, 21, 23, 27, 29, 31, then every odd one),
-and a deep voice's chord always holds its own depth's. The intervals stay just and stay
-in The Seeker's rule, and grow stranger the deeper you go.
+root; each layer seen adds one more (20, 22, 26, 17, 21, 23, 27, 29, 31, then every odd
+one), and the chord always holds the newest. The intervals stay just and stay
+in The Seeker's rule, and grow stranger the further in you see.
 
 ### Permutations: what the ship does, what the world does
 
@@ -168,16 +234,16 @@ built as layers that all go together, instead of as more kinds of thing:
 - **Effects** (fx.js) are what the ship does to an artifact: glitch, chaos, voxel,
   shatter. Each is a few lines added to every shader an artifact is drawn with, working
   on where each point of it stands about its heart, so one effect works on every family,
-  form, depth, creature and animal there is, and any number of them on one artifact go
+  form, layer, creature and animal there is, and any number of them on one artifact go
   together (a voxel sculpture shattering, a glitch running like water). Voxel is the one
   exception to the shader rule: the artifact is sampled into real blocks, colored from
   what they hold, the way the seekers are drawn. They are bought a few uses at a time
-  (priced by the scanner's depth, as what they are fired at is worth more), so they are
+  (priced by the pilot's attunement, as what they are fired at is worth more), so they are
   spent and bought again, and each makes the scan worth half as much again: an
   investment the player chooses, never a chore. They work on foot too.
 - **Anomalies** (anomaly.js) are what the world does, for four minutes: inversion, slow
   time, long night, discharge. Each changes the whole world (the view, time, the hour,
-  the weather) and lays its own mark on what rises (its negative, a stopped burst, its
+  the weather) and lays its own mark on every artifact not yet recorded (its negative, a stopped burst, its
   light many times over, charge), with the same machinery as the effects. Any number at
   once combine: everything wears every mark, and where two or more meet, a mark of the
   meeting whose pattern, colors and pace come from which anomalies they are, so every
@@ -186,9 +252,9 @@ built as layers that all go together, instead of as more kinds of thing:
   darkened, trembling), and they compose, with each combination turning the chord to a
   mode of its own. Some are opened by holding a seeker of a kind (a trait of its art, or
   something it has done on the chain): the collection becomes keys to the world. They
-  are a sink for DATA that grows with depth, as the depth costs do.
-- **Places** have their own sets: the mountains, the turned stands and the rivers each
-  draw from their own families and forms at every depth, so the same depth looks
+  are a sink for DATA that grows with attunement, as its levels' costs do.
+- **Places** have their own sets: the mountains, the turned stands, the rivers and the
+  lakes each draw from their own families and true forms, so the same stratum looks
   different by where it is found. The rivers are the terrain to fly along, and rare
   enough to be found: one in about half the cells of a grid four and a half kilometers
   on a side, each from a spring in that cell's high ground down to a lake of its own at
@@ -201,22 +267,21 @@ built as layers that all go together, instead of as more kinds of thing:
   stays there through the bends, and a gentle hand on the steering toward the river's
   middle that the pilot's own steering overrides (steering firmly away lets it go); the
   rivers'
-  artifacts rise only near a river's middle, so they are found by following one, and
-  are worth more for it.
-- **Life** fills the time between artifacts with small, frequent things that move and
-  must be followed (a flock fleeing slower than the ship), worth less, but taking
-  effects and marks like anything else.
+  sites lie in a river's middle, so they are found by following one, and are worth more
+  for it.
+- **Life** keeps to sites of its own: small things that move and must be followed (a
+  flock fleeing slower than the ship), worth less, but taking effects and marks like
+  anything else, and to be found again where they were.
 
-An artifact is then its family or form, times its depth's stratum, times where it rose,
-times the anomalies running, times the effects the pilot chose: the Codex fills with
-things no other ship has, and no two alike. And no shape comes back within five wild
-finds of the last time it was met (seeds are drawn until one is new, so a seed still
-makes the same artifact every time).
+An artifact in a pilot's Codex is then its family, times its true form, times how far
+into it that pilot saw (its stratum), times where it stands, times the anomalies running,
+times the effects the pilot chose: the place is everyone's, the record is one's own.
 
-A lone artifact appears just past what the fog lets you see, nearly dead ahead, and keeps
-ahead of you until you have seen it: you can turn as you like and still meet it. It
-materializes in the ordered dither, and once you have come near it and lost it from
-sight, it dissolves the same way: there is no turning back for it.
+A site's artifact is built once the ship is within about a kilometer (well beyond what
+the fog lets you see), materializing in the ordered dither, and put away once it is a
+kilometer and a half behind. The scanner looks at whichever one is most nearly ahead.
+Witnessed seekers alone still rise ahead of the nose, just past what can be seen, and go
+back into the fog once passed: they are moments, not places.
 
 ## The look
 

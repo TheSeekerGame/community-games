@@ -1,4 +1,7 @@
-import { stratum, roman, harmonicOf } from './strata.js';
+import { stratum, roman, harmonicOf, FORMS, PLUS_FORMS } from './strata.js';
+import { rng } from '../core/math.js';
+import { EXTRA } from './sets/index.js';
+import { NEW_FORMS } from './moreforms.js';
 
 // What the deep grows: a wild artifact from below the surface (generate.js hands it here
 // when its depth is one or more). Its seed chooses one of the forms its stratum has (and
@@ -42,6 +45,7 @@ const NOUN = {
   mobius: ['Band', 'Ribbon', 'Loop', 'Path', 'Promise', 'Road'], menger: ['Sponge', 'Lattice', 'Hive', 'Archive', 'Labyrinth', 'Reliquary'],
   whale: ['Whale', 'Leviathan', 'Singer', 'Swimmer', 'Elder', 'Wanderer'],
 };
+for (const [k, f] of Object.entries(NEW_FORMS)) { DEEP_CODE[k] = f.code; CLASS[k] = f.cls; NOUN[k] = f.nouns; }
 const ADJ = ['Gilded', 'Burning', 'Singing', 'Unfolding', 'Weightless', 'Drowned', 'Woken', 'Endless', 'Opaline', 'Sleepless', 'Inverted',
   'Radiant', 'Hollow', 'Recursive', 'Patient', 'Unborn', 'Eleventh', 'Mirrored', 'Ascending', 'Dreaming', 'Luminous', 'Unspoken',
   'Thousandfold', 'Iridescent', 'Folded', 'Feathered', 'Molten', 'Vaulted'];
@@ -89,6 +93,7 @@ function pickNew(R, list, depth, n, keep = []) {
 
 // the parameters of one form at a depth (also for the small crown and court ones)
 export function formParams(form, R, depth) {
+  if (NEW_FORMS[form]) return { form, ...NEW_FORMS[form].params(R, depth) };
   const P = { form };
   const deep = (a, b, per = 1) => Math.min(b, a + Math.floor(depth / per));
   switch (form) {
@@ -341,4 +346,141 @@ export function describeDeep(d, move, R1, R3) {
     ? `From Depth ${roman(depth)}, ${st.title}: deeper than this scanner reaches. It came up anyway.`
     : `From Depth ${roman(depth)}, ${st.title}, where the scanner now reaches; no other ship will find it.`;
   d.flavor = R3.pick(FLAVOR);
+}
+
+// ------------------------------------------------------------------ the layers of a site
+// A site's artifact is the same for every ship; what differs is how far into it a pilot
+// sees. Under what stands at the surface (its core) lie its layers, as many as its
+// resonance, drawn from its seed once and for all:
+//   I    its echo: its own shape again in light, larger, standing about it
+//   II   its true form: one of the deep's forms, the one it is at heart (its kin), hanging
+//        over it
+//   III… what gathers about that: rings and figures of light, beams, a second form crowning
+//        it, a court of small ones, its double in the sky… each layer one thing more, and
+//        everything larger and richer for it
+// A pilot attuned to n sees the first n of them (as many as there are), all in the colors
+// of the n-th stratum.
+
+// what each family is at heart (the marked ones' forms are no one's kin: they are the marked's)
+const KIN = {
+  ring: ['armillary', 'choir', 'chandelier'], obelisk: ['spine', 'helicon', 'prism'], orb: ['nest', 'sun', 'watcher'],
+  lattice: ['choir', 'archipelago', 'geode'], shell: ['nautilus', 'knot', 'corolla'], crystal: ['geode', 'prism', 'bloom'],
+  tether: ['spine', 'bloom', 'helicon'], fungi: ['bloom', 'medusa', 'corolla'], gate: ['knot', 'armillary', 'choir'],
+  solids: ['nest', 'knot', 'geode'], glyph: ['corolla', 'knot', 'armillary'], chimes: ['chandelier', 'choir', 'helicon'],
+  beacon: ['prism', 'sun', 'spine'], orrery: ['armillary', 'sun', 'nest'], helix: ['helicon', 'knot', 'nautilus'],
+  tesseract: ['nest', 'knot', 'prism'], wreck: ['archipelago', 'nautilus', 'medusa'], stair: ['helicon', 'archipelago', 'spine'],
+  arbor: ['bloom', 'turning', 'corolla'], pool: ['corolla', 'medusa', 'nautilus'], sentinel: ['watcher', 'choir', 'spine'],
+  swarm: ['murmuration', 'knot', 'medusa'], cradle: ['seedpod', 'nest', 'corolla'], lanterns: ['chandelier', 'medusa', 'murmuration'],
+  dish: ['watcher', 'armillary', 'prism'], pendulum: ['armillary', 'knot', 'chandelier'], hourglass: ['nautilus', 'helicon', 'armillary'],
+  mobile: ['chandelier', 'archipelago', 'murmuration'], lens: ['prism', 'sun', 'watcher'],
+  cairns: ['spire', 'temple', 'halo'], banners: ['loom', 'storm', 'halo'], relay: ['storm', 'spire', 'halo'], door: ['temple', 'halo', 'spire'],
+  arch: ['halo', 'loom', 'temple'], observatory: ['halo', 'storm', 'temple'], harp: ['loom', 'halo', 'storm'], ice: ['spire', 'loom', 'temple'],
+  leafstorm: ['leaffall', 'turning', 'pyre'], lanternbirch: ['turning', 'seedpod', 'chandelier'], amber: ['seedpod', 'geode', 'pyre'],
+  birches: ['turning', 'leaffall', 'choir'], hearth: ['pyre', 'sun', 'leaffall'], goldleaf: ['leaffall', 'turning', 'corolla'],
+  falls: ['tidegate', 'lotus', 'archipelago'], naturalbridge: ['tidegate', 'knot', 'archipelago'], waterwheel: ['armillary', 'lotus', 'tidegate'],
+  ferry: ['lotus', 'medusa', 'tidegate'], drowned: ['tidegate', 'choir', 'lotus'],
+};
+// the new forms' kin, among the old families and the new
+const KIN_MORE = {
+  clockwork: ['orrery', 'pendulum', 'hourglass', 'waterwheel', 'sundial', 'carillon', 'abacus', 'seismograph', 'prayerwheels'],
+  fountain: ['pool', 'well', 'falls', 'aqueduct', 'fishladder', 'sunkenbell'],
+  radiolarian: ['solids', 'tesseract', 'crystal', 'belljars', 'glassfloats', 'tensegrity'],
+  chladni: ['chimes', 'forks', 'glyph', 'harp', 'garden', 'horn'],
+  planet: ['orb', 'orrery', 'observatory', 'dish', 'buoys'],
+  moth: ['lanternbirch', 'chrysalis', 'hearth', 'fairyring', 'lanterns'],
+  dandelion: ['fungi', 'arbor', 'reeds', 'sheaves', 'heliostat', 'eyrie'],
+  pages: ['archive', 'lattice', 'labyrinth', 'antennae', 'amphitheatre'],
+};
+const MARKED = PLUS_FORMS.map(([f]) => f);
+function kinOf(family) {
+  const X = EXTRA[family];
+  const list = [...(KIN[family] || (X && X.kin) || [])].filter((f) => !MARKED.includes(f) && DEEP_CODE[f]);
+  for (const [form, fams] of Object.entries(KIN_MORE)) if (NEW_FORMS[form] && fams.includes(family)) list.push(form);
+  return list.length ? list : FORMS.map(([f]) => f);
+}
+
+// what gathers about the true form, layer by layer, and the first layer each may be
+const GATHER = [['halo', 3], ['sigil', 3], ['orbiters', 3], ['pillar', 3], ['beams', 3], ['shards', 3], ['rain', 3], ['veil', 4],
+  ['crown', 4], ['court', 5], ['twin', 5], ['skyring', 6], ['echoes', 7]];
+const LAYER_TEXT = {
+  halo: 'rings of light turn about it', sigil: 'a figure of light is drawn on the ground under it', orbiters: 'small bodies circle it',
+  pillar: 'a pillar of light stands through it', beams: 'beams of light sweep from its heart', shards: 'shards hang in the air about it',
+  rain: 'light falls about it like rain', veil: 'a veil of light hangs round it', twin: 'its double hangs over it, turned over',
+  skyring: 'a ring of light stands in the sky above it', echoes: 'its own echoes stand about it',
+};
+
+// The layers of a site, I to its resonance: ['echo', 'form', then one of GATHER each, then
+// 'more' without end]. The same for every ship.
+export function layersOf(seed, res) {
+  const R = rng((seed[6] ^ 0x51ed270b) >>> 0), out = [], bag = GATHER.slice();
+  for (let k = 1; k <= res; k++) {
+    if (k === 1) { out.push('echo'); continue; }
+    if (k === 2) { out.push('form'); continue; }
+    const open = bag.filter(([, from]) => from <= k);
+    if (!open.length) { out.push('more'); continue; }
+    const pick = open[Math.floor(R() * open.length)];
+    bag.splice(bag.indexOf(pick), 1);
+    out.push(pick[0]);
+  }
+  return out;
+}
+
+// d: a site's artifact, described as it stands at the surface (generate.js); seen: how many
+// of its layers this pilot sees (one or more). Gives it what lies over it (d.over), its
+// voice, its light, and the Codex's words for it.
+export function describeOver(d, move, seen) {
+  const s = d.seed, st = stratum(seen);
+  const R = rng((s[7] ^ 0x2545f491) >>> 0);
+  // its true form: its family's kin (one of the marked: the marked's own), fixed for good
+  // (development may ask for a form)
+  const pick = d.marked ? R.pick(MARKED) : R.pick(kinOf(d.family));
+  const form = move.form && DEEP_CODE[move.form] ? move.form : pick;
+  const tilt = R(), sizeK = 0.88 + R() * 0.24;
+  const layers = layersOf(s, d.res).slice(0, seen);
+  // (each form's parameters from a seed of its own, the same at every depth, so what is
+  // chosen stays chosen and only how much of it there is grows)
+  const P = formParams(form, rng((s[5] ^ 0x1b873593) >>> 0), seen);
+  if (layers.includes('crown')) {
+    const Rc = rng((s[4] ^ 0x68e31da4) >>> 0);
+    const pool = (d.mountain ? CROWNABLE_M : d.river || d.lake ? ['lotus', 'nest', 'corolla'] : d.autumn ? CROWNABLE_A : CROWNABLE).filter((f) => f !== form);
+    P.crown = formParams(Rc.pick(pool), Rc, Math.max(1, seen - 3));
+  }
+  if (layers.includes('court')) {
+    const Rc = rng((s[3] ^ 0xb5297a4d) >>> 0);
+    const pool = (d.mountain ? COURTLY_M : d.river || d.lake ? ['lotus', 'nest', 'geode'] : d.autumn ? COURTLY_A : COURTLY).filter((f) => f !== form && !(P.crown && P.crown.form === f));
+    P.court = { n: Rc.int(3, 6), form: formParams(Rc.pick(pool), Rc, Math.max(1, seen - 4)) };
+  }
+  P.ornaments = ['motes', ...layers.filter((l) => LAYER_TEXT[l])];
+  if (d.plus) for (const o of ['halo', 'pillar']) if (!P.ornaments.includes(o)) P.ornaments.push(o);
+  // its voice (richer the more of it is seen), its chord always holding this stratum's harmonic
+  const Rv = rng((s[2] ^ 0x3c6ef372) >>> 0);
+  const vl = pickNew(Rv, VOICES, seen, Math.min(5, 2 + Math.floor(seen / 2)));
+  if (!vl.includes('bells') && !vl.includes('pad')) vl[0] = Rv.pick(['bells', 'pad']);
+  if (d.plus) for (const l of ['shimmer', 'swell']) if (!vl.includes(l)) vl.push(l);
+  const pool = [16, 18, 19, 24, 28, ...st.harmonics];
+  const chord = [Rv.pick([16, 24]), harmonicOf(seen)];
+  while (chord.length < 3 + Math.min(2, Math.floor(seen / 3))) { const h = Rv.pick(pool); if (!chord.includes(h)) chord.push(h); }
+  d.params.voice = { layers: vl, chord, oct: Rv.pick([2, 3]), pool };
+  // 'more' layers past the last thing that can gather: larger still
+  const more = layers.filter((l) => l === 'more').length;
+  d.over = {
+    form: seen >= 2 ? form : null, params: P, layers, tilt,
+    size: st.size * sizeK * (d.marked ? 1.25 : 1) * (d.trace ? 1.2 : 1) * (1 + 0.04 * more),
+    stand: !!d.trace,           // (a trace's form stands on the ground beside it; else it hangs over)
+  };
+  d.form = d.over.form;
+  d.aura = st.light;
+  d.strength = Math.max(d.strength, st.glow);
+  if (d.plus) d.name += '+';
+  // the Codex's words
+  const lines = ['Its echo stands about it in light, larger than itself.'];
+  if (seen >= 2) {
+    const crowned = P.crown ? ` Over that, ${P.crown.text[0].toLowerCase()}${P.crown.text.slice(1)}` : '';
+    const court = P.court ? ` About it stand ${num(P.court.n).toLowerCase()} small ${CLASS[P.court.form.form].toLowerCase()}s.` : '';
+    lines.push(`${d.trace ? 'Beside it' : 'Over it'}, what it is at heart: ${P.text[0].toLowerCase()}${P.text.slice(1)}${crowned}${court}`);
+  }
+  const about = layers.map((l) => LAYER_TEXT[l]).filter(Boolean);
+  if (about.length) lines.push(`${about.join('; ')}.`.replace(/^./, (c) => c.toUpperCase()));
+  d.overText = lines;
+  d.overClass = seen >= 2 ? CLASS[form] : null;
 }

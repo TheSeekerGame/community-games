@@ -113,7 +113,7 @@ export class Hud {
     el('div', 'c muted', this.card, `${entry.code} · ${entry.cls}`);
     if (entry.depth) {
       const st = stratum(entry.depth);
-      const dl = el('div', 'c deep', this.card, `DEPTH ${st.numeral}${entry.plus ? '+ · MARKED' : ''} · ${st.title}`);
+      const dl = el('div', 'c deep', this.card, entry.site ? `SEEN TO ${st.numeral}${entry.plus ? '+ · MARKED' : ''}${entry.res > entry.depth ? ` OF ${stratum(entry.res).numeral}` : ''} · ${st.title}` : `DEPTH ${st.numeral}${entry.plus ? '+ · MARKED' : ''} · ${st.title}`);
       dl.style.color = hexCss(st.light);
     }
     if (entry.fx && entry.fx.length) el('div', 'c fxl', this.card, entry.fx.map((id) => (DONE[id] || id).toUpperCase()).join(' · '));
@@ -280,17 +280,18 @@ export class Hud {
     const flying = g.mode === 'fly' || g.mode === 'seat' || ground;
     // a witnessed artifact's marks are gold
     const sp = !!(t && t.special);
-    this.signal.classList.toggle('special', sp);
     this.bracket.classList.toggle('special', sp);
     // a deep one's marks are in its stratum's light
     const dp = t && t.d.depth ? stratum(t.d.depth) : null;
     if (dp !== this._dp) {
       this._dp = dp;
-      for (const e of [this.signal, this.bracket]) { e.classList.toggle('deep', !!dp); if (dp) e.style.setProperty('--deep', hexCss(dp.light)); }
+      this.bracket.classList.toggle('deep', !!dp);
+      if (dp) this.bracket.style.setProperty('--deep', hexCss(dp.light));
     }
     // the bearing strip: to the one the scanner looks at, and a smaller mark for each
     // other one still out there (a sweep's)
     const open = flying ? f.open : [];
+    let marks = [];
     // (rolled over by an inversion, the view is mirrored, and so is the strip)
     const mir = !ground && g.ship.flip > 0.5 ? -1 : 1;
     const at = (b) => `${(1 - (0.5 + Math.max(-1, Math.min(1, (b * mir) / 1.2)) * 0.5)) * 100}%`;
@@ -303,14 +304,42 @@ export class Hud {
         this.sigMark.classList.toggle('edge', Math.abs(sh.bearing) > 1.2);
         this.sigLabel.textContent = `SHIP · ${Math.round(sh.dist / 10) * 10} m`;
       } else this.signal.classList.remove('on');
-    } else if (t && flying && (f.state === 'far' || open.length > 1)) {
-      this.signal.classList.add('on');
-      this.sigMark.style.left = at(t.bearing);
-      this.sigMark.classList.toggle('edge', Math.abs(t.bearing) > 1.2);
-      const m = `${Math.round(t.dist / 10) * 10} m`;
-      this.sigLabel.textContent = open.length > 1 ? `${open.length} ${open.some((a) => a.special) ? 'WITNESSED' : 'SIGNALS'} · ${m}` : m;
+    } else if (flying && !ground) {
+      // what is out there to fly to: the sites heard and not yet recorded (nearest first),
+      // and whatever has risen for the ship (the witnessed); the large mark is the one the
+      // scanner looks at if it is still far, else the nearest signal; small marks, the rest
+      const sig = f.signals || [], risen = open.filter((a) => !a.site);
+      const list = [...risen.map((a) => ({ a, dist: a.dist, bearing: a.bearing, gold: !!a.special })), ...sig];
+      list.sort((p, q) => p.dist - q.dist);
+      const held = t && (f.state === 'near' || f.state === 'lock') ? t : null;
+      const rest = list.filter((x) => x.a !== held || !held);
+      // (what has risen for the ship will not wait: it leads)
+      // (a course set leads, unless something has risen for the ship)
+      const course = g.course && g.course.on ? { course: true, dist: g.course.dist(), bearing: g.course.bearing() } : null;
+      const lead = rest.find((x) => x.gold) || course || (held ? null : (t && rest.find((x) => x.a === t)) || rest[0] || null);
+      if (course && lead !== course) rest.unshift(course);
+      marks = rest.filter((x) => x !== lead).slice(0, 6);
+      if (lead) {
+        this.signal.classList.add('on');
+        this.signal.classList.toggle('special', !!lead.gold);
+        this.sigMark.style.display = '';
+        this.sigMark.style.left = at(lead.bearing);
+        this.sigMark.classList.toggle('edge', Math.abs(lead.bearing) > 1.2);
+        const m = lead.dist >= 1000 ? `${(lead.dist / 1000).toFixed(1)} km` : `${Math.round(lead.dist / 10) * 10} m`;
+        const n = rest.length;
+        const gold = rest.filter((x) => x.gold).length;
+        if (lead.course) this.sigLabel.textContent = `${g.course.phase === 'hold' ? 'HOLDING' : 'COURSE'} · ${m}`;
+        else this.sigLabel.textContent = `${lead.gold ? (gold > 1 ? `${gold} WITNESSED` : 'WITNESSED') : lead.faint ? 'FAINT SIGNAL' : n > 1 ? `${n} SIGNALS` : 'SIGNAL'} · ${m}`;
+        this.signal.classList.toggle('faint', !!lead.faint);
+        this.signal.classList.toggle('course', !!lead.course);
+      } else if (marks.length) {
+        this.signal.classList.add('on');
+        this.sigMark.style.display = 'none';
+        this.sigLabel.textContent = '';
+      } else this.signal.classList.remove('on');
     } else this.signal.classList.remove('on');
-    const others = this.signal.classList.contains('on') && !ground ? open.filter((a) => a !== t) : [];
+    if (ground) this.sigMark.style.display = '';
+    const others = this.signal.classList.contains('on') && !ground ? marks : [];
     while (this.sigOthers.length < others.length) this.sigOthers.push(el('div', 'mark other', this.signal));
     this.sigOthers.forEach((mk, i) => {
       const a = others[i];
@@ -318,6 +347,8 @@ export class Hud {
       if (!a) return;
       mk.style.left = at(a.bearing);
       mk.classList.toggle('edge', Math.abs(a.bearing) > 1.2);
+      mk.classList.toggle('gold', !!a.gold);
+      mk.classList.toggle('course', !!a.course);
     });
     // brackets
     let shown = false;
@@ -337,7 +368,7 @@ export class Hud {
         // low in the view (a short screen held sideways), the words go above it
         this.bracket.classList.toggle('up', y + s + u * 32 > innerHeight);
         const land = t.d.family === 'landing';
-        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : dp ? `DEPTH ${dp.numeral}${t.d.plus ? '+' : ''} · ` : t.d.family === 'life' ? `${t.d.cls.toUpperCase()} · ` : '') + (f.state === 'lock'
+        this.brLabel.textContent = (sp ? `SEEKER #${t.d.lead} · ` : dp ? `${dp.numeral}${t.d.plus ? '+' : ''}${t.d.res > t.d.depth ? `/${stratum(t.d.res).numeral}` : ''} · ` : t.d.family === 'life' ? `${t.d.cls.toUpperCase()} · ` : '') + (f.state === 'lock'
           ? (f.scan > 0 ? (land ? 'LANDING' : 'SCANNING') : g.input.touchMode ? (land ? 'HOLD SCAN · LAND' : 'HOLD SCAN') : (land ? 'HOLD SPACE · LAND' : 'HOLD SPACE · SCAN'))
           : ground ? 'CLOSER' : 'STEER TO IT');
         this.brFill.style.width = `${f.scan * 100}%`;

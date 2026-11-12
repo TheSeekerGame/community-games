@@ -115,7 +115,8 @@ export class ArtifactVoices {
     v.bus.connect(v.gate); v.gate.connect(v.tone); v.tone.connect(v.level); v.level.connect(v.pan); v.pan.connect(a.voiceBus);
     v.tone.connect(v.send); v.send.connect(a.verbIn);
     const deep = d.depth >= 1 && d.params && d.params.voice;
-    const layers = deep ? d.params.voice.layers.slice() : (FAMILY[d.species] || FAMILY[d.family] || ['glass', 'chirp']).slice();
+    // (a family of the sets brings its own: d.timbre)
+    const layers = deep ? d.params.voice.layers.slice() : (FAMILY[d.species] || FAMILY[d.family] || d.timbre || ['glass', 'chirp']).slice();
     // the mountains' deep ones have the wind in them too
     if (deep && d.mountain && !layers.includes('breath')) layers.push('breath');
     if (deep) {

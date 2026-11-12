@@ -1,7 +1,9 @@
 import { rng, seedsFromHex, clamp, formatInt, formatNum } from '../core/math.js';
 import { pitch } from '../core/tuning.js';
 import { keccak256, toHex } from '../core/keccak.js';
-import { describeDeep } from './deep.js';
+import { describeDeep, describeOver } from './deep.js';
+import { EXTRA } from './sets/index.js';
+import { roman, stratum } from './strata.js';
 import { describeCreature } from './species.js';
 import { describeLanding } from './clearing.js';
 import { describeCurio } from './curios.js';
@@ -31,7 +33,7 @@ import { describeLife } from './life.js';
 //
 // Raise GENERATOR_VERSION when the output for a seed changes.
 
-export const GENERATOR_VERSION = 6;
+export const GENERATOR_VERSION = 7;
 
 // What stands on the mountains is its own (mountain.js): a wild one that rises there is
 // drawn from these instead, and at any depth from the mountains' own forms (deep.js).
@@ -46,6 +48,14 @@ export const RIVER_FAMILIES = ['falls', 'naturalbridge', 'waterwheel', 'ferry', 
 export const FAMILIES = ['ring', 'obelisk', 'orb', 'lattice', 'shell', 'crystal', 'tether', 'fungi', 'gate', 'solids', 'glyph', 'chimes',
   'beacon', 'orrery', 'helix', 'tesseract', 'wreck', 'stair', 'arbor', 'pool', 'sentinel', 'swarm', 'cradle', 'lanterns', 'dish',
   'pendulum', 'hourglass', 'mobile', 'lens', 'echo'];
+
+// with the families of the sets (sets/index.js), by the place each belongs to; out on a
+// lake, the lakes' own, or one of the few that hang in the air and need no ground
+const extraAt = (place) => Object.keys(EXTRA).filter((k) => EXTRA[k].place === place);
+const GENERAL = [...FAMILIES.slice(0, -1), ...extraAt('any')];
+const ON = { mountain: [...MOUNTAIN_FAMILIES, ...extraAt('mountain')], autumn: [...AUTUMN_FAMILIES, ...extraAt('autumn')], river: [...RIVER_FAMILIES, ...extraAt('river')], lake: extraAt('lake') };
+const FLOATERS = ['orb', 'solids', 'tesseract', 'swarm', 'lanterns', 'mobile'];
+export const ALL_FAMILIES = { any: GENERAL, ...ON, trace: ['trace'] };
 
 // the light a colorway gives: [color, strength]
 const BY_COLORWAY = {
@@ -115,6 +125,8 @@ const NOUNS = {
   waterwheel: ['Wheel', 'Mill', 'Turning', 'Round', 'Engine', 'Patience'], ferry: ['Ferry', 'Boat', 'Crossing', 'Drifter', 'Barge', 'Passage'],
   drowned: ['Colonnade', 'Columns', 'Court', 'Hall', 'Portico', 'Temple'],
 };
+for (const [k, f] of Object.entries(EXTRA)) { CODE[k] = f.code; CLASS[k] = f.cls; NOUNS[k] = f.nouns; }
+CODE.trace = 'TRC'; CLASS.trace = 'Trace'; NOUNS.trace = ['Trace', 'Mark', 'Remnant', 'Hint', 'Whisper', 'Seed'];
 const ADJ = ['Hollow', 'Pale', 'Silent', 'Patient', 'Drowned', 'Sleeping', 'Unlit', 'Folded', 'Listening', 'Distant', 'Last',
   'Second', 'Inverted', 'Quiet', 'Slow', 'Cold', 'Borrowed', 'Forgotten', 'Waking', 'Nameless', 'Leaning', 'Humming',
   'Mirrored', 'Hidden', 'Breathing', 'Lesser', 'Unfinished', 'Kept', 'Returning', 'Seventh'];
@@ -135,28 +147,34 @@ const FLAVOR = [
 const WITNESS_FLAVOR = ['It faces the way the seeker moved.', 'Every ship in the fog saw it rise.', 'The network’s aurora flickered as it formed.',
   'The seeker’s picture hangs over it, in light.', 'Its light is the color of the seeker that moved.'];
 const GRAND = ['A grand one: few as large are ever found.', 'A grand one: its light stands over it in a column.', 'Larger than any the Codex has on record nearby.'];
+// (every one stands at its place, for every ship that comes there: sites.js)
 const WILD_ORIGIN = [
-  'No seeker moved for it. No other ship will find it.',
-  'Unrecorded by the network; seen from this ship alone.',
-  'The Codex holds no other record of it, anywhere.',
-  'It grew where no one was looking, except you.',
+  'It stands where it has always stood; any ship that comes here finds it.',
+  'Unrecorded by the network. It is here for whoever comes.',
+  'No seeker moved for it. It was here before the ships.',
+  'The forest keeps it at this place, for anyone who looks.',
   'Nothing on the chain explains it. Nothing needs to.',
 ];
 const MOUNTAIN_ORIGIN = [
-  'On the mountain, over the fog. No other ship will find it.',
-  'High on the range, where the forest gives out; seen from this ship alone.',
-  'Above the treeline. The Codex holds no other record of it.',
-  'Out of the fog, on stone. Nobody else will ever stand where it stands.',
+  'On the mountain, over the fog, for any ship that climbs to it.',
+  'High on the range, where the forest gives out.',
+  'Above the treeline, where it has always stood.',
+  'Out of the fog, on stone; it does not move from here.',
 ];
 const AUTUMN_ORIGIN = [
-  'Among the gold birches. No other ship will find it.',
-  'In a turned stand, where the leaves are going; seen from this ship alone.',
-  'Where the forest turns gold. The Codex holds no other record of it.',
+  'Among the gold birches, where it has always stood.',
+  'In a turned stand, where the leaves are going.',
+  'Where the forest turns gold; any ship that comes here finds it.',
 ];
 const RIVER_ORIGIN = [
-  'On the river. No other ship will find it.',
-  'Where the river runs; seen from this ship alone, and only by following it.',
-  'Down in the cut the river made. The Codex holds no other record of it.',
+  'On the river, for whoever follows it.',
+  'Where the river runs; found only by following it.',
+  'Down in the cut the river made.',
+];
+const LAKE_ORIGIN = [
+  'Out on the lake, where the water is still.',
+  'On open water, a long way from any shore.',
+  'Where a river ends, or a basin filled.',
 ];
 const WILD_LIGHT = [0x91cbde, 0xd6edf5, 0x8ca893, 0x7bacbc, 0x97acb0, 0xcfdde4, 0x8f7aa8, 0xaf634b];
 
@@ -215,13 +233,18 @@ export function describe(move, seekerInfo, force = null) {
   const charge = move.charge || 0;
 
   // family: a witnessed artifact is the seeker itself
-  let family = wild ? (move.mountain ? R0.pick(MOUNTAIN_FAMILIES) : move.river ? R0.pick(RIVER_FAMILIES) : move.autumn ? R0.pick(AUTUMN_FAMILIES) : FAMILIES[Math.floor(R0() * (FAMILIES.length - 1))]) : 'echo';
+  let family = 'echo';
+  if (wild) {
+    const r = R0();
+    const pool = move.trace ? ['trace'] : move.mountain ? ON.mountain : move.river ? ON.river : move.lake ? (ON.lake.length && r < 0.65 ? ON.lake : FLOATERS) : move.autumn ? ON.autumn : GENERAL;
+    family = pool[Math.floor(R0() * pool.length)];
+  }
   if (force) family = force;
   if (family === 'echo' && !lead) family = 'obelisk';
 
   const [accent, strength] = BY_COLORWAY[traits.Colorway] || [R0.pick(WILD_LIGHT), 1];
   // witnessed artifacts stand larger: the network's moment; a grand wild one too
-  const grand = wild && R0() < 0.14;
+  const grand = wild && R0() < 0.14 && !move.trace;
   const size = wild ? (0.8 + R0() * 0.35) * (grand ? 1.45 : 1) : (0.85 + 0.55 * clamp(Math.log10(1 + charge) / 3.3, 0, 1)) * 1.2;
   const count = tokens.length;
 
@@ -233,7 +256,10 @@ export function describe(move, seekerInfo, force = null) {
   const d = {
     v: GENERATOR_VERSION, tx: move.tx, key: move.key || move.tx, total: move.total || tokens.length, block: wild ? null : move.block, tokens, lead, family, accent, strength, size, count,
     pool: move.pool || 'dormant', charge, recipients: move.recipients || 0, time: move.time || null,
-    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !special && !!move.mountain, autumn: wild && !special && !move.mountain && !move.river && !!move.autumn, river: wild && !special && !move.mountain && !!move.river, plus: wild && !special && depth >= 1 && !!move.plus,
+    seed: s, params: {}, traits, kind: wild ? 'wild' : 'witnessed', special: !wild, grand, depth, glimpse: !!move.glimpse, mountain: wild && !special && !!move.mountain, autumn: wild && !special && !move.mountain && !move.river && !!move.autumn, river: wild && !special && !move.mountain && !!move.river, lake: wild && !special && !!move.lake,
+    // (a site's: one of the marked shows its mark once its true form is seen)
+    plus: wild && !special && depth >= (move.site ? 2 : 1) && !!move.plus, marked: wild && !special && !!move.plus, trace: wild && !special && family === 'trace',
+    site: move.site || null, res: wild ? Math.max(0, Math.floor(move.res || 0)) : 0,
   };
   const P = d.params;
   let structure = '';
@@ -241,9 +267,9 @@ export function describe(move, seekerInfo, force = null) {
   else if (creature) describeCreature(d, move, R1, R3);
   else if (landing) describeLanding(d, move, R1);
   else if (curio) describeCurio(d, move, R1, R3);
-  else if (depth >= 1) describeDeep(d, move, R1, R3);
+  else if (depth >= 1 && !move.site) describeDeep(d, move, R1, R3);
 
-  if (depth < 1 && !special) switch (family) {
+  if ((depth < 1 || move.site) && !special) switch (family) {
     case 'ring': {
       P.n = R1.pick([3, 5, 7, 8, 11, 13]);
       P.seq = R1.pick(['primes', 'Fibonacci numbers', 'harmonic series', 'odd numbers']);
@@ -657,6 +683,23 @@ export function describe(move, seekerInfo, force = null) {
       structure = `SEEKER #${lead} itself, ${Math.round(54 * P.scale)} meters tall, hovering; it turns to watch the ship. Under it: ${under[0].toLowerCase()}${under.slice(1)}.`;
       break;
     }
+    // next to nothing at the surface (and a great deal under it: deep.js)
+    case 'trace': {
+      P.kind = R1.pick(['monolith', 'pebbles', 'post', 'cup', 'seam']);
+      P.height = R1.range(2.4, 4.6);
+      P.n = R1.pick([3, 5, 7, 9]);
+      P.length = R1.range(9, 16);
+      structure = {
+        monolith: `One stone ${P.height.toFixed(1)} meters tall, smooth, a little warm; a seam of light down its face. At the surface, nothing else.`,
+        pebbles: `${NUMW[P.n]} pebbles laid in a ring a pace across; the smallest is lit. At the surface, nothing else.`,
+        post: `A thin post ${P.height.toFixed(1)} meters tall, a light no bigger than a coal at its top. At the surface, nothing else.`,
+        cup: 'A shallow cup worn into a flat stone, holding a little light as if it were water. At the surface, nothing else.',
+        seam: `A crack in the ground ${Math.round(P.length)} meters long with light in it, as if something large lay under. At the surface, nothing else.`,
+      }[P.kind];
+      break;
+    }
+    default:
+      if (EXTRA[family]) { const X = EXTRA[family].params(R1, size); structure = X.text; Object.assign(P, X); delete P.text; d.timbre = EXTRA[family].voice; }
   }
 
   // its rhythm (its light pulses to it) and its hum: a chord of two or three notes of
@@ -684,7 +727,7 @@ export function describe(move, seekerInfo, force = null) {
     d.notes = [d.structure, `Its light pulses ${k} of every ${n} steps; it hums near ${hz} Hz.`, R3.pick(FLAVOR), d.origin];
     return d;
   }
-  if (depth >= 1) {
+  if (depth >= 1 && !move.site) {
     d.notes = [d.structure, `Its light pulses ${k} of every ${n} steps; it sings a chord of ${d.params.voice.chord.length}, near ${hz} Hz.`, d.flavor, d.origin];
     return d;
   }
@@ -703,7 +746,7 @@ export function describe(move, seekerInfo, force = null) {
   d.code = `${CODE[family]}-${seedHex.slice(2, 6).toUpperCase()}`;
   d.cls = CLASS[family];
   let origin;
-  if (wild) origin = R3.pick(d.mountain ? MOUNTAIN_ORIGIN : d.river ? RIVER_ORIGIN : d.autumn ? AUTUMN_ORIGIN : WILD_ORIGIN);
+  if (wild) origin = R3.pick(d.mountain ? MOUNTAIN_ORIGIN : d.river ? RIVER_ORIGIN : d.lake ? LAKE_ORIGIN : d.autumn ? AUTUMN_ORIGIN : WILD_ORIGIN);
   else {
     const total = move.total || tokens.length;
     const who = tokens.length > 1 ? `SEEKER ${tokens.map((t) => '#' + t).join(', ')} moved together` : total > 1 ? `SEEKER #${lead} moved, one of ${total} that moved together` : `SEEKER #${lead} moved`;
@@ -721,7 +764,24 @@ export function describe(move, seekerInfo, force = null) {
     origin,
   ];
   d.fund = hz;
+  // a site's: what lies in it, as far as this pilot sees (deep.js), and how far that is
+  if (move.site) {
+    d.structure = structure;
+    if (depth >= 1) {
+      describeOver(d, move, depth);
+      d.notes = [structure, ...d.overText, `Its light pulses ${k} of every ${n} steps; it sings a chord of ${d.params.voice.chord.length}, near ${hz} Hz.`, d.notes[2], origin];
+    }
+    d.notes.push(resonanceLine(d.res, depth));
+  }
   return d;
+}
+
+// how much lies hidden in a site's artifact, and how much of it was seen
+export function resonanceLine(res, seen) {
+  if (!res) return 'Resonance none: all of it is here to see.';
+  if (seen >= res) return `Resonance ${roman(res)}: seen whole, to ${stratum(res).title}.`;
+  if (seen) return `Resonance ${roman(res)}: seen to ${roman(seen)}, ${stratum(seen).title}. There is more of it.`;
+  return `Resonance ${roman(res)}: none of it seen yet. Attune, and come back.`;
 }
 
 // A figure drawn in light on the ground: a geoglyph's own, or the floor a witnessed

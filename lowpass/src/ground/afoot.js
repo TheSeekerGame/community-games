@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, wildSeed } from '../artifacts/generate.js';
+import { rng } from '../core/math.js';
 import { buildArtifact } from '../artifacts/models.js';
-import { rollDepth } from '../core/progress.js';
 import { U } from '../render/materials.js';
 import { FOG } from '../render/pipeline.js';
 import { WATER } from '../world/terrain.js';
@@ -34,15 +34,20 @@ export class Afoot {
 
   get open() { return this.curios.filter((c) => !c.scanned); }
 
-  // the things about a clearing: placed between the trunks, off the water, apart
+  // the things about a clearing: placed between the trunks, off the water, apart. A
+  // clearing that is a site (sites.js) holds the same things in the same places for
+  // everyone who lands there (all of it from the site's seed): each with layers of its
+  // own, seen as far as this pilot is attuned; those already recorded stand on, done.
   populate(site) {
     const g = this.game, w = g.world;
     this.clear();
     this.site = site;
-    const reach = g.progress.depth, n = 14 + Math.floor(Math.random() * 7);
+    const fixed = !!site.site, R = fixed ? rng(site.d.seed[1] ^ 0x7f4a7c15) : Math.random;
+    const hex = () => (fixed ? '0x' + Array.from({ length: 8 }, () => Math.floor(R() * 4294967296).toString(16).padStart(8, '0')).join('') : wildSeed());
+    const reach = g.progress.depth, n = 14 + Math.floor(R() * 7);
     const placed = [];
     for (let tries = 0; placed.length < n && tries < n * 30; tries++) {
-      const a = Math.random() * Math.PI * 2, r = 45 + Math.sqrt(Math.random()) * (WALK_R - 75);
+      const a = R() * Math.PI * 2, r = 45 + Math.sqrt(R()) * (WALK_R - 75);
       const x = site.x + Math.sin(a) * r, z = site.z + Math.cos(a) * r, h = w.groundAt(x, z);
       if (h < WATER + 1) continue;
       const slope = Math.abs(w.groundAt(x + 3, z) - w.groundAt(x - 3, z)) + Math.abs(w.groundAt(x, z + 3) - w.groundAt(x, z - 3));
@@ -52,12 +57,15 @@ export class Afoot {
       placed.push({ x, z, h });
     }
     for (const at of placed) {
-      const d = describe({ tx: wildSeed(), wild: true, depth: rollDepth(reach), curio: true, plus: Math.random() < MARK }, null);
+      // (how much lies in it: none, or a layer and each one more less likely)
+      let res = 0;
+      if (R() < 0.7) { res = 1; while (R() < 0.6) res++; }
+      const d = describe({ tx: hex(), wild: true, depth: Math.min(reach, res), res, curio: true, plus: R() < MARK }, null);
       const ctx = { ground: (lx, lz) => w.groundAt(at.x + lx, at.z + lz) - at.h, ringY: 0 };
       const model = buildArtifact(d, ctx);
-      model.group.rotation.y = Math.random() * Math.PI * 2;
+      model.group.rotation.y = R() * Math.PI * 2;
       g.scene.add(model.group);
-      const c = { d, model, x: at.x, z: at.z, y: at.h, scanned: false, heard: false, dist: Infinity, bearing: 0, move: {}, pulse: 1, reveal: 1 };
+      const c = { d, model, x: at.x, z: at.z, y: at.h, scanned: fixed && !!g.recorded(d.key), heard: false, dist: Infinity, bearing: 0, move: {}, pulse: 1, reveal: 1 };
       this.curios.push(c);
       // (placed first: the marks find it where it stands)
       model.group.position.set(c.x - w.origin.x, c.y, c.z - w.origin.z);

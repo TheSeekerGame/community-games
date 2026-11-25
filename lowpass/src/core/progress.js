@@ -86,14 +86,15 @@ export class Progress {
     this.tank = s.tank || 0;          // the plasma tank's level
     this.gain = s.gain || 0;          // the signal gain's level
     this.royalties = s.royalties || 0;
-    this.jumps = s.jumps || 0;       // teleporter jumps left // all DATA ever received as a finder's share (finds.js)
+    this.jumps = s.jumps || 0;       // teleporter jumps left
+    this.claimed = s.claimed || [];  // the Obelisk's commissions claimed (commissions.js), lately // all DATA ever received as a finder's share (finds.js)
     this.ships = s.ships || ['seed'];  // the ships bought
     // the effects: uses left of each ever bought ({ id: n }; once, the effects were bought
     // for good: those keep a pack)
     this.fx = Array.isArray(s.fx) ? Object.fromEntries(s.fx.map((id) => [id, PACK])) : s.fx || {};
     this.ship = this.ships.includes(s.ship) ? s.ship : 'seed';   // the one boarded
   }
-  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, royalties: this.royalties, jumps: this.jumps, ships: this.ships, ship: this.ship, fx: this.fx }); }
+  save() { save('progress', { data: this.data, depth: this.depth, earned: this.earned, deepest: this.deepest, tank: this.tank, gain: this.gain, royalties: this.royalties, jumps: this.jumps, claimed: this.claimed.slice(-30), ships: this.ships, ship: this.ship, fx: this.fx }); }
   owns(id) { return this.ships.includes(id); }
   canShip(id) { const d = SHIPS.find((x) => x.id === id); return !!d && !this.owns(id) && this.data >= d.price; }
   buyShip(id) {

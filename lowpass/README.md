@@ -113,6 +113,24 @@ to it and press E.
   seconds ahead, foresees the curve of a turn, starts a climb sooner at speed, and never
   goes into the ground; the camera keeps over the trees and never has a ridge between it
   and the ship.
+- **The Obelisk.** Every ship's first flight takes off from the roof of the Obelisk, a
+  slab of dark stone some nine hundred meters tall standing out of the forest (its
+  trees reach a thirty-fifth of it), split down one side by a narrow slit, after the
+  cover of qntm's *There Is No Antimemetics Division*. Its roof has the pad (rings of
+  light) and red lights on its corners; it stands out of the fog over the horizon from
+  tens of kilometers. The ship rises along it coming in and comes down off it going out.
+  It is home, and the reason to come back:
+  - **the uplink**: scans are transmitted for DATA (and a holder's finds told to the
+    relays) only within 12 km of it. Farther off, TRANSMIT at the top of the Codex says
+    how far (UPLINK · 20 km) and takes you to the OBELISK page. So the first to bring a
+    find home is its first finder;
+  - **commissions**: three a day, the same for every pilot (the day by UTC): an artifact
+    of a tier or rarer from a kind of place (a RARE on a river, an EPIC on a mountain,
+    anything in a turned stand...), or the things about a clearing. A scan recorded that
+    day that answers one is claimed at the Obelisk for its bonus (60 to 4,800 DATA), once.
+  The strip along the top marks it far off (a small dark slab, outlined), the MAP shows
+  it, and the OBELISK page sets a course home (or teleports, with a jump). Pilots who
+  have flown before go on from where they were.
 - **Sites.** Every wild artifact stands at a **site**: a place that is a pure function of
   the world's seed and its coordinates, the same for every ship, today or in a year.
   Nothing appears for anyone and nothing dissolves behind you: fly past one, stay inside
@@ -411,9 +429,15 @@ minute as a WAV file.
 
 ## The Codex computer
 
-Four tabs: LOG, MAP, BOARD, SHOP. Along the top, always: your **DATA**, **TRANSMIT**
-while there are scans not yet sent (for DATA; they stay in the LOG), and the pilot (your
-name or address once linked, else LINK WALLET), which opens your seekers.
+Five tabs: LOG, MAP, BOARD, OBELISK, SHOP. Along the top, always: your **DATA**,
+**TRANSMIT** while there are scans not yet sent (for DATA; they stay in the LOG; only
+within reach of the Obelisk's uplink, else how far it is), and the pilot (your name or
+address once linked, else LINK WALLET), which opens your seekers.
+
+- **OBELISK**: home. Whether its uplink is in reach (and how far it is), TRANSMIT, SET
+  COURSE HOME (and TELEPORT, with a jump); and today's three commissions, each with what
+  it asks, its bonus, and CLAIM once a scan of yours from today answers it (at the
+  Obelisk). A mark on the tab says one is ready to claim.
 
 - **LOG**: every artifact you recorded: its photograph, its name, its tier and how far
   into it you saw, what it is and where it stands (its place code and how far), where

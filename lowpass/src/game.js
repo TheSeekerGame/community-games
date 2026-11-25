@@ -11,6 +11,8 @@ import { Seeker } from './ship/seeker.js';
 import { CoffeeScene } from './ship/coffee.js';
 import { Plasma } from './ship/plasma.js';
 import { Teleport } from './ship/teleport.js';
+import { Obelisk } from './world/obelisk.js';
+import { homeTop, homeStart, homeDist, UPLINK_R } from './world/home.js';
 import { Cameras } from './ship/camera.js';
 import { Input } from './core/input.js';
 import { Audio, BPM } from './core/audio.js';
@@ -141,6 +143,7 @@ export class Game {
     else this.moves.status = 'offline';
     art.loadMeta().then(() => { this.artReady = true; }).catch(() => {});
     this.field = new Field(this);
+    this.obelisk = new Obelisk(this.scene);     // home: where every ship first takes off (home.js)
     this.teleport = new Teleport(this);
     this.shot = new Shot(this.scene);
     // anomalies bought in the SHOP (anomaly.js): how fast the world's time runs, how fast
@@ -155,7 +158,8 @@ export class Game {
     this.field.onAppear = (a) => this._appear(a);
     this.field.onWave = (list) => this._appear(list[0], list);
     this.field.onScanned = (a) => this._scanned(a);
-    this.ship.obstacle = (x, z, cruise) => this.field.topAt(x, z, cruise);
+    // (and the Obelisk, its roof and the air it stands in: home.js)
+    this.ship.obstacle = (x, z, cruise) => Math.max(this.field.topAt(x, z, cruise), homeTop(x, z));
     // one missed alone is said; a sweep's, quietly (there were more than one could scan)
     this.field.onMissed = (a) => { if (!a.wave) this.hud.say('LOST IN THE FOG', 'It has gone back into the fog', 4); };
     // a creature that saw the ship, and a creature's scan let go: heard, never said (the
@@ -194,9 +198,13 @@ export class Game {
     for (const e of this.codex) { e.img = new Image(); e.img.src = e.photo; }
     this.interior.drawScreen(this.codex, 'connecting');
 
-    const x = q.has('x') ? Number(q.get('x')) : s.x ?? 1200;
-    const z = q.has('z') ? Number(q.get('z')) : s.z ?? -800;
-    this.ship.place(x, z, s.heading ?? 0.4);
+    // a new pilot starts on the Obelisk's roof (home.js); one who has flown before, where
+    // they left off
+    // (a saved place that is not a place, too, is home)
+    const H = homeStart(), was = Number.isFinite(s.x) && Number.isFinite(s.z);
+    const x = q.has('x') ? Number(q.get('x')) : was ? s.x : H.x;
+    const z = q.has('z') ? Number(q.get('z')) : was ? s.z : H.z;
+    this.ship.place(x, z, !was && !q.has('x') ? H.heading : Number.isFinite(s.heading) ? s.heading : 0.4);
     this.boot.step(0.2, 'growing the forest');
     await new Promise((r) => setTimeout(r, 30));     // let the screen show first
     while (this.world.update(this.ship.x, this.ship.z, 0, 1, 64) > 0);
@@ -267,7 +275,8 @@ export class Game {
     this.mode = 'fly';
     this.cams.auto = false;
     this.cams._cut = true;
-    this.hud.say('THE FOG BELT', 'A survey flight over the planet’s warm band', 5);
+    if (homeDist(this.ship.x, this.ship.z) < 2500) this.hud.say('THE OBELISK', 'every ship takes off from its roof · come back within sight of it to transmit what you find', 6);
+    else this.hud.say('THE FOG BELT', 'A survey flight over the planet’s warm band', 5);
     this._keysShown = this.time;
     // the relays, a little after (news of rare finds, finders' shares: finds.js)
     if (!new URLSearchParams(location.search).has('nonet')) setTimeout(() => { try { this.terminal.ensureBoard(); } catch (e) { console.warn('board', e); } }, 4000);
@@ -278,6 +287,15 @@ export class Game {
     this._rt = (this._rt || 0) - dt;
     if (this._rt > 0 || this.mode === 'title') return;
     this._rt = 1;
+    // (and back within reach of the Obelisk's uplink, with scans to send: home.js)
+    const near = homeDist(this.ship.x, this.ship.z) <= UPLINK_R;
+    if (near !== this._nearHome) {
+      const was = this._nearHome;
+      this._nearHome = near;
+      const n = this.progress.unsent(this.codex).list.length;
+      if (near && was === false && n && !this.terminal.open) this.hud.say('UPLINK IN REACH', `the Obelisk hears you · ${n} scan${n === 1 ? '' : 's'} to transmit at the Codex computer`, 6);
+      if (!near && was === true && !this.terminal.open) this.hud.say('OUT OF THE UPLINK', 'scans keep in the Codex until you are back within reach of the Obelisk', 5);
+    }
     const s = this.ship, de = desertEnv(s.x, s.z), le = lakeEnv(s.x, s.z);
     const now = de > 0.6 ? 'desert' : le > 0.6 ? 'greatlake' : de < 0.2 && le < 0.2 ? null : this._inReach;
     if (now === this._inReach) return;
@@ -689,7 +707,7 @@ export class Game {
       passes: a.pass || 0, song: { degrees: d.song.degrees, k: d.song.k, n: d.song.n }, fund: d.fund,
       ...(d.depth ? { depth: d.depth, form: d.form, glimpse: !!d.glimpse } : {}),
       // a site's: where it stands (for anyone), how much lies in it
-      ...(a.site ? { site: a.site.key, x: Math.round(a.x), z: Math.round(a.z), res: d.res || 0 } : {}),
+      ...(a.site ? { site: a.site.key, x: Math.round(a.x), z: Math.round(a.z), res: d.res || 0, place: a.site.place || 'any' } : {}),
       ...(d.plus ? { plus: true } : {}),
       ...(d.tier ? { tier: d.tier } : {}),
       ...(d.family === 'creature' ? { creature: d.species } : {}),
@@ -697,7 +715,7 @@ export class Game {
       ...(d.family === 'curio' ? { ground: true, curio: d.curio } : {}),
       // a thing about a clearing that is a site: told as the clearing (finds.js, the MAP),
       // its worth a share of the clearing's (progress.js)
-      ...(a.clearing ? { site: a.clearing.key, x: Math.round(a.clearing.x), z: Math.round(a.clearing.z), of: a.clearing.of, tier: CLEARING, res: d.res || 0, landing: true } : {}),
+      ...(a.clearing ? { site: a.clearing.key, x: Math.round(a.clearing.x), z: Math.round(a.clearing.z), of: a.clearing.of, tier: CLEARING, res: d.res || 0, landing: true, place: a.clearing.place || 'any' } : {}),
       ...(d.mountain ? { mountain: true } : {}),
       ...(d.autumn ? { autumn: true } : {}),
       ...(d.river ? { river: true } : {}),
@@ -829,6 +847,7 @@ export class Game {
     this.world.update(this.ship.x, this.ship.z, fx, fz, 2, cp.x + this.world.origin.x, cp.z + this.world.origin.z, dt);
     if (this._devTime !== undefined && this.clock.source !== 'none') { this.atmo.setTime(this._devTime); this._devTime = undefined; }
     this.atmo.update(dt, this.world.origin);
+    this.obelisk.update(this.cams.cam.position, this.world.origin, this.time);
     this.ship.sync(this.world.origin, this.beat);
     // the boost's plasma, shed from the core behind the ship, and its roar
     if (this.ship.corePos) this.plasma.emit(this.ship.corePos, this._back.set(-fx, 0, -fz), this.ship.boost, dt);

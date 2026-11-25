@@ -138,6 +138,26 @@ Why this shape:
   their true form stands on the ground beside them, larger than any. They reward the
   pilot who looks at a small thing twice.
 
+### The Obelisk: one place to start from, a reason to come back
+
+Every pilot's first flight takes off from one roof: the Obelisk (src/world/home.js,
+obelisk.js), a dark slab some nine hundred meters tall out of the forest, after the cover
+of qntm's *There Is No Antimemetics Division* (the owner's reference; the trees at its
+foot a thirty-fifth of its height, as there). So the shared world has a middle that
+everyone knows, and a landmark seen from tens of kilometers (drawn nearer than it is, at
+the size it would look, fogged as where it truly stands, and only partly).
+
+It is also the reason to come back. The owner chose both of these:
+- **the uplink**: transmitting (DATA, and a holder's finds) works only within 12 km of
+  it. Exploring fills the Codex; coming home cashes it in; and since a place's first
+  finder is the first to transmit it, there is a race home after a rare find;
+- **commissions**: three a day, the same for everyone (drawn from the UTC day), each an
+  artifact of a tier or rarer from a kind of place, or the things about a clearing;
+  claimed at the Obelisk with a scan from that day, for a bonus.
+Returning pilots go on from where they were (the owner's choice), so the trip home stays
+a trip; a course home or a teleporter jump makes it easy when it is long. No site moved
+for it: it stands where none was within a kilometer.
+
 ### Two reaches, laid over the forest
 
 The Grey Waste (a pale desert) and the Great Lake (water to the horizon) are rare and

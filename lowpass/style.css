@@ -9,7 +9,7 @@
 @font-face { font-family: 'Tektur'; src: url('assets/fonts/Tektur-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 /* which stylesheet this is (tools/stamp.mjs; the code checks it against its own) */
-:root { --build: "58e30877"; }
+:root { --build: "b3865036"; }
 
 :root {
   --u: 3px;
@@ -74,6 +74,11 @@ body { -webkit-user-select: none; user-select: none; -webkit-font-smoothing: non
 .hud .signal.tiered:not(.course) .mark:not(.other) { background: var(--tc); box-shadow: 0 0 calc(var(--u) * 5) var(--tc); }
 .hud .signal.tiered:not(.course) .label { color: var(--tc); }
 .hud .signal .mark.other.tiered { background: var(--tc); opacity: 1; }
+/* home, the Obelisk: a small dark slab, outlined */
+.hud .signal .mark.other.home { background: #0b0c10; border: var(--u) solid #9fe6ff; transform: none; width: calc(var(--u) * 2.5); height: calc(var(--u) * 5); margin-left: calc(var(--u) * -1.25); bottom: calc(var(--u) * -2.5); opacity: 1; }
+.hud .signal .mark.other.home.edgeL, .hud .signal .mark.other.home.edgeR { background: transparent; border-style: solid; border-color: #9fe6ff; width: calc(var(--u) * 3); height: calc(var(--u) * 3); margin-left: calc(var(--u) * -1.5); bottom: calc(var(--u) * -2); transform: rotate(45deg); }
+.hud .signal .mark.other.home.edgeL { border-width: 0 0 calc(var(--u) * 1.2) calc(var(--u) * 1.2); }
+.hud .signal .mark.other.home.edgeR { border-width: calc(var(--u) * 1.2) calc(var(--u) * 1.2) 0 0; }
 /* nearer, larger; each one's distance under it; in sight, a yellow ring; off the strip's
    ends, an arrow pointing round */
 .hud .signal .mark.other { transform: rotate(45deg) scale(var(--s, 1)); }
@@ -326,6 +331,12 @@ html.touchmode #ui .hud .fx { padding: calc(var(--u) * 4) calc(var(--u) * 6); }
 #ui .term .done { color: var(--pos); border-color: var(--pos); }
 #ui .term .tele { color: #c9b8ff; border-color: #8f7ad8; }
 #ui .term .tele.armed { color: #0b0d12; background: #c9b8ff; border-color: #c9b8ff; }
+/* the Obelisk: the uplink, the way home, the day's commissions */
+.term .home { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: calc(var(--u) * 4); padding-right: calc(var(--u) * 2); }
+.term .hcard { display: flex; flex-direction: column; gap: calc(var(--u) * 2); background: rgba(18, 21, 29, 0.7); border: var(--u) solid var(--line); padding: calc(var(--u) * 3) calc(var(--u) * 4); }
+.term .comm { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: calc(var(--u) * 4); border-left: var(--u) solid var(--tc); padding: calc(var(--u) * 1.5) calc(var(--u) * 3); background: rgba(10, 12, 18, 0.5); }
+#ui .term .sendp.far { color: var(--muted); border-color: var(--line); }
+@media (max-aspect-ratio: 1/1) { .term .comm { grid-template-columns: minmax(0, 1fr) auto; } .term .comm .chip { grid-column: 1 / -1; justify-self: start; } }
 /* what a place would bring: its tier, and DATA */
 .term .worth { display: inline-flex; align-items: center; gap: calc(var(--u) * 2); white-space: nowrap; }
 .term .wline { margin-top: var(--u); }

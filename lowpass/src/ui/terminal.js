@@ -4,9 +4,11 @@ import { Ranks } from '../net/ranks.js';
 import { load, save, codexPut } from '../core/store.js';
 import { valueOf, owedFor, MAX, KIT_PRICE, KIT_JUMPS } from '../core/progress.js';
 import { placeCode } from '../world/sites.js';
-import { tierOf } from '../artifacts/tiers.js';
+import { tierOf, CLEARING } from '../artifacts/tiers.js';
 import { siteId as siteIdOf } from '../net/finds.js';
 import { siteAt, siteOfKey, worthOf, worthWords } from './worth.js';
+import { HOME, UPLINK_R, homeDist } from '../world/home.js';
+import { commissionsOf, answers, untilTomorrow } from '../core/commissions.js';
 import { CodexMap, placesIn } from './map.js';
 import { stratum, harmonicOf } from '../artifacts/strata.js';
 import { discover, connect, connected, disconnect } from '../net/wallet.js';
@@ -29,14 +31,16 @@ import { portrait } from '../ship/portrait.js';
 //   BOARD    the seekers' board on Nostr, three ways: POSTS (scans and words from
 //            holders), FINDS (who found what lately, rarest first: fly there), LEADERS
 //            (the holders who submitted their scans, ranks.js).
+//   OBELISK  home (home.js): whether its uplink is in reach (scans are transmitted only
+//            within it), the way home, and the day's commissions (commissions.js).
 //   SHOP     spend DATA on attunement, the plasma tank and the signal gain (progress.js),
 //            effects, anomalies, ships (designs.js).
 // SEEKERS (the pilot's page) opens from the pilot at the top right.
 // Keys: TAB changes tab, arrows move, ENTER chooses, ESC closes. Text fields take the keys
 // while they have focus.
 
-const TABS = ['log', 'map', 'board', 'shop'];
-const NAMES = { log: 'LOG', map: 'MAP', board: 'BOARD', shop: 'SHOP' };
+const TABS = ['log', 'map', 'board', 'home', 'shop'];
+const NAMES = { log: 'LOG', map: 'MAP', board: 'BOARD', home: 'OBELISK', shop: 'SHOP' };
 // the board's three pages under its one tab; the pilot's page under none
 const GROUP = { finds: 'board', ranks: 'board', seekers: null };
 const groupOf = (t) => (t in GROUP ? GROUP[t] : t);
@@ -161,6 +165,8 @@ export class Terminal {
     const newest = b.posts.length ? b.posts[0].at : 0;
     this.tabBtns.board.classList.toggle('dot', groupOf(this.tab) !== 'board' && newest > seen);
     this.tabBtns.shop.classList.toggle('dot', this.tab !== 'shop' && g.progress.anyCan);
+    // (a commission answered, waiting to be claimed at the Obelisk)
+    this.tabBtns.home.classList.toggle('dot', this.tab !== 'home' && commissionsOf().some((c) => !g.progress.claimed.includes(c.id) && g.codex.some((e) => answers(c, e))));
   }
 
   keys(input) {
@@ -215,6 +221,7 @@ export class Terminal {
     else if (this.tab === 'ranks') this._ranks();
     else if (this.tab === 'shop') this._shop();
     else if (this.tab === 'finds') this._finds();
+    else if (this.tab === 'home') this._home();
     else this._seekersTab();
     const f = this.foot;
     const k = (cap, what) => { const s = el('span', 'kr', f); key(s, cap); el('span', '', s, what); };
@@ -235,10 +242,12 @@ export class Terminal {
     el('span', 'muted', this.dataPill, 'DATA ');
     this._dataEl = el('span', '', this.dataPill, formatInt(pr.data));
     this.dataPill.classList.toggle('sel', this.tab === 'shop');
-    const un = pr.unsent(g.codex);
+    const un = pr.unsent(g.codex), d = homeDist(g.ship.x, g.ship.z), near = d <= UPLINK_R;
     this.sendBtn.style.display = un.list.length ? '' : 'none';
-    this.sendBtn.textContent = `TRANSMIT +${formatInt(un.value)}`;
-    this.sendBtn.title = `${un.list.length} scan${un.list.length === 1 ? '' : 's'} to send; they stay in your log`;
+    // (out of the Obelisk's reach, how far it is: the uplink is there)
+    this.sendBtn.textContent = near ? `TRANSMIT +${formatInt(un.value)}` : `UPLINK · ${km(d - UPLINK_R)}`;
+    this.sendBtn.classList.toggle('far', !near);
+    this.sendBtn.title = near ? `${un.list.length} scan${un.list.length === 1 ? '' : 's'} to send; they stay in your log` : `scans are transmitted within ${UPLINK_R / 1000} km of the Obelisk`;
     const b = this.board, link = b && b.link;
     const name = link ? b.nameOf(link.address) || `${link.address.slice(0, 6)}…${link.address.slice(-4)}` : 'LINK WALLET';
     this.pilotBtn.textContent = link ? name : this.seekers.address ? 'MY SEEKERS' : 'LINK WALLET';
@@ -422,6 +431,63 @@ export class Terminal {
       }
     }
     requestAnimationFrame(() => { list.scrollTop = keep; });
+  }
+
+  // ---------------------------------------------------------------- OBELISK
+  // Home: the uplink (in reach or how far), the way back, and the day's commissions.
+  _home() {
+    const g = this.game, pr = g.progress, d = homeDist(g.ship.x, g.ship.z), near = d <= UPLINK_R;
+    const wrap = el('div', 'home', this.body);
+    const st = el('div', 'hcard', wrap);
+    el('div', 'name', st, 'THE OBELISK');
+    el('div', near ? 'pos' : 'muted', st, near ? `UPLINK IN REACH · ${km(d)} from it` : `OUT OF REACH · ${km(d)} from it · the uplink reaches ${UPLINK_R / 1000} km`);
+    el('div', 'fine muted', st, 'Every ship took off from its roof. Scans are transmitted for DATA only within reach of its uplink, and the first to transmit a place is its first finder.');
+    const acts = el('div', 'acts', st);
+    const un = pr.unsent(g.codex);
+    if (un.list.length) {
+      const b = el('button', 'btn', acts, near ? `TRANSMIT ${un.list.length} · +${formatInt(un.value)}` : `${un.list.length} SCAN${un.list.length === 1 ? '' : 'S'} TO TRANSMIT HERE`);
+      b.disabled = !near;
+      b.onclick = () => this._transmit();
+    }
+    if (d > 1500) this.goButtons(acts, HOME.x, HOME.z, 'The Obelisk', { cls: 'btn', words: 'SET COURSE HOME' });
+    // the day's commissions
+    const cm = el('div', 'hcard', wrap);
+    const left = untilTomorrow(), h = Math.floor(left / 3600000), m = Math.floor((left % 3600000) / 60000);
+    const hd = el('div', 'uhead', cm);
+    el('div', 'uname', hd, "TODAY'S COMMISSIONS");
+    el('div', 'fine muted', hd, `new ones in ${h ? `${h} h ` : ''}${m} min`);
+    el('div', 'fine muted', cm, 'Bring back something found today that answers one, and claim its bonus here. Each, once.');
+    for (const c of commissionsOf()) {
+      const row = el('div', 'comm', cm);
+      const done = pr.claimed.includes(c.id), match = !done && g.codex.find((e) => answers(c, e));
+      const T = c.clearing ? tierOf(CLEARING) : tierOf(c.tier);
+      row.style.setProperty('--tc', T.color);
+      const mid = el('div', 'fmid', row);
+      el('div', '', mid, c.words);
+      el('div', 'fine ' + (done ? 'muted' : match ? 'pos' : 'muted'), mid, done ? 'claimed' : match ? `${match.landing ? 'found on foot' : match.name} answers it` : 'bring one back today');
+      el('span', done ? 'muted' : 'gold', row, `+${formatInt(c.bonus)} DATA`);
+      if (match) {
+        const b = el('button', 'chip', row, near ? 'CLAIM' : 'CLAIM AT THE OBELISK');
+        b.disabled = !near;
+        b.onclick = () => this._claim(c);
+      }
+    }
+  }
+
+  // a commission's bonus, for a scan that answers it (at the Obelisk)
+  _claim(c, quiet = false) {
+    const g = this.game, pr = g.progress;
+    if (pr.claimed.includes(c.id) || homeDist(g.ship.x, g.ship.z) > UPLINK_R || !g.codex.some((e) => answers(c, e))) return 0;
+    pr.claimed.push(c.id);
+    pr.credit(c.bonus);
+    if (!quiet) { g.audio.play('transmit', { n: 2 }); this.notice(`Commission claimed: +${formatInt(c.bonus)} DATA.`); this.render(); }
+    return c.bonus;
+  }
+  // every one that can be, as scans are transmitted
+  _claimAll() {
+    let n = 0;
+    for (const c of commissionsOf()) n += this._claim(c, true);
+    if (n) this.notice(`Commissions claimed too: +${formatInt(n)} DATA.`);
   }
 
   // ---------------------------------------------------------------- LOG
@@ -840,8 +906,11 @@ export class Terminal {
 
   _transmit() {
     const g = this.game, pr = g.progress;
+    // (only within reach of the Obelisk's uplink: home.js)
+    if (homeDist(g.ship.x, g.ship.z) > UPLINK_R) { this.setTab('home'); return; }
     const { list, value } = pr.unsent(g.codex);
     if (!list.length) return;
+    this._claimAll();
     for (const e of list) { e.paid = valueOf(e); e.sent = true; const { img, ...stored } = e; codexPut(stored); }
     // (a linked holder's sites go to the relays as found: finds.js)
     if (this.board) this.board.finds.publish(list.filter((e) => e.site)).then((n) => { if (n) this.render(); });

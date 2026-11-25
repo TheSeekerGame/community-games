@@ -73,7 +73,7 @@ export class Afoot {
       g.scene.add(model.group);
       const c = { d, model, x: at.x, z: at.z, y: at.h, scanned: fixed && !!g.recorded(d.key), heard: false, dist: Infinity, bearing: 0, move: {}, pulse: 1, reveal: 1,
         // (where it is told to be: the clearing, for everyone; finds.js, the MAP)
-        clearing: fixed ? { key: site.site.key, x: site.site.x, z: site.site.z, of: placed.length } : null };
+        clearing: fixed ? { key: site.site.key, x: site.site.x, z: site.site.z, of: placed.length, place: site.site.place } : null };
       this.curios.push(c);
       // (placed first: the marks find it where it stands)
       model.group.position.set(c.x - w.origin.x, c.y, c.z - w.origin.z);

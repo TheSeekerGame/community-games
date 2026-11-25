@@ -1,4 +1,6 @@
 import { TIERS } from '../artifacts/tiers.js';
+import { HOME, homeDist } from '../world/home.js';
+import { angleDelta } from '../core/math.js';
 import { el, clear, key } from './dom.js';
 import { stratum } from '../artifacts/strata.js';
 import { TANK } from '../core/progress.js';
@@ -329,6 +331,9 @@ export class Hud {
       // scanner looks at if it is still far, else the nearest signal; small marks, the rest
       const sig = f.signals || [], risen = open.filter((a) => !a.site);
       const list = [...risen.map((a) => ({ a, dist: a.dist, bearing: a.bearing, gold: !!a.special })), ...sig];
+      // home, the Obelisk, once it is a long way off (home.js): never the lead, always there
+      const hd = homeDist(g.ship.x, g.ship.z);
+      const homeMark = hd > 2500 ? { home: true, dist: hd, bearing: angleDelta(g.ship.heading, Math.atan2(HOME.x - g.ship.x, HOME.z - g.ship.z)) } : null;
       list.sort((p, q) => p.dist - q.dist);
       const held = t && (f.state === 'near' || f.state === 'lock') ? t : null;
       const rest = list.filter((x) => x.a !== held || !held);
@@ -341,6 +346,7 @@ export class Hud {
       const lead = rest.find((x) => x.gold) || course || (held ? null : (t && rest.find((x) => x.a === t)) || rare || rest[0] || null);
       if (course && lead !== course) rest.unshift(course);
       marks = rest.filter((x) => x !== lead).slice(0, 6);
+      if (homeMark && !(course && course.dist < 3000 && Math.abs(g.course.to.x - HOME.x) < 50)) marks.push(homeMark);
       if (lead) {
         this.signal.classList.add('on');
         this.signal.classList.toggle('special', !!lead.gold);
@@ -392,6 +398,7 @@ export class Hud {
       if (!clash) taken.push(pos);
       mk.classList.toggle('gold', !!a.gold);
       mk.classList.toggle('course', !!a.course);
+      mk.classList.toggle('home', !!a.home);
       const T = a.site && (a.site.kind === 'artifact' || a.site.kind === 'landing') ? a.site.tier || 0 : 0;
       mk.classList.toggle('tiered', T >= 1);
       if (T >= 1) mk.style.setProperty('--tc', TIERS[T].color);

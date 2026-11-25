@@ -1,4 +1,5 @@
 import { tierOf } from '../artifacts/tiers.js';
+import { HOME, HOME_W } from '../world/home.js';
 import { el, clear } from './dom.js';
 import { height, autumn, mountainEnv, riverOf, WATER, RCELL, RN, desertEnv } from '../world/terrain.js';
 import { placeCode, placeOf } from '../world/sites.js';
@@ -55,6 +56,8 @@ export class CodexMap {
   // what is on the map: [{ x, z, kind: 'rec' | 'sig' | 'shared', label, color, more, e?, by? }]
   marks() {
     const g = this.game, out = [], seen = new Set(), att = g.progress.depth;
+    // home: the Obelisk, always (home.js)
+    out.push({ x: HOME.x, z: HOME.z, kind: 'home', label: 'The Obelisk', color: '#0e1014' });
     for (const e of g.codex) {
       if (!e.site || !Number.isFinite(e.x) || seen.has(e.site)) continue;
       seen.add(e.site);
@@ -279,6 +282,17 @@ export class CodexMap {
       ctx.strokeStyle = m.color;
       ctx.lineWidth = 2;
       if (m.kind === 'rec') { ctx.beginPath(); ctx.arc(x, y, 4, 0, TAU); ctx.fill(); if (m.more) { ctx.beginPath(); ctx.arc(x, y, 8, 0, TAU); ctx.stroke(); } }
+      else if (m.kind === 'home') {
+        // its footprint, dark, ringed in light (at the map's edge, if it is off it)
+        const cx = Math.max(10, Math.min(W - 10, x)), cy = Math.max(10, Math.min(W - 10, y));
+        const L = Math.max(10, HOME_W * k), D = Math.max(5, HOME.depth * k);
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(-HOME.yaw);
+        ctx.fillStyle = '#0b0c10'; ctx.fillRect(-L / 2, -D / 2, L, D);
+        ctx.strokeStyle = '#9fe6ff'; ctx.lineWidth = 1.5; ctx.strokeRect(-L / 2, -D / 2, L, D);
+        ctx.restore();
+        ctx.fillStyle = '#9fe6ff'; ctx.font = `${Math.round(W / 42)}px 'Seeker Pixel', monospace`; ctx.textAlign = 'center';
+        ctx.fillText(cx !== x || cy !== y ? 'OBELISK ›' : 'OBELISK', cx, cy - D / 2 - 6);
+      }
       else if (m.kind === 'sig') { ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y); ctx.lineTo(x, y + 6); ctx.lineTo(x - 6, y); ctx.closePath(); ctx.stroke(); }
       else { ctx.fillRect(x - 4, y - 4, 8, 8); }
       if (this.sel && this.sel.x === m.x && this.sel.z === m.z) { ctx.strokeStyle = '#f0f2e8'; ctx.lineWidth = 1.5; ctx.strokeRect(x - 11, y - 11, 22, 22); }

@@ -1,4 +1,5 @@
 import { fbm2, ridged2, smoothstep, clamp } from '../core/math.js';
+import { homeOutside } from './home.js';
 
 // The Fog Belt: an endless taiga on the planet's warm band, where the heat under the
 // ice lets a forest grow and the steam it breathes never lifts. Rolling hills, frosted
@@ -228,6 +229,8 @@ export function forestDensity(x, z, h) {
   d *= 1 - smoothstep(150, 215, h);
   // a canyon's walls mostly bare: the rock shows its layers, trees keep to its ledges
   if (d > 0 && h > -40) d *= 1 - 0.7 * canyonAt(x, z, h);
+  // none on the Obelisk's foot (home.js)
+  if (d > 0 && homeOutside(x, z) < 25) return 0;
   // the Grey Waste: nothing but a dead snag here and there
   const de = desertEnv(x, z);
   if (de > 0) d = d * (1 - de) + 0.006 * de;
